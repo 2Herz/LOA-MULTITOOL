@@ -20,6 +20,7 @@ export namespace LostArkMultiTool::Views::UI
 
         void SetMaxLength(std::size_t maxLength) noexcept;
         void SetIMEAllowed(bool isAllowed) noexcept;   // false: 영문 · 숫자 전용 칸 (한/영 상태와 상관없이 영문 입력)
+        void SetInputFilter(std::function<bool(wchar_t character)> inputFilter);   // 받을 글자만 true (숫자 칸 등, 비우면 모든 글자)
         void SetOnTextChanged(std::function<void()> onTextChanged);
         void SetOnSubmit(std::function<void()> onSubmit);   // Enter
 
@@ -91,5 +92,6 @@ export namespace LostArkMultiTool::Views::UI
 
         std::function<void()> m_onTextChanged;
         std::function<void()> m_onSubmit;
+        std::function<bool(wchar_t)> m_inputFilter;
     };
 }

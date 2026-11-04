@@ -52,4 +52,7 @@ export namespace LostArkMultiTool::Services
 
     // JSON 문자열을 트리로 만듦 (형식이 잘못되면 std::runtime_error)
     [[nodiscard]] JSONValue ParseJSONText(std::string_view text);
+
+    // 트리를 사람이 읽기 쉬운 JSON 문자열로 (2칸 들여쓰기, 객체 키는 넣은 순서 그대로, 한글은 UTF-8 그대로)
+    [[nodiscard]] std::string WriteJSONText(const JSONValue& value);
 }

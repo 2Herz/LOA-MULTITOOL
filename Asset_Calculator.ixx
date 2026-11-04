@@ -20,6 +20,9 @@ export namespace LostArkMultiTool::Core
         [[nodiscard]] virtual std::unordered_map<std::string, Models::PriceData> GetBotPrices() const = 0;
         [[nodiscard]] virtual bool HasPrices() const = 0;
 
+        // 시세 갱신 한 번에 보내는 API 요청 수 (갱신 전에 호출 한도가 충분한지 확인할 때 사용)
+        [[nodiscard]] virtual int GetRequestCount() const noexcept = 0;
+
         virtual void FetchMarketPrices(MarketAPI& api) = 0;
         virtual void CalculateCharacterAssets(std::string_view charName) = 0;
         virtual void CalculateAllCharacters() = 0;

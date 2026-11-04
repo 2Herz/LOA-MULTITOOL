@@ -172,7 +172,7 @@ namespace LostArkMultiTool::Views
         if (m_platform.OpenURL(API_KEY_PAGE_URL)) return;
 
         m_notifier.ShowMessage(std::wstring{ BROWSER_ERROR_TITLE }, std::wstring{ BROWSER_ERROR_TEXT } + std::wstring{ API_KEY_PAGE_URL },
-            Core::NoticeKind::NOTICE_WARNING);
+            Core::NoticeKind::NOTICE_WARNING, nullptr);
     }
 
     void APIKeyDialog::ShowHint()

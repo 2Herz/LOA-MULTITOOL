@@ -23,6 +23,33 @@ namespace LostArkMultiTool::Models
         m_bottomQty = bottomQty;
     }
 
+    double ItemData::GetPreviousTopQty() const noexcept
+    {
+        return m_previousTopQty;
+    }
+    void ItemData::SetPreviousTopQty(double previousTopQty) noexcept
+    {
+        m_previousTopQty = previousTopQty;
+    }
+
+    double ItemData::GetPreviousBottomQty() const noexcept
+    {
+        return m_previousBottomQty;
+    }
+    void ItemData::SetPreviousBottomQty(double previousBottomQty) noexcept
+    {
+        m_previousBottomQty = previousBottomQty;
+    }
+
+    double ItemData::GetTopQtyChange() const noexcept
+    {
+        return m_topQty - m_previousTopQty;
+    }
+    double ItemData::GetBottomQtyChange() const noexcept
+    {
+        return m_bottomQty - m_previousBottomQty;
+    }
+
     double ItemData::GetCalculatedTopValue() const noexcept
     {
         return m_calculatedTopValue;

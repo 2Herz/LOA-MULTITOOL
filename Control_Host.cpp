@@ -32,6 +32,12 @@ namespace LostArkMultiTool::Views::UI
         {
             if (control->IsVisible()) control->Render(renderer);
         }
+
+        // 펼친 목록은 모든 부품 위에 (나중에 추가한 부품에 가려지지 않게)
+        for (const auto& control : m_controls)
+        {
+            if (control->IsVisible() && control->IsPopupOpen()) control->RenderPopup(renderer);
+        }
     }
 
     bool ControlHost::HandleInput(const Core::InputEvent& event)
@@ -133,13 +139,16 @@ namespace LostArkMultiTool::Views::UI
         if (m_pressed != nullptr)
         {
             m_pressed->OnMouseDrag(event);
-            SetHovered(m_pressed->GetBounds().Contains(event.m_x, event.m_y) ? m_pressed : nullptr);
+            SetHovered(m_pressed->HitTest(event.m_x, event.m_y) ? m_pressed : nullptr);
             return true;
         }
 
         Control* target{ FindControlAt(event.m_x, event.m_y) };
         SetHovered(target);
-        return target != nullptr;
+        if (target == nullptr) return false;
+
+        target->OnMouseMove(event);   // 부품 안에서 어디를 가리키는지 (목록 항목 · 표 칸 · 그래프 점 강조)
+        return true;
     }
 
     bool ControlHost::HandleMouseButton(const Core::MouseButtonEvent& event)
@@ -167,7 +176,7 @@ namespace LostArkMultiTool::Views::UI
         // 콜백이 다른 부품 상태를 바꿀 수 있으므로 누름 상태를 먼저 정리한 뒤 알림
         Control* released{ std::exchange(m_pressed, nullptr) };
         released->SetPressed(false);
-        released->OnMouseUp(event, released->GetBounds().Contains(event.m_x, event.m_y));
+        released->OnMouseUp(event, released->HitTest(event.m_x, event.m_y));
         return true;
     }
 
@@ -190,12 +199,17 @@ namespace LostArkMultiTool::Views::UI
         return false;
     }
 
-    // 맨 위(나중에 추가한) 부품부터 찾음
+    // 펼친 목록을 먼저, 그다음 맨 위(나중에 추가한) 부품부터 찾음
     Control* ControlHost::FindControlAt(float x, float y) const noexcept
     {
         for (const auto& control : std::views::reverse(m_controls))
         {
-            if (IsInteractive(*control) && control->IsHitTestVisible() && control->GetBounds().Contains(x, y))
+            if (IsInteractive(*control) && control->IsPopupOpen() && control->HitTest(x, y)) return control.get();
+        }
+
+        for (const auto& control : std::views::reverse(m_controls))
+        {
+            if (IsInteractive(*control) && control->IsHitTestVisible() && control->HitTest(x, y))
             {
                 return control.get();
             }

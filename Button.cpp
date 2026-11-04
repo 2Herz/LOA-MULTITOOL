@@ -76,7 +76,7 @@ namespace LostArkMultiTool::Views::UI
 
     bool Button::OnKeyDown(const Core::KeyEvent& event)
     {
-        if (event.m_key != Core::Key::KEY_ENTER) return false;
+        if (event.m_key != Core::Key::KEY_ENTER && event.m_key != Core::Key::KEY_SPACE) return false;
 
         Click();
         return true;

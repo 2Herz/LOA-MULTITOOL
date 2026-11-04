@@ -21,6 +21,8 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view KEY_MATERIALS{ "Materials" };
         constexpr std::string_view KEY_TOP_QTY{ "TopQty" };
         constexpr std::string_view KEY_BOTTOM_QTY{ "BottomQty" };
+        constexpr std::string_view KEY_PREVIOUS_TOP_QTY{ "PrevTopQty" };         // 멀티툴에서 추가 (원본 파일에는 없음 → 없으면 현재 수량)
+        constexpr std::string_view KEY_PREVIOUS_BOTTOM_QTY{ "PrevBottomQty" };
 
         constexpr std::string_view STRUCTURE_ERROR_MESSAGE{ "저장 파일 구조가 올바르지 않습니다." };
 
@@ -76,6 +78,10 @@ namespace LostArkMultiTool::Services
             RequireType(itemValue, JSONType::OBJECT_VALUE);
             item.SetTopQty(ReadNumberMember(itemValue, KEY_TOP_QTY, item.GetTopQty()));
             item.SetBottomQty(ReadNumberMember(itemValue, KEY_BOTTOM_QTY, item.GetBottomQty()));
+
+            // 직전 수량이 없는 옛 파일은 지금 수량 그대로 (증감 0으로 시작)
+            item.SetPreviousTopQty(ReadNumberMember(itemValue, KEY_PREVIOUS_TOP_QTY, item.GetTopQty()));
+            item.SetPreviousBottomQty(ReadNumberMember(itemValue, KEY_PREVIOUS_BOTTOM_QTY, item.GetBottomQty()));
             return item;
         }
 
@@ -211,6 +217,14 @@ namespace LostArkMultiTool::Services
             AppendQuoted(out, KEY_BOTTOM_QTY);
             out += ": " + FormatNumber(item.GetBottomQty());
 
+            AppendMemberPrefix(out, isFirst, depth + 1);
+            AppendQuoted(out, KEY_PREVIOUS_TOP_QTY);
+            out += ": " + FormatNumber(item.GetPreviousTopQty());
+
+            AppendMemberPrefix(out, isFirst, depth + 1);
+            AppendQuoted(out, KEY_PREVIOUS_BOTTOM_QTY);
+            out += ": " + FormatNumber(item.GetPreviousBottomQty());
+
             AppendMemberClose(out, isFirst, depth);
         }
 
@@ -313,15 +327,17 @@ namespace LostArkMultiTool::Services
     }
 
     JSONDataRepository::JSONDataRepository()
-        : m_fileStore{ Core::APPConstants::ROSTER_DATA_FILE_NAME }
+        // 예전 버전은 실행 파일 폴더에 저장했음 → 사용자 데이터 폴더에 파일이 없으면 그 파일을 한 번 가져옴
+        : m_fileStore{ Core::APPConstants::ROSTER_DATA_FILE_NAME, { Core::APPConstants::GetDataFilePath(Core::APPConstants::ROSTER_DATA_FILE_NAME) } }
     {
         // 변환이 끝까지 성공한 파일만 반영 (중간에 실패하면 loaded는 그대로 → 백업 파일로 다시 시도)
         std::optional<Models::UserData> loaded;
-        m_loadWarning = m_fileStore.Load([&loaded](const JSONValue& root) {
+        JSONLoadResult result{ m_fileStore.Load([&loaded](const JSONValue& root) {
             Models::UserData data{ ReadUserData(root) };
             data.MigrateLegacyHistory(Core::LocalTime::GetLocalToday());
             loaded = std::move(data);
-        });
+        }) };
+        m_loadWarning = std::move(result.m_warning);
 
         m_data = loaded.has_value() ? std::move(*loaded) : Models::UserData{};
 
@@ -331,6 +347,17 @@ namespace LostArkMultiTool::Services
             auto characters{ m_data.GetCharacters() };
             characters.try_emplace(std::string{ Core::APPConstants::DEFAULT_CHARACTER_NAME }, Models::Character{});
             m_data.SetCharacters(std::move(characters));
+        }
+
+        // 가져온 기록은 바로 새 위치에 저장 (실패해도 메모리의 값은 유지 → 다음 저장 때 다시 시도, 다음 실행 때 다시 가져옴)
+        if (!result.m_isImported) return;
+        try
+        {
+            Save();
+        }
+        catch (const std::exception&)
+        {
+            // 안내는 손상 · 가져오기 문구로 이미 표시됨 (저장 실패는 다음 저장에서 사용자에게 알림)
         }
     }
 

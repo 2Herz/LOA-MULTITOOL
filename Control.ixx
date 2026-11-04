@@ -34,15 +34,21 @@ export namespace LostArkMultiTool::Views::UI
 
         [[nodiscard]] virtual bool IsFocusable() const noexcept;          // 키보드 포커스를 받는 부품인지 (기본 false)
         [[nodiscard]] virtual bool IsHitTestVisible() const noexcept;     // 마우스를 받는 부품인지 (기본 true)
+        [[nodiscard]] virtual bool HitTest(float x, float y) const noexcept;   // (x, y)가 부품 위인지 (기본: 테두리 안, 펼친 목록이 있으면 목록도 포함)
         [[nodiscard]] virtual Core::CursorShape GetCursor() const noexcept;
 
         virtual void Update(double deltaSeconds);
         virtual void Render(Core::Renderer& renderer) = 0;
 
+        // ===== 펼친 목록(팝업) — 콤보 상자 목록처럼 다른 부품 위에 그려지고 마우스도 먼저 받음 =====
+        [[nodiscard]] virtual bool IsPopupOpen() const noexcept;   // 기본 false
+        virtual void RenderPopup(Core::Renderer& renderer);       // 모든 부품을 그린 뒤 호출
+
         // ===== 입력 (ControlHost가 알맞은 부품에만 전달) =====
         virtual void OnMouseDown(const Core::MouseButtonEvent& event);
         virtual void OnMouseUp(const Core::MouseButtonEvent& event, bool isInside);   // isInside: 부품 위에서 뗐는지 (클릭 판정)
         virtual void OnMouseDrag(const Core::MouseMoveEvent& event);                  // 누른 채 움직임
+        virtual void OnMouseMove(const Core::MouseMoveEvent& event);                  // 누르지 않고 움직임 (마우스를 올린 부품만 받음)
         [[nodiscard]] virtual bool OnMouseWheel(const Core::MouseWheelEvent& event);
         [[nodiscard]] virtual bool OnKeyDown(const Core::KeyEvent& event);
         virtual void OnTextInput(std::wstring_view text);

@@ -3,8 +3,14 @@
 import std;
 import LostArkMultiTool.Core.APPConstants;
 import LostArkMultiTool.Core.APPExceptions;
+import LostArkMultiTool.Core.LocalTime;
 import LostArkMultiTool.Core.TextEncoding;
+import LostArkMultiTool.Models.AccessoryListing;
+import LostArkMultiTool.Models.AccessorySearchQuery;
+import LostArkMultiTool.Models.AuctionOption;
 import LostArkMultiTool.Models.CharacterInfo;
+import LostArkMultiTool.Models.MarketItem;
+import LostArkMultiTool.Models.RateLimitState;
 import LostArkMultiTool.Services.JSONValue;
 import LostArkMultiTool.Services.WinHTTPClient;
 
@@ -15,6 +21,8 @@ namespace LostArkMultiTool::Services
         // ===== 서버 주소와 경로 =====
         constexpr std::wstring_view API_HOST{ L"developer-lostark.game.onstove.com" };
         constexpr std::wstring_view MARKET_PATH{ L"/markets/items" };
+        constexpr std::wstring_view AUCTION_PATH{ L"/auctions/items" };
+        constexpr std::wstring_view AUCTION_OPTIONS_PATH{ L"/auctions/options" };
         constexpr std::string_view SIBLINGS_PATH_PREFIX{ "/characters/" };
         constexpr std::string_view SIBLINGS_PATH_SUFFIX{ "/siblings" };
 
@@ -25,13 +33,33 @@ namespace LostArkMultiTool::Services
         constexpr std::wstring_view CONTENT_TYPE_HEADER{ L"Content-Type: application/json\r\n" };
 
         // ===== 응답 상태 코드 (성공 범위 판정은 WinHTTPClient::IsSuccessStatus) =====
+        constexpr int HTTP_STATUS_OK{ 200 };
         constexpr int HTTP_STATUS_UNAUTHORIZED{ 401 };
         constexpr int HTTP_STATUS_TOO_MANY_REQUESTS{ 429 };
+        constexpr int HTTP_STATUS_SERVICE_UNAVAILABLE{ 503 };
+
+        // ===== 호출 한도 응답 헤더 =====
+        constexpr std::wstring_view HEADER_RATE_LIMIT{ L"X-RateLimit-Limit" };
+        constexpr std::wstring_view HEADER_RATE_REMAINING{ L"X-RateLimit-Remaining" };
+        constexpr std::wstring_view HEADER_RATE_RESET{ L"X-RateLimit-Reset" };
+        constexpr int DECIMAL_BASE{ 10 };
+
+        // ===== 오류 설명 =====
+        constexpr std::string_view KEY_ERROR_MESSAGE{ "Message" };
+        constexpr std::string_view KEY_ERROR_MESSAGE_LOWER{ "message" };
+        constexpr std::string_view ELLIPSIS{ "…" };                       // 긴 오류 설명을 자를 때 붙이는 기호
+        constexpr std::string_view LINE_BREAKS{ "\r\n" };
+        constexpr std::string_view TRIM_SPACES{ " \t" };
+        constexpr unsigned char UTF8_CONTINUATION_MASK{ 0xC0 };           // 10xxxxxx = 글자 중간 바이트
+        constexpr unsigned char UTF8_CONTINUATION_BITS{ 0x80 };
+        constexpr std::string_view INVALID_AUCTION_RESPONSE_MESSAGE{ "경매장 API 응답 형식이 올바르지 않습니다." };
+        constexpr std::string_view INVALID_MARKET_RESPONSE_MESSAGE{ "거래소 API 응답 형식이 올바르지 않습니다." };
+        constexpr std::string_view INVALID_OPTIONS_RESPONSE_MESSAGE{ "경매장 옵션 API 응답 형식이 올바르지 않습니다." };
 
         // ===== 시간 제한 · 시세 계산 =====
         constexpr int API_TIMEOUT_MS{ Core::APPConstants::API_TIMEOUT_SECONDS * Core::APPConstants::MS_PER_SECOND };
         constexpr std::size_t MARKET_CATEGORY_CODE{ 50000 };   // 거래소 재료 카테고리
-        constexpr int FIRST_PAGE{ 1 };
+        constexpr int FIRST_PAGE{ 1 };                         // 검색 첫 페이지 (거래소 · 경매장 공통)
         constexpr double SHARD_POUCH_COUNT{ 3000.0 };          // 파편 주머니 1개당 파편 수
         constexpr double PRICE_SCALE{ 100.0 };                 // 소수 둘째 자리까지 (10^2)
 
@@ -41,10 +69,33 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view KEY_RECENT_PRICE{ "RecentPrice" };
         constexpr std::string_view KEY_CURRENT_MIN_PRICE{ "CurrentMinPrice" };
         constexpr std::string_view KEY_BUNDLE_COUNT{ "BundleCount" };
+        constexpr std::string_view KEY_SERVER_NAME{ "ServerName" };
         constexpr std::string_view KEY_CHARACTER_NAME{ "CharacterName" };
         constexpr std::string_view KEY_CHARACTER_CLASS_NAME{ "CharacterClassName" };
         constexpr std::string_view KEY_ITEM_MAX_LEVEL{ "ItemMaxLevel" };
         constexpr std::string_view KEY_ITEM_AVG_LEVEL{ "ItemAvgLevel" };
+        constexpr std::string_view KEY_AUCTION_INFO{ "AuctionInfo" };
+        constexpr std::string_view KEY_BUY_PRICE{ "BuyPrice" };
+        constexpr std::string_view KEY_PAGE_SIZE{ "PageSize" };
+        constexpr std::string_view KEY_TOTAL_COUNT{ "TotalCount" };
+        constexpr std::string_view KEY_YDAY_AVG_PRICE{ "YDayAvgPrice" };
+        constexpr std::string_view KEY_PAGE_NO{ "PageNo" };
+        constexpr std::string_view KEY_ETC_OPTIONS{ "EtcOptions" };
+        constexpr std::string_view KEY_ETC_SUBS{ "EtcSubs" };
+        constexpr std::string_view KEY_ETC_VALUES{ "EtcValues" };
+        constexpr std::string_view KEY_VALUE{ "Value" };
+        constexpr std::string_view KEY_TEXT{ "Text" };
+        constexpr std::string_view KEY_DISPLAY_VALUE{ "DisplayValue" };
+        constexpr std::string_view KEY_GRADE{ "Grade" };
+        constexpr std::string_view KEY_GRADE_QUALITY{ "GradeQuality" };
+        constexpr std::string_view KEY_OPTIONS{ "Options" };
+        constexpr std::string_view KEY_TYPE{ "Type" };
+        constexpr std::string_view KEY_OPTION_NAME{ "OptionName" };
+        constexpr std::string_view KEY_IS_VALUE_PERCENTAGE{ "IsValuePercentage" };
+        constexpr std::string_view KEY_BID_START_PRICE{ "BidStartPrice" };
+        constexpr std::string_view KEY_END_DATE{ "EndDate" };
+        constexpr std::string_view KEY_TRADE_ALLOW_COUNT{ "TradeAllowCount" };
+        constexpr std::string_view JSON_NULL{ "null" };
 
         // ===== URL 인코딩 =====
         constexpr std::string_view HEX_DIGITS{ "0123456789ABCDEF" };
@@ -100,19 +151,172 @@ namespace LostArkMultiTool::Services
                 MARKET_CATEGORY_CODE, QuoteJSONString(itemName), FIRST_PAGE);
         }
 
+        // 비어 있으면 JSON null, 아니면 JSON 문자열 (요청 본문용)
+        std::string ToJSONStringOrNull(std::string_view text)
+        {
+            return text.empty() ? std::string{ JSON_NULL } : QuoteJSONString(text);
+        }
+
+        // 거래소 목록 요청 본문 (카테고리 + 등급 · 이름 조건(비어 있으면 없음), 현재 최저가 높은 순)
+        std::string BuildMarketListPayload(int categoryCode, std::string_view itemGrade, std::string_view itemName, int page)
+        {
+            return std::format(R"({{"Sort":"CURRENT_MIN_PRICE","CategoryCode":{},"ItemGrade":{},"ItemName":{},"PageNo":{},"SortCondition":"DESC"}})",
+                categoryCode, ToJSONStringOrNull(itemGrade), ToJSONStringOrNull(itemName), page);
+        }
+
+        // 값이 있으면 숫자, 없으면 JSON null (요청 본문용)
+        std::string ToJSONNumberOrNull(const std::optional<int>& value)
+        {
+            return value.has_value() ? std::to_string(*value) : std::string{ JSON_NULL };
+        }
+
+        // 경매장 악세 검색 요청 본문 (연마 효과 조건은 EtcOptions 배열, 즉시 구매가 낮은 순)
+        std::string BuildAccessoryPayload(const Models::AccessorySearchQuery& query)
+        {
+            std::string etcOptions;
+            for (const Models::AccessoryOptionFilter& option : query.m_options)
+            {
+                if (!etcOptions.empty()) etcOptions.push_back(',');
+                etcOptions += std::format(R"({{"FirstOption":{},"SecondOption":{},"MinValue":{},"MaxValue":null}})",
+                    option.m_firstOption, option.m_secondOption, ToJSONNumberOrNull(option.m_minValue));
+            }
+
+            return std::format(R"({{"ItemGradeQuality":{},"EtcOptions":[{}],"Sort":"BUY_PRICE","CategoryCode":{},"ItemTier":{},"ItemGrade":{},"PageNo":{},"SortCondition":"ASC"}})",
+                ToJSONNumberOrNull(query.m_minQuality), etcOptions, query.m_categoryCode, Core::APPConstants::ACCESSORY_TIER,
+                QuoteJSONString(query.m_gradeName), query.m_page);
+        }
+
+        // 응답 본문을 JSON으로 (HTML 오류 페이지 등이 오면 알기 쉬운 예외로)
+        JSONValue ParseResponseBody(const HTTPResponse& response, std::string_view invalidMessage)
+        {
+            try
+            {
+                return ParseJSONText(response.m_body);
+            }
+            catch (const std::exception&)
+            {
+                throw Core::APIRequestException{ HTTP_STATUS_OK, std::string{ invalidMessage } };
+            }
+        }
+
+        // 숫자 칸 읽기 (없거나 null이면 0 → 거래 · 매물이 없는 아이템)
+        double ReadNumberOrZero(const JSONValue& parent, std::string_view key) noexcept
+        {
+            const JSONValue& value{ parent.FindMember(key) };
+            return value.GetType() == JSONType::NUMBER_VALUE ? value.GetNumber() : 0.0;
+        }
+
         // C# Math.Round(value, 2)와 같이 짝수 반올림 (std::nearbyint의 기본 반올림 모드)
         double RoundPrice(double value) noexcept
         {
             return std::nearbyint(value * PRICE_SCALE) / PRICE_SCALE;
         }
 
-        // 실패 응답을 상황별 예외로 바꿈 (C# EnsureSuccess와 같음)
+        // UTF-8 글자 중간에서 자르지 않도록 maxLength 이하의 글자 경계 위치를 찾음
+        std::size_t FindUTF8Boundary(std::string_view text, std::size_t maxLength) noexcept
+        {
+            std::size_t length{ std::min(maxLength, text.size()) };
+            while (length > 0 && length < text.size()
+                && (static_cast<unsigned char>(text[length]) & UTF8_CONTINUATION_MASK) == UTF8_CONTINUATION_BITS)
+            {
+                --length;
+            }
+            return length;
+        }
+
+        // 오류 응답 본문에서 설명만 뽑아 짧게 정리 (JSON의 Message 필드 우선, 없으면 원문, 원본 ExtractErrorDetail)
+        std::optional<std::string> ExtractErrorDetail(std::string_view body)
+        {
+            std::string detail{ body };
+            try
+            {
+                const JSONValue root{ ParseJSONText(body) };
+                const JSONValue& message{ root.FindMember(KEY_ERROR_MESSAGE).GetType() == JSONType::STRING_VALUE
+                    ? root.FindMember(KEY_ERROR_MESSAGE) : root.FindMember(KEY_ERROR_MESSAGE_LOWER) };
+                if (message.GetType() == JSONType::STRING_VALUE) detail = message.GetString();
+            }
+            catch (const std::exception&)
+            {
+                // JSON이 아니면 원문 사용
+            }
+
+            std::replace_if(detail.begin(), detail.end(), [](char c) { return LINE_BREAKS.contains(c); }, ' ');
+            const std::size_t first{ detail.find_first_not_of(TRIM_SPACES) };
+            if (first == std::string::npos) return std::nullopt;
+            detail = detail.substr(first, detail.find_last_not_of(TRIM_SPACES) - first + 1);
+
+            if (detail.size() <= Core::APPConstants::ERROR_DETAIL_MAX_LENGTH) return detail;
+            detail.resize(FindUTF8Boundary(detail, Core::APPConstants::ERROR_DETAIL_MAX_LENGTH));
+            return detail + std::string{ ELLIPSIS };
+        }
+
+        // 실패 응답을 상황별 예외로 바꿈 (C# EnsureSuccess와 같음, 그 밖의 오류는 서버 설명을 덧붙임)
         void EnsureSuccess(const HTTPResponse& response, std::string_view apiName)
         {
             if (WinHTTPClient::IsSuccessStatus(response.m_statusCode)) return;
             if (response.m_statusCode == HTTP_STATUS_UNAUTHORIZED) throw Core::APIKeyInvalidException{};
             if (response.m_statusCode == HTTP_STATUS_TOO_MANY_REQUESTS) throw Core::APIRateLimitException{};
-            throw std::runtime_error{ std::format("{} API 요청 실패 (HTTP {})", apiName, response.m_statusCode) };
+            if (response.m_statusCode == HTTP_STATUS_SERVICE_UNAVAILABLE) throw Core::APIMaintenanceException{};
+
+            std::string message{ std::format("{} API 요청 실패 (HTTP {})", apiName, response.m_statusCode) };
+            if (const std::optional<std::string> detail{ ExtractErrorDetail(response.m_body) }; detail.has_value()) message += "\n" + *detail;
+            throw Core::APIRequestException{ response.m_statusCode, message };
+        }
+
+        // 헤더 값을 정수로 (없거나 숫자가 아니면 nullopt)
+        std::optional<std::int64_t> ReadIntegerHeader(const HTTPResponse& response, std::wstring_view name)
+        {
+            const std::optional<std::wstring> text{ FindHeader(response, name) };
+            if (!text.has_value() || text->empty()) return std::nullopt;
+
+            std::int64_t value{};
+            for (const wchar_t character : *text)
+            {
+                if (character < L'0' || character > L'9') return std::nullopt;
+                value = value * DECIMAL_BASE + (character - L'0');
+            }
+            return value;
+        }
+
+        std::optional<int> ToOptionalInt(const std::optional<std::int64_t>& value)
+        {
+            if (!value.has_value()) return std::nullopt;
+            return static_cast<int>(std::min<std::int64_t>(*value, std::numeric_limits<int>::max()));
+        }
+
+        // 경매장 검색 요청 본문 (C# JObject와 같은 키 순서)
+        std::string BuildAuctionPayload(std::string_view itemName, int itemTier, int page)
+        {
+            return std::format(R"({{"CategoryCode":{},"ItemTier":{},"ItemName":{},"Sort":"BUY_PRICE","SortCondition":"ASC","PageNo":{}}})",
+                Core::APPConstants::GEM_CATEGORY_CODE, itemTier, QuoteJSONString(itemName), page);
+        }
+
+        // 이 페이지에서 이름이 정확히 같은 매물의 즉시 구매가 최저값
+        // (부분 일치 검색이라 다른 레벨도 섞여 나오고, 즉시 구매가가 없는 입찰 전용 매물은 제외)
+        std::optional<std::int64_t> FindLowestBuyPrice(const std::vector<JSONValue>& items, std::string_view itemName)
+        {
+            std::optional<std::int64_t> lowest;
+            for (const JSONValue& item : items)
+            {
+                if (std::string_view{ item.FindMember(KEY_NAME).GetString() } != itemName) continue;
+
+                const JSONValue& buyPrice{ item.FindMember(KEY_AUCTION_INFO).FindMember(KEY_BUY_PRICE) };
+                if (buyPrice.GetType() != JSONType::NUMBER_VALUE || buyPrice.GetNumber() <= 0.0) continue;
+
+                const std::int64_t price{ std::llround(buyPrice.GetNumber()) };
+                if (!lowest.has_value() || price < *lowest) lowest = price;
+            }
+            return lowest;
+        }
+
+        // 재시도 전 잠깐 대기 (중간에 중단 요청이 오면 바로 깨어남)
+        void WaitBeforeRetry(std::stop_token stopToken)
+        {
+            std::mutex waitMutex;
+            std::condition_variable_any wakeUp;
+            std::unique_lock lock{ waitMutex };
+            static_cast<void>(wakeUp.wait_for(lock, stopToken, std::chrono::milliseconds{ Core::APPConstants::TRANSIENT_RETRY_DELAY_MS },
+                [] { return false; }));
         }
 
         // 거래소 응답에서 이름이 정확히 같은 아이템 찾기 (C# FirstOrDefault와 같음)
@@ -171,7 +375,7 @@ namespace LostArkMultiTool::Services
 
     double WinHTTPMarketAPI::GetPrice(std::string_view itemName, bool isShard, bool isBundle)
     {
-        const HTTPResponse response{ m_client.Send(VERB_POST, MARKET_PATH, BuildHeaders(), BuildMarketPayload(itemName)) };
+        const HTTPResponse response{ SendRequest(VERB_POST, MARKET_PATH, BuildMarketPayload(itemName)) };
         EnsureSuccess(response, "거래소");
 
         const JSONValue root{ ParseJSONText(response.m_body) };
@@ -200,7 +404,7 @@ namespace LostArkMultiTool::Services
         const std::string path{ std::string{ SIBLINGS_PATH_PREFIX } + EscapeDataString(charName)
                                 + std::string{ SIBLINGS_PATH_SUFFIX } };
 
-        const HTTPResponse response{ m_client.Send(VERB_GET, Core::TextEncoding::UTF8ToWide(path), BuildHeaders(), std::string{}) };
+        const HTTPResponse response{ SendRequest(VERB_GET, Core::TextEncoding::UTF8ToWide(path), std::string{}) };
         EnsureSuccess(response, "원정대");
 
         // 없는 닉네임은 200 + null로 옴 → 빈 목록 (C# roster ?? [] 와 같음)
@@ -214,8 +418,218 @@ namespace LostArkMultiTool::Services
                 std::string{ entry.FindMember(KEY_CHARACTER_NAME).GetString() },
                 ReadOptionalText(entry, KEY_CHARACTER_CLASS_NAME),
                 ReadOptionalText(entry, KEY_ITEM_MAX_LEVEL),
-                ReadOptionalText(entry, KEY_ITEM_AVG_LEVEL));
+                ReadOptionalText(entry, KEY_ITEM_AVG_LEVEL),
+                ReadOptionalText(entry, KEY_SERVER_NAME));   // 낙원력 트래커의 닉네임 변경 감지(같은 서버 · 직업)에 사용
         }
         return roster;
+    }
+
+    std::vector<Models::MarketItem> WinHTTPMarketAPI::SearchMarketItems(int categoryCode, std::string_view itemGrade, std::string_view itemName)
+    {
+        std::vector<Models::MarketItem> items;
+        const int lastPage{ FIRST_PAGE + Core::APPConstants::MAX_MARKET_PAGES - 1 };
+
+        for (int page{ FIRST_PAGE }; page <= lastPage; ++page)
+        {
+            // 다음 페이지를 넘기기 전에 호출 한도 확인 (한도를 다 쓰기 전에 멈추고 429와 같은 안내)
+            if (page > FIRST_PAGE && IsRateLimitExhausted()) throw Core::APIRateLimitException{};
+
+            const HTTPResponse response{ SendRequest(VERB_POST, MARKET_PATH, BuildMarketListPayload(categoryCode, itemGrade, itemName, page)) };
+            EnsureSuccess(response, "거래소");
+
+            JSONValue root;
+            try
+            {
+                root = ParseJSONText(response.m_body);
+            }
+            catch (const std::exception&)
+            {
+                // HTML 오류 페이지 등이 오면 알기 쉬운 예외로
+                throw Core::APIRequestException{ HTTP_STATUS_OK, std::string{ INVALID_MARKET_RESPONSE_MESSAGE } };
+            }
+
+            const std::vector<JSONValue>& pageItems{ root.FindMember(KEY_ITEMS).GetItems() };
+            for (const JSONValue& item : pageItems)
+            {
+                items.push_back(Models::MarketItem{
+                    std::string{ item.FindMember(KEY_NAME).GetString() },
+                    ReadNumberOrZero(item, KEY_CURRENT_MIN_PRICE),
+                    ReadNumberOrZero(item, KEY_YDAY_AVG_PRICE),
+                    ReadNumberOrZero(item, KEY_RECENT_PRICE),
+                    std::string{ item.FindMember(KEY_GRADE).GetString() } });
+            }
+
+            // 마지막 페이지 판정: 빈 페이지 · 한 페이지보다 적게 옴 · 전체 개수를 다 받음
+            const auto pageSize{ static_cast<std::size_t>(ReadNumberOrZero(root, KEY_PAGE_SIZE)) };
+            const auto totalCount{ static_cast<std::size_t>(ReadNumberOrZero(root, KEY_TOTAL_COUNT)) };
+            if (pageItems.empty() || (pageSize > 0 && pageItems.size() < pageSize) || (totalCount > 0 && items.size() >= totalCount)) break;
+        }
+        return items;
+    }
+
+    std::vector<Models::AuctionOption> WinHTTPMarketAPI::GetAuctionOptions()
+    {
+        const HTTPResponse response{ SendRequest(VERB_GET, AUCTION_OPTIONS_PATH, std::string{}) };
+        EnsureSuccess(response, "경매장 옵션");
+        const JSONValue root{ ParseResponseBody(response, INVALID_OPTIONS_RESPONSE_MESSAGE) };
+
+        // 묶음(EtcOptions) → 옵션(EtcSubs) → 값(EtcValues, 없을 수 있음)
+        std::vector<Models::AuctionOption> options;
+        for (const JSONValue& group : root.FindMember(KEY_ETC_OPTIONS).GetItems())
+        {
+            const int firstOption{ static_cast<int>(group.FindMember(KEY_VALUE).GetNumber()) };
+            const std::string& groupName{ group.FindMember(KEY_TEXT).GetString() };
+
+            for (const JSONValue& sub : group.FindMember(KEY_ETC_SUBS).GetItems())
+            {
+                Models::AuctionOption& option{ options.emplace_back(Models::AuctionOption{ firstOption,
+                    static_cast<int>(sub.FindMember(KEY_VALUE).GetNumber()), groupName, sub.FindMember(KEY_TEXT).GetString(), {} }) };
+
+                for (const JSONValue& value : sub.FindMember(KEY_ETC_VALUES).GetItems())
+                {
+                    const int requestValue{ static_cast<int>(value.FindMember(KEY_VALUE).GetNumber()) };
+                    option.m_values.push_back(Models::AuctionOptionValue{
+                        ReadOptionalText(value, KEY_DISPLAY_VALUE).value_or(std::to_string(requestValue)), requestValue });
+                }
+            }
+        }
+        return options;
+    }
+
+    Models::AccessorySearchPage WinHTTPMarketAPI::SearchAccessories(const Models::AccessorySearchQuery& query)
+    {
+        const HTTPResponse response{ SendRequest(VERB_POST, AUCTION_PATH, BuildAccessoryPayload(query)) };
+        EnsureSuccess(response, "경매장");
+        const JSONValue root{ ParseResponseBody(response, INVALID_AUCTION_RESPONSE_MESSAGE) };
+
+        Models::AccessorySearchPage page{ {},
+            static_cast<int>(ReadNumberOrZero(root, KEY_PAGE_NO)),
+            static_cast<int>(ReadNumberOrZero(root, KEY_PAGE_SIZE)),
+            static_cast<int>(ReadNumberOrZero(root, KEY_TOTAL_COUNT)) };
+        if (page.m_page <= 0) page.m_page = query.m_page;   // 응답에 페이지 번호가 없으면 요청한 번호
+
+        for (const JSONValue& item : root.FindMember(KEY_ITEMS).GetItems())
+        {
+            Models::AccessoryListing listing;
+            listing.m_name = item.FindMember(KEY_NAME).GetString();
+            listing.m_gradeName = item.FindMember(KEY_GRADE).GetString();
+            listing.m_quality = static_cast<int>(ReadNumberOrZero(item, KEY_GRADE_QUALITY));
+
+            for (const JSONValue& option : item.FindMember(KEY_OPTIONS).GetItems())
+            {
+                listing.m_options.push_back(Models::AccessoryOptionLine{ option.FindMember(KEY_TYPE).GetString(),
+                    option.FindMember(KEY_OPTION_NAME).GetString(), ReadNumberOrZero(option, KEY_VALUE),
+                    option.FindMember(KEY_IS_VALUE_PERCENTAGE).GetBool() });
+            }
+
+            // 즉시 구매가가 없으면(입찰 전용) nullopt
+            const JSONValue& auctionInfo{ item.FindMember(KEY_AUCTION_INFO) };
+            const double buyPrice{ ReadNumberOrZero(auctionInfo, KEY_BUY_PRICE) };
+            if (buyPrice > 0.0) listing.m_buyPrice = std::llround(buyPrice);
+            listing.m_bidStartPrice = std::llround(ReadNumberOrZero(auctionInfo, KEY_BID_START_PRICE));
+            listing.m_endDate = auctionInfo.FindMember(KEY_END_DATE).GetString();
+            if (const JSONValue& tradeCount{ auctionInfo.FindMember(KEY_TRADE_ALLOW_COUNT) }; tradeCount.GetType() == JSONType::NUMBER_VALUE)
+            {
+                listing.m_tradeAllowCount = static_cast<int>(tradeCount.GetNumber());
+            }
+
+            page.m_listings.push_back(std::move(listing));
+        }
+        return page;
+    }
+
+    std::optional<std::int64_t> WinHTTPMarketAPI::GetLowestBuyPrice(std::string_view itemName, int itemTier, std::stop_token stopToken)
+    {
+        const int lastPage{ FIRST_PAGE + Core::APPConstants::MAX_SEARCH_PAGES - 1 };
+
+        for (int page{ FIRST_PAGE }; page <= lastPage; ++page)
+        {
+            // 다음 페이지를 넘기기 전에 호출 한도 확인 (페이지 넘김은 예상 호출 수에 없던 추가 요청 → 한도를 다 쓰기 전에 멈춤)
+            // 429를 받은 것과 같은 예외로 알려서 스케줄러가 한도가 다시 채워질 때까지 자동 갱신을 쉬게 함
+            if (page > FIRST_PAGE && IsRateLimitExhausted()) throw Core::APIRateLimitException{};
+
+            const JSONValue root{ SearchAuctionWithRetry(itemName, itemTier, page, stopToken) };
+            const std::vector<JSONValue>& items{ root.FindMember(KEY_ITEMS).GetItems() };
+            if (items.empty()) return std::nullopt;   // 매물 자체가 없음
+
+            if (const std::optional<std::int64_t> lowest{ FindLowestBuyPrice(items, itemName) }; lowest.has_value()) return lowest;
+
+            // 마지막 페이지까지 봤는데 없음 (한 페이지보다 적게 왔으면 다음 페이지는 없음)
+            const auto pageSize{ static_cast<std::size_t>(root.FindMember(KEY_PAGE_SIZE).GetNumber()) };
+            if (pageSize > 0 && items.size() < pageSize) return std::nullopt;
+        }
+        return std::nullopt;   // 최대 페이지까지 넘겨봤는데 없음
+    }
+
+    Models::RateLimitState WinHTTPMarketAPI::GetRateLimit() const
+    {
+        std::scoped_lock lock{ m_rateMutex };
+        return m_rateLimit;
+    }
+
+    bool WinHTTPMarketAPI::IsRateLimitExhausted() const
+    {
+        std::scoped_lock lock{ m_rateMutex };
+        return m_rateLimit.IsExhausted(Core::LocalTime::GetUnixSeconds());
+    }
+
+    HTTPResponse WinHTTPMarketAPI::SendRequest(std::wstring_view verb, std::wstring_view path, std::string body)
+    {
+        HTTPResponse response{ m_client.Send(verb, path, BuildHeaders(), std::move(body)) };
+        UpdateRateLimit(response);
+        return response;
+    }
+
+    void WinHTTPMarketAPI::UpdateRateLimit(const HTTPResponse& response)
+    {
+        const Models::RateLimitHeaders headers{
+            ToOptionalInt(ReadIntegerHeader(response, HEADER_RATE_LIMIT)),
+            ToOptionalInt(ReadIntegerHeader(response, HEADER_RATE_REMAINING)),
+            ReadIntegerHeader(response, HEADER_RATE_RESET),
+            response.m_serverTime
+        };
+
+        std::scoped_lock lock{ m_rateMutex };
+        m_rateLimit.ApplyResponse(headers, Core::LocalTime::GetUnixSeconds());
+    }
+
+    JSONValue WinHTTPMarketAPI::SearchAuctionWithRetry(std::string_view itemName, int itemTier, int page, std::stop_token stopToken)
+    {
+        for (int attempt{};; ++attempt)
+        {
+            if (stopToken.stop_requested()) throw Core::RequestCanceledException{};   // 다른 요청이 실패함 → 보내지 않음
+
+            const bool canRetry{ attempt < Core::APPConstants::MAX_TRANSIENT_RETRIES };
+            try
+            {
+                return SearchAuction(itemName, itemTier, page);
+            }
+            catch (const HTTPNetworkError&)
+            {
+                if (!canRetry || stopToken.stop_requested()) throw;   // 네트워크 끊김 · 시간 초과 → 한 번만 더
+            }
+            catch (const Core::APIRequestException& error)
+            {
+                if (!error.IsServerError() || !canRetry || stopToken.stop_requested()) throw;   // 5xx만 다시 시도
+            }
+
+            WaitBeforeRetry(stopToken);
+        }
+    }
+
+    JSONValue WinHTTPMarketAPI::SearchAuction(std::string_view itemName, int itemTier, int page)
+    {
+        const HTTPResponse response{ SendRequest(VERB_POST, AUCTION_PATH, BuildAuctionPayload(itemName, itemTier, page)) };
+        EnsureSuccess(response, "경매장");
+
+        try
+        {
+            return ParseJSONText(response.m_body);
+        }
+        catch (const std::exception&)
+        {
+            // HTML 오류 페이지 등이 오면 알기 쉬운 예외로
+            throw Core::APIRequestException{ HTTP_STATUS_OK, std::string{ INVALID_AUCTION_RESPONSE_MESSAGE } };
+        }
     }
 }

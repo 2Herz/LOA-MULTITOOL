@@ -41,6 +41,21 @@ export namespace LostArkMultiTool::Core
         float m_height{};
     };
 
+    // 점 (DIP)
+    struct PointF
+    {
+        float m_x{};
+        float m_y{};
+    };
+
+    // 3차 베지에 곡선 한 구간 (앞 구간의 끝점에서 시작해 두 조절점을 거쳐 m_end에서 끝남 → 그래프 곡선)
+    struct BezierSegment
+    {
+        PointF m_control1;
+        PointF m_control2;
+        PointF m_end;
+    };
+
     // 글자 가로 정렬
     enum class TextAlign
     {
@@ -97,6 +112,18 @@ export namespace LostArkMultiTool::Core
         virtual void FillRoundedRect(const RectF& rect, float radius, const Color& color) = 0;
         virtual void DrawRoundedRect(const RectF& rect, float radius, const Color& color, float strokeWidth) = 0;
         virtual void DrawLine(float startX, float startY, float endX, float endY, const Color& color, float strokeWidth) = 0;
+        virtual void DrawDashedLine(float startX, float startY, float endX, float endY, const Color& color, float strokeWidth) = 0;   // 점선 (그래프 눈금선)
+
+        // 원 · 타원 (그래프 점)
+        virtual void FillEllipse(const PointF& center, float radiusX, float radiusY, const Color& color) = 0;
+        virtual void DrawEllipse(const PointF& center, float radiusX, float radiusY, const Color& color, float strokeWidth) = 0;
+
+        // 곡선: start에서 시작해 segments를 차례로 이어 그림
+        virtual void DrawCurve(const PointF& start, std::span<const BezierSegment> segments, const Color& color, float strokeWidth) = 0;
+
+        // 곡선과 아래 기준선(baselineY) 사이를 세로 그라데이션으로 채움 (gradientTop 높이에서 topColor → baselineY에서 bottomColor)
+        virtual void FillCurveArea(const PointF& start, std::span<const BezierSegment> segments, float baselineY, float gradientTop,
+            const Color& topColor, const Color& bottomColor) = 0;
 
         // 사각형 안에 글자 (정렬 · 줄바꿈은 style, 사각형 밖으로 넘치는 부분은 잘림)
         // 이름을 DrawText로 하지 않은 이유: Windows 헤더의 DrawText 매크로(DrawTextW)와 겹치지 않게

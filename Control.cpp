@@ -81,12 +81,25 @@ namespace LostArkMultiTool::Views::UI
         return true;
     }
 
+    bool Control::HitTest(float x, float y) const noexcept
+    {
+        return m_bounds.Contains(x, y);
+    }
+
     Core::CursorShape Control::GetCursor() const noexcept
     {
         return Core::CursorShape::CURSOR_ARROW;
     }
 
     void Control::Update(double /*deltaSeconds*/)
+    {}
+
+    bool Control::IsPopupOpen() const noexcept
+    {
+        return false;
+    }
+
+    void Control::RenderPopup(Core::Renderer& /*renderer*/)
     {}
 
     void Control::OnMouseDown(const Core::MouseButtonEvent& /*event*/)
@@ -96,6 +109,9 @@ namespace LostArkMultiTool::Views::UI
     {}
 
     void Control::OnMouseDrag(const Core::MouseMoveEvent& /*event*/)
+    {}
+
+    void Control::OnMouseMove(const Core::MouseMoveEvent& /*event*/)
     {}
 
     bool Control::OnMouseWheel(const Core::MouseWheelEvent& /*event*/)

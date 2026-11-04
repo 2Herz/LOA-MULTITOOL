@@ -23,6 +23,16 @@ namespace LostArkMultiTool::Services
 
         constexpr std::string_view TIMEOUT_MESSAGE{ "API 응답 시간이 초과되었습니다." };
 
+        // 헤더 원문 해석
+        constexpr std::wstring_view HEADER_LINE_END{ L"\r\n" };
+        constexpr wchar_t HEADER_NAME_SEPARATOR{ L':' };
+        constexpr std::wstring_view HEADER_SPACES{ L" \t" };
+
+        // SYSTEMTIME(UTC) → UTC 초 변환
+        constexpr std::int64_t FILETIME_TICKS_PER_SECOND{ 10'000'000 };        // FILETIME 단위 = 100ns
+        constexpr std::int64_t UNIX_EPOCH_FILETIME_SECONDS{ 11'644'473'600 };   // 1601-01-01 → 1970-01-01 (초)
+        constexpr unsigned DWORD_BITS{ 32 };
+
         // WinHTTP 핸들 전용 RAII 래퍼 (소멸 시 WinHttpCloseHandle 호출, 복사 금지 · 이동 허용)
         // unique_ptr의 조건부 생성자(삭제기 기본 생성 검사)에 기대지 않고 핸들 수명을 직접 관리
         class WinHTTPHandle
@@ -75,8 +85,8 @@ namespace LostArkMultiTool::Services
         [[noreturn]] void ThrowNetworkError()
         {
             const DWORD errorCode{ ::GetLastError() };
-            if (errorCode == ERROR_WINHTTP_TIMEOUT) throw std::runtime_error{ std::string{ TIMEOUT_MESSAGE } };
-            throw std::runtime_error{ std::format("API 네트워크 오류 (코드 {})", errorCode) };
+            if (errorCode == ERROR_WINHTTP_TIMEOUT) throw HTTPNetworkError{ std::string{ TIMEOUT_MESSAGE } };
+            throw HTTPNetworkError{ std::format("API 네트워크 오류 (코드 {})", errorCode) };
         }
 
         WinHTTPHandle MakeHandle(HINTERNET handle)
@@ -84,6 +94,77 @@ namespace LostArkMultiTool::Services
             if (handle == nullptr) ThrowNetworkError();
             return WinHTTPHandle{ handle };
         }
+
+        // 응답 헤더 원문 (읽지 못하면 빈 문자열 → 헤더는 참고용이라 실패해도 응답은 그대로 씀)
+        std::wstring ReadRawHeaders(HINTERNET request)
+        {
+            DWORD byteCount{};
+            ::WinHttpQueryHeaders(request, WINHTTP_QUERY_RAW_HEADERS_CRLF, WINHTTP_HEADER_NAME_BY_INDEX, WINHTTP_NO_OUTPUT_BUFFER,
+                &byteCount, WINHTTP_NO_HEADER_INDEX);   // 첫 호출은 필요한 크기만 알려 줌 (버퍼 부족 오류가 정상)
+            if (::GetLastError() != ERROR_INSUFFICIENT_BUFFER || byteCount == 0) return {};
+
+            std::wstring headers(byteCount / sizeof(wchar_t), L'\0');
+            if (!::WinHttpQueryHeaders(request, WINHTTP_QUERY_RAW_HEADERS_CRLF, WINHTTP_HEADER_NAME_BY_INDEX, headers.data(),
+                &byteCount, WINHTTP_NO_HEADER_INDEX))
+            {
+                return {};
+            }
+            headers.resize(byteCount / sizeof(wchar_t));   // 끝의 널 문자 제외
+            return headers;
+        }
+
+        // Date 헤더 → UTC 초 (없거나 형식이 틀리면 nullopt)
+        std::optional<std::int64_t> ReadServerTime(HINTERNET request)
+        {
+            SYSTEMTIME serverTime{};
+            DWORD size{ static_cast<DWORD>(sizeof(serverTime)) };
+            if (!::WinHttpQueryHeaders(request, WINHTTP_QUERY_DATE | WINHTTP_QUERY_FLAG_SYSTEMTIME, WINHTTP_HEADER_NAME_BY_INDEX,
+                &serverTime, &size, WINHTTP_NO_HEADER_INDEX))
+            {
+                return std::nullopt;
+            }
+
+            FILETIME fileTime{};
+            if (!::SystemTimeToFileTime(&serverTime, &fileTime)) return std::nullopt;
+
+            const std::uint64_t ticks{ (static_cast<std::uint64_t>(fileTime.dwHighDateTime) << DWORD_BITS) | fileTime.dwLowDateTime };
+            return static_cast<std::int64_t>(ticks) / FILETIME_TICKS_PER_SECOND - UNIX_EPOCH_FILETIME_SECONDS;
+        }
+
+        // ASCII 대소문자 무시 비교 (헤더 이름은 영문)
+        bool EqualsIgnoreCase(std::wstring_view left, std::wstring_view right) noexcept
+        {
+            return left.size() == right.size()
+                && std::equal(left.begin(), left.end(), right.begin(), [](wchar_t a, wchar_t b) { return std::towlower(a) == std::towlower(b); });
+        }
+
+        std::wstring_view TrimSpaces(std::wstring_view text) noexcept
+        {
+            const std::size_t first{ text.find_first_not_of(HEADER_SPACES) };
+            if (first == std::wstring_view::npos) return {};
+            return text.substr(first, text.find_last_not_of(HEADER_SPACES) - first + 1);
+        }
+    }
+
+    HTTPNetworkError::HTTPNetworkError(const std::string& message)
+        : std::runtime_error{ message }
+    {}
+
+    std::optional<std::wstring> FindHeader(const HTTPResponse& response, std::wstring_view name)
+    {
+        // "이름: 값" 줄을 하나씩 확인 (첫 줄은 "HTTP/1.1 200 OK" 상태 줄이라 구분자가 없어 자연히 건너뜀)
+        for (const auto line : std::views::split(std::wstring_view{ response.m_headers }, HEADER_LINE_END))
+        {
+            const std::wstring_view lineText{ line.begin(), line.end() };
+            const std::size_t separator{ lineText.find(HEADER_NAME_SEPARATOR) };
+            if (separator == std::wstring_view::npos) continue;
+
+            if (EqualsIgnoreCase(TrimSpaces(lineText.substr(0, separator)), name))
+            {
+                return std::wstring{ TrimSpaces(lineText.substr(separator + 1)) };
+            }
+        }
+        return std::nullopt;
     }
 
     // ===== 실제 WinHTTP 통신 구현 =====
@@ -160,7 +241,7 @@ namespace LostArkMultiTool::Services
             responseBody.resize(previousSize + readSize);
         }
 
-        return HTTPResponse{ static_cast<int>(statusCode), std::move(responseBody) };
+        return HTTPResponse{ static_cast<int>(statusCode), std::move(responseBody), ReadRawHeaders(request.Get()), ReadServerTime(request.Get()) };
     }
 
     // ===== 공개 인터페이스 (구현은 Impl에 위임) =====

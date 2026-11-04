@@ -1,5 +1,6 @@
 ﻿export module LostArkMultiTool.Views.Theme;
 
+import std;
 import LostArkMultiTool.Core.Notifier;
 import LostArkMultiTool.Core.Renderer;
 
@@ -38,6 +39,7 @@ export namespace LostArkMultiTool::Views::Theme
     inline constexpr Core::Color UP_TEXT_COLOR{ MakeColor(255, 112, 112) };        // 상승 ▲ · 오류
     inline constexpr Core::Color DOWN_TEXT_COLOR{ MakeColor(110, 168, 255) };      // 하락 ▼
     inline constexpr Core::Color ERROR_BACK_COLOR{ MakeColor(92, 32, 38) };        // 잘못된 입력 칸
+    inline constexpr Core::Color LABEL_BACK_COLOR{ HEADER_BACK_COLOR };                  // 표의 구분 열
 
     // ===== 화면 부품 (버튼 · 입력칸) =====
     inline constexpr Core::Color BUTTON_BACK_COLOR{ MakeColor(58, 58, 68) };
@@ -51,6 +53,27 @@ export namespace LostArkMultiTool::Views::Theme
     inline constexpr Core::Color FOCUS_BORDER_COLOR{ TOTAL_TEXT_COLOR };           // 포커스 테두리 · 링크 글자
     inline constexpr Core::Color CARET_COLOR{ MakeColor(235, 235, 235) };
     inline constexpr Core::Color COMPOSITION_LINE_COLOR{ TOTAL_TEXT_COLOR };       // 한글 조합 중인 글자 밑줄
+
+    // ===== 그래프 (원본 차트: 다크 배경 + 골드 곡선 + 아래 영역 그라데이션) =====
+    inline constexpr float CHART_AREA_ALPHA{ 70.0f / COLOR_CHANNEL_MAX };                // 곡선 아래 영역 투명도 (원본 70/255)
+    inline constexpr float TRANSPARENT_ALPHA{ 0.0f };
+    inline constexpr Core::Color CHART_LINE_COLOR{ MakeColor(218, 165, 32) };      // 곡선 · 점 테두리 (Goldenrod = 자산)
+    inline constexpr Core::Color CHART_MARKER_COLOR{ MakeColor(255, 255, 255) };   // 점 안쪽
+    inline constexpr Core::Color CHART_AREA_TOP_COLOR{ MakeColor(218, 165, 32, CHART_AREA_ALPHA) };
+    inline constexpr Core::Color CHART_AREA_BOTTOM_COLOR{ MakeColor(218, 165, 32, TRANSPARENT_ALPHA) };
+    inline constexpr Core::Color GEM_CHART_LINE_COLOR{ MakeColor(147, 112, 219) };  // 보석 그래프 곡선 (MediumPurple = 보석)
+    inline constexpr Core::Color PARADISE_CHART_LINE_COLOR{ MakeColor(255, 69, 0) }; // 낙원력 그래프 곡선 (원본 OrangeRed)
+
+    // ===== 보석 검색기 (원본 GridTheme 용도별 색) =====
+    inline constexpr Core::Color REACHED_BACK_COLOR{ MakeColor(26, 60, 38) };      // 목표가 도달 행
+    inline constexpr Core::Color REACHED_TEXT_COLOR{ MakeColor(140, 232, 160) };
+    inline constexpr Core::Color ALERT_TEXT_COLOR{ UP_TEXT_COLOR };                // 일시정지 · 한도 보호 안내
+    inline constexpr Core::Color CAUTION_TEXT_COLOR{ MakeColor(255, 180, 84) };    // 호출량 경고 (DarkOrange 대체)
+
+    // 악세 연마 효과 수치 단계 (게임 표기 색)
+    inline constexpr Core::Color POLISH_HIGH_COLOR{ MakeColor(255, 210, 40) };     // 상 = 노랑
+    inline constexpr Core::Color POLISH_MIDDLE_COLOR{ MakeColor(190, 110, 255) };  // 중 = 보라
+    inline constexpr Core::Color POLISH_LOW_COLOR{ MakeColor(70, 170, 255) };      // 하 = 파랑
 
     // ===== 대화상자 · 알림 =====
     inline constexpr Core::Color OVERLAY_DIM_COLOR{ MakeColor(0, 0, 0, 0.55f) };   // 대화상자 뒤 화면을 어둡게
@@ -73,6 +96,30 @@ export namespace LostArkMultiTool::Views::Theme
         }
     }
 
+    // ===== 아이템 등급 글자색 (게임 등급 색 → 강화책 · 젬 이름) =====
+    inline constexpr Core::Color GRADE_NORMAL_COLOR{ MakeColor(220, 220, 220) };    // 일반
+    inline constexpr Core::Color GRADE_UNCOMMON_COLOR{ MakeColor(141, 198, 63) };   // 고급
+    inline constexpr Core::Color GRADE_RARE_COLOR{ MakeColor(0, 176, 250) };        // 희귀
+    inline constexpr Core::Color GRADE_EPIC_COLOR{ MakeColor(206, 67, 252) };       // 영웅
+    inline constexpr Core::Color GRADE_LEGENDARY_COLOR{ MakeColor(249, 146, 0) };   // 전설
+    inline constexpr Core::Color GRADE_RELIC_COLOR{ MakeColor(250, 93, 0) };        // 유물
+    inline constexpr Core::Color GRADE_ANCIENT_COLOR{ MakeColor(220, 201, 153) };   // 고대
+    inline constexpr Core::Color GRADE_ESTHER_COLOR{ MakeColor(60, 245, 226) };     // 에스더
+
+    // 등급 이름(UTF-8, API 응답 그대로) → 글자색 (모르는 등급이면 기본 글자색)
+    [[nodiscard]] constexpr const Core::Color& GetGradeColor(std::string_view gradeName) noexcept
+    {
+        if (gradeName == "일반") return GRADE_NORMAL_COLOR;
+        if (gradeName == "고급") return GRADE_UNCOMMON_COLOR;
+        if (gradeName == "희귀") return GRADE_RARE_COLOR;
+        if (gradeName == "영웅") return GRADE_EPIC_COLOR;
+        if (gradeName == "전설") return GRADE_LEGENDARY_COLOR;
+        if (gradeName == "유물") return GRADE_RELIC_COLOR;
+        if (gradeName == "고대") return GRADE_ANCIENT_COLOR;
+        if (gradeName == "에스더") return GRADE_ESTHER_COLOR;
+        return TEXT_COLOR;
+    }
+
     // ===== 글꼴 =====
     inline constexpr const wchar_t* FONT_FAMILY{ L"Malgun Gothic" };   // 맑은 고딕 (원본 표 글꼴)
     inline constexpr const wchar_t* FONT_LOCALE{ L"ko-KR" };
@@ -80,6 +127,7 @@ export namespace LostArkMultiTool::Views::Theme
     inline constexpr float FONT_SIZE_NORMAL{ 12.0f };   // 원본 9pt ≈ 12 DIP
     inline constexpr float FONT_SIZE_TAB{ 14.0f };
     inline constexpr float FONT_SIZE_DIALOG_TITLE{ 15.0f };
+    inline constexpr float FONT_SIZE_CHART_TITLE{ 16.0f };   // 원본 12pt
     inline constexpr float FONT_SIZE_TITLE{ 22.0f };
 
     // ===== 크기 (DIP) =====
@@ -88,4 +136,7 @@ export namespace LostArkMultiTool::Views::Theme
     inline constexpr float BORDER_WIDTH{ 1.0f };
     inline constexpr float FOCUS_BORDER_WIDTH{ 1.5f };
     inline constexpr float CONTROL_HEIGHT{ 32.0f };      // 버튼 · 입력칸 기본 높이
+    inline constexpr float GRID_HEADER_HEIGHT{ 34.0f };  // 표 머리글 행
+    inline constexpr float GRID_ROW_HEIGHT{ 30.0f };     // 표 한 행 (원본 26px → 편집 칸이 들어가도록 여유 있게)
+    inline constexpr float PANEL_TITLE_HEIGHT{ 28.0f };  // 묶음 상자(원본 GroupBox) 제목 줄
 }

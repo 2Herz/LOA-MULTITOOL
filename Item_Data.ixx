@@ -14,6 +14,17 @@ export namespace LostArkMultiTool::Models
         [[nodiscard]] double GetBottomQty() const noexcept;
         void SetBottomQty(double bottomQty) noexcept;
 
+        // 직전 보유 수량 (수량을 새로 입력하기 바로 전 값 → 화면에 "지난 입력 대비 증감" 표시, 저장 대상)
+        [[nodiscard]] double GetPreviousTopQty() const noexcept;
+        void SetPreviousTopQty(double previousTopQty) noexcept;
+
+        [[nodiscard]] double GetPreviousBottomQty() const noexcept;
+        void SetPreviousBottomQty(double previousBottomQty) noexcept;
+
+        // 지난 입력 대비 증감 (현재 − 직전, 증가면 양수)
+        [[nodiscard]] double GetTopQtyChange() const noexcept;
+        [[nodiscard]] double GetBottomQtyChange() const noexcept;
+
         [[nodiscard]] double GetCalculatedTopValue() const noexcept;
         void SetCalculatedTopValue(double calculatedTopValue) noexcept;
 
@@ -23,6 +34,8 @@ export namespace LostArkMultiTool::Models
     private:
         double m_topQty{};
         double m_bottomQty{};
+        double m_previousTopQty{};
+        double m_previousBottomQty{};
         double m_calculatedTopValue{};   // 저장 대상 아님 (원본 [JsonIgnore])
         double m_calculatedBotValue{};   // 저장 대상 아님 (원본 [JsonIgnore])
     };

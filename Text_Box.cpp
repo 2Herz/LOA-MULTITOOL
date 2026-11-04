@@ -90,6 +90,11 @@ namespace LostArkMultiTool::Views::UI
         m_isIMEAllowed = isAllowed;
     }
 
+    void TextBox::SetInputFilter(std::function<bool(wchar_t character)> inputFilter)
+    {
+        m_inputFilter = std::move(inputFilter);
+    }
+
     void TextBox::SetOnTextChanged(std::function<void()> onTextChanged)
     {
         m_onTextChanged = std::move(onTextChanged);
@@ -329,8 +334,9 @@ namespace LostArkMultiTool::Views::UI
         filtered.reserve(text.size());
         for (const wchar_t character : text)
         {
-            if (IsPrintable(character)) filtered.push_back(character);
+            if (IsPrintable(character) && (!m_inputFilter || m_inputFilter(character))) filtered.push_back(character);
         }
+        if (filtered.empty()) return;   // 받을 수 없는 글자뿐 (숫자 칸에 영문 등) → 선택한 글자도 지우지 않음
 
         const bool isDeleted{ DeleteSelection() };
 

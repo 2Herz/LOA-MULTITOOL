@@ -15,7 +15,7 @@ export namespace LostArkMultiTool::Views::UI
         BUTTON_LINK         // 글자만 있는 링크 (마우스를 올리면 밑줄)
     };
 
-    // 누르면 onClick 호출 (마우스: 버튼 위에서 뗐을 때, 키보드: 포커스 상태에서 Enter)
+    // 누르면 onClick 호출 (마우스: 버튼 위에서 뗐을 때, 키보드: 포커스 상태에서 Enter · Space)
     class Button final : public Control
     {
     public:

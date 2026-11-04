@@ -57,15 +57,42 @@ namespace LostArkMultiTool::Core::APPConstants
 			return std::filesystem::path{ buffer }.parent_path();
 		}
 
-		//	사용자 데이터 폴더(%LOCALAPPDATA%\LostArkMultiTool)를 실제로 계산 (캐시가 비어 있을 때 한 번만 호출됨)
-		std::filesystem::path ReadUserDataDirectory()
+		//	%LOCALAPPDATA% 폴더를 실제로 계산 (캐시가 비어 있을 때 한 번만 호출됨)
+		std::filesystem::path ReadLocalAppDataDirectory()
 		{
 			CoTaskString localAppData;
 			if (FAILED(::SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, localAppData.GetAddress())))
 			{
 				throw std::runtime_error{ "사용자 데이터 폴더를 찾지 못했어요!" };
 			}
-			return std::filesystem::path{ localAppData.Get() } / std::filesystem::path{ USER_DATA_FOLDER_NAME };
+			return std::filesystem::path{ localAppData.Get() };
+		}
+
+		//	UTF-8 이름 → 경로 (std::filesystem::path에 char 문자열을 바로 넣으면 ANSI 코드 페이지로 해석돼 한글이 깨짐)
+		std::filesystem::path ToPath(std::string_view utf8Name)
+		{
+			if (utf8Name.empty()) return {};
+
+			const int sourceLength{ static_cast<int>(utf8Name.size()) };
+			const int wideLength{ ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8Name.data(), sourceLength, nullptr, 0) };
+			if (wideLength <= 0) throw std::runtime_error{ "경로 이름을 변환하지 못했어요!" };
+
+			std::wstring wideName(static_cast<std::size_t>(wideLength), L'\0');
+			::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8Name.data(), sourceLength, wideName.data(), wideLength);
+			return std::filesystem::path{ wideName };
+		}
+
+		//	%LOCALAPPDATA% 폴더 캐시 (함수 안 static은 처음 호출 때 한 번만, 스레드 안전하게 초기화됨)
+		const std::filesystem::path& GetLocalAppDataDirectory()
+		{
+			static const std::filesystem::path LOCAL_APP_DATA_DIRECTORY{ ReadLocalAppDataDirectory() };
+			return LOCAL_APP_DATA_DIRECTORY;
+		}
+
+		//	사용자 데이터 폴더(%LOCALAPPDATA%\LostArkMultiTool)를 실제로 계산 (캐시가 비어 있을 때 한 번만 호출됨)
+		std::filesystem::path ReadUserDataDirectory()
+		{
+			return GetLocalAppDataDirectory() / ToPath(USER_DATA_FOLDER_NAME);
 		}
 
 		//	실행 파일 폴더 캐시 (함수 안 static은 처음 호출 때 한 번만, 스레드 안전하게 초기화됨)
@@ -86,11 +113,16 @@ namespace LostArkMultiTool::Core::APPConstants
 
 	std::filesystem::path GetDataFilePath(std::string_view fileName)
 	{
-		return GetExecutableDirectory() / std::filesystem::path{ fileName };
+		return GetExecutableDirectory() / ToPath(fileName);
 	}
 
 	std::filesystem::path GetUserDataFilePath(std::string_view fileName)
 	{
-		return GetUserDataDirectory() / std::filesystem::path{ fileName };
+		return GetUserDataDirectory() / ToPath(fileName);
+	}
+
+	std::filesystem::path GetLocalAppDataFilePath(std::string_view folderName, std::string_view fileName)
+	{
+		return GetLocalAppDataDirectory() / ToPath(folderName) / ToPath(fileName);
 	}
 }

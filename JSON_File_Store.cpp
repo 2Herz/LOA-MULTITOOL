@@ -19,6 +19,7 @@ namespace LostArkMultiTool::Services
     {
         constexpr std::string_view UTF8_BOM{ "\xEF\xBB\xBF" };
         constexpr std::string_view CORRUPT_FILE_SUFFIX{ ".corrupt_" };
+        constexpr std::string_view UNKNOWN_PATH_TEXT{ "(경로를 표시할 수 없음)" };
 
         // 파일 읽기 결과 상태
         enum class LoadStatus
@@ -34,6 +35,19 @@ namespace LostArkMultiTool::Services
             std::filesystem::path result{ path };
             result += suffix;
             return result;
+        }
+
+        // 경로 → 안내 문구용 UTF-8 (한글 경로가 깨지지 않도록 UTF-16 → UTF-8)
+        std::string ToDisplayPath(const std::filesystem::path& path)
+        {
+            try
+            {
+                return Core::TextEncoding::WideToUTF8(path.wstring());
+            }
+            catch (const std::exception&)
+            {
+                return std::string{ UNKNOWN_PATH_TEXT };
+            }
         }
 
         // 파일 전체를 문자열로 읽음 (UTF-8 BOM은 제거)
@@ -83,7 +97,7 @@ namespace LostArkMultiTool::Services
             try
             {
                 std::filesystem::rename(savePath, corruptPath);
-                return Core::TextEncoding::WideToUTF8(corruptPath.wstring());   // 한글 경로가 깨지지 않도록 UTF-16 → UTF-8
+                return ToDisplayPath(corruptPath);
             }
             catch (const std::filesystem::filesystem_error& error)
             {
@@ -92,28 +106,40 @@ namespace LostArkMultiTool::Services
         }
     }
 
-    JSONFileStore::JSONFileStore(std::string_view fileName)
-        : m_savePath{ Core::APPConstants::GetDataFilePath(fileName) }
+    JSONFileStore::JSONFileStore(std::string_view fileName, std::vector<std::filesystem::path> importPaths)
+        : m_savePath{ Core::APPConstants::GetUserDataFilePath(fileName) }
         , m_backupPath{ AppendSuffix(m_savePath, Core::APPConstants::BACKUP_FILE_SUFFIX) }
         , m_tempPath{ AppendSuffix(m_savePath, Core::APPConstants::TEMP_FILE_SUFFIX) }
+        , m_importPaths{ std::move(importPaths) }
     {}
 
-    std::optional<std::string> JSONFileStore::Load(const std::function<void(const JSONValue&)>& onLoaded)
+    JSONLoadResult JSONFileStore::Load(const std::function<void(const JSONValue&)>& onLoaded)
     {
-        // 파일이 없거나 정상이면 안내할 것이 없음
-        if (TryLoad(m_savePath, onLoaded) != LoadStatus::CORRUPTED) return std::nullopt;
+        const LoadStatus status{ TryLoad(m_savePath, onLoaded) };
+        if (status == LoadStatus::LOADED) return {};
+
+        // 저장 파일이 없음: 처음 실행 → 이전 위치 · 다른 프로그램의 파일을 한 번만 가져옴
+        if (status == LoadStatus::NOT_FOUND)
+        {
+            std::optional<std::string> importMessage{ TryImport(onLoaded) };
+            const bool isImported{ importMessage.has_value() };
+            return JSONLoadResult{ std::move(importMessage), isImported };
+        }
 
         // 손상본을 먼저 치워야 다음 저장 때 .bak이 손상본으로 덮어써지지 않음
         const std::string corruptLocation{ PreserveCorruptFile(m_savePath) };
         const bool isRecovered{ TryLoad(m_backupPath, onLoaded) == LoadStatus::LOADED };
 
-        return isRecovered
+        return JSONLoadResult{ isRecovered
             ? std::format("저장 파일이 손상되어 백업에서 복구했습니다.\n손상된 원본: {}", corruptLocation)
-            : std::format("저장 파일이 손상되어 새로 시작합니다.\n손상된 원본: {}", corruptLocation);
+            : std::format("저장 파일이 손상되어 새로 시작합니다.\n손상된 원본: {}", corruptLocation) };
     }
 
     void JSONFileStore::Save(const std::string& jsonText)
     {
+        // 0) 사용자 데이터 폴더가 아직 없으면 만듦 (첫 저장)
+        std::filesystem::create_directories(m_savePath.parent_path());
+
         // 1) 임시 파일에 먼저 전부 씀 (여기서 실패하면 기존 저장본은 그대로)
         WriteTextFile(m_tempPath, jsonText);
 
@@ -125,11 +151,28 @@ namespace LostArkMultiTool::Services
         }
 
         // 3) 기존 저장본은 .bak으로 보관하면서 원자적으로 교체 (원본 File.Replace와 같은 역할)
-        if (!::ReplaceFileW(m_savePath.c_str(), m_tempPath.c_str(), m_backupPath.c_str(), 0, nullptr, nullptr))
+        if (::ReplaceFileW(m_savePath.c_str(), m_tempPath.c_str(), m_backupPath.c_str(), 0, nullptr, nullptr)) return;
+
+        // 4) 교체가 막히면(교체를 지원하지 않는 드라이브 등) 복사로 대신함 (원본 IOException 대응)
+        //    덮어쓰기 전에 기존 저장본을 .bak으로 복사 → 대체 경로에서도 직전 저장본이 남아 손상 시 복구할 수 있음
+        std::filesystem::copy_file(m_savePath, m_backupPath, std::filesystem::copy_options::overwrite_existing);
+        std::filesystem::copy_file(m_tempPath, m_savePath, std::filesystem::copy_options::overwrite_existing);
+        std::filesystem::remove(m_tempPath);
+    }
+
+    std::optional<std::string> JSONFileStore::TryImport(const std::function<void(const JSONValue&)>& onLoaded) const
+    {
+        for (const std::filesystem::path& importPath : m_importPaths)
         {
-            // 교체가 막히면 복사로 대신하고 임시 파일 정리 (원본 IOException 대응)
-            std::filesystem::copy_file(m_tempPath, m_savePath, std::filesystem::copy_options::overwrite_existing);
-            std::filesystem::remove(m_tempPath);
+            // 본 파일 → 그 파일의 백업 순서 (없거나 손상이면 다음 후보, 가져온 파일은 읽기만 함)
+            const std::array<std::filesystem::path, 2> candidates{ importPath, AppendSuffix(importPath, Core::APPConstants::BACKUP_FILE_SUFFIX) };
+            for (const std::filesystem::path& candidate : candidates)
+            {
+                if (TryLoad(candidate, onLoaded) != LoadStatus::LOADED) continue;
+
+                return std::format("이전 기록을 가져왔습니다.\n가져온 파일: {}\n(원본 파일은 그대로 남아 있어요)", ToDisplayPath(candidate));
+            }
         }
+        return std::nullopt;
     }
 }

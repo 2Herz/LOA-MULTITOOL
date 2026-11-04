@@ -119,6 +119,12 @@ namespace LostArkMultiTool::Services
         return !m_topPrices.empty() && !m_botPrices.empty();
     }
 
+    // 재료마다 거래소 요청 한 번 (상위 · 하위 재료 목록 크기의 합)
+    int AssetCalculationService::GetRequestCount() const noexcept
+    {
+        return static_cast<int>(TOP_MATERIALS.size() + BOT_MATERIALS.size());
+    }
+
     void AssetCalculationService::FetchMarketPrices(Core::MarketAPI& api)
     {
         // 네트워크 호출은 잠금 밖에서 수행 (화면 읽기를 오래 막지 않도록)
@@ -177,7 +183,8 @@ namespace LostArkMultiTool::Services
         const double totalRosterAsset{ ApplyAllCharacterValues() };
 
         Models::UserData& data{ m_repository.GetData() };
-        data.RecordHistory(Models::UserData::MakeHistoryKey(Core::LocalTime::GetLocalToday()), totalRosterAsset);
+        // 그래프의 하루는 오전 6시(일일 컨텐츠 초기화)부터 → 06시 전 갱신은 전날 기록에 반영
+        data.RecordHistory(Models::UserData::MakeHistoryKey(Core::LocalTime::GetGameToday()), totalRosterAsset);
 
         // 원본 C# finally 대응: 저장이 실패해도 화면 갱신은 보장하고, 예외는 그대로 다시 던짐
         try

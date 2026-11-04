@@ -25,6 +25,7 @@ export namespace LostArkMultiTool::Services
         [[nodiscard]] std::unordered_map<std::string, Models::PriceData> GetTopPrices() const override;
         [[nodiscard]] std::unordered_map<std::string, Models::PriceData> GetBotPrices() const override;
         [[nodiscard]] bool HasPrices() const override;
+        [[nodiscard]] int GetRequestCount() const noexcept override;
 
         void FetchMarketPrices(Core::MarketAPI& api) override;
         void CalculateCharacterAssets(std::string_view charName) override;

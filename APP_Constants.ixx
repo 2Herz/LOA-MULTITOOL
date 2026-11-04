@@ -6,10 +6,18 @@ import std;
 export namespace LostArkMultiTool::Core::APPConstants
 {
 	//	프로그램 버전 (원격 설정의 LatestVersion과 비교 → 패치노트 버전을 올릴 때 같이 올릴 것)
-	inline constexpr std::string_view APP_VERSION{ "0.6.0" };
+	inline constexpr std::string_view APP_VERSION{ "1.3.0" };
 
-	//	툴별 저장 파일 이름 (툴마다 파일을 따로 씀, 전체 경로는 GetDataFilePath가 실행 파일 위치 기준으로 계산)
-	inline constexpr std::string_view ROSTER_DATA_FILE_NAME{ "LostArkRosterData.json" };	//	귀속재료 계산기 (원본 C#과 같은 파일)
+	//	툴별 저장 파일 이름 (툴마다 파일을 따로 씀, 전체 경로는 GetUserDataFilePath가 사용자 데이터 폴더 기준으로 계산)
+	//	예전 버전은 실행 파일 폴더에 저장했음 → 처음 실행할 때 한 번만 사용자 데이터 폴더로 가져옴 (예전 파일은 그대로 둠)
+	inline constexpr std::string_view ROSTER_DATA_FILE_NAME{ "LostArkRosterData.json" };	//	귀속재료 계산기 (원본 C#과 같은 파일 이름)
+	inline constexpr std::string_view GEM_DATA_FILE_NAME{ "GemFinderData.json" };			//	보석 최저가 검색기 (멀티툴 전용 새 파일)
+	inline constexpr std::string_view PARADISE_DATA_FILE_NAME{ "ParadiseTrackerData.json" };	//	낙원력 트래커 (멀티툴 전용 새 파일)
+
+	//	원본 낙원력 트래커의 기록 위치 (%LOCALAPPDATA%\낙원력 트래커) → 처음 실행할 때 한 번만 읽어서 가져옴 (원본은 건드리지 않음)
+	inline constexpr std::string_view PARADISE_ORIGINAL_FOLDER_NAME{ "낙원력 트래커" };
+	inline constexpr std::string_view PARADISE_ORIGINAL_FILE_NAME{ "RosterGrowthData_v2.json" };	//	시즌별 기록 (v2)
+	inline constexpr std::string_view PARADISE_LEGACY_FILE_NAME{ "RosterGrowthData.json" };		//	이전 버전 기록 (주차 목록만, v1)
 	inline constexpr std::string_view BACKUP_FILE_SUFFIX{ ".bak" };
 	inline constexpr std::string_view TEMP_FILE_SUFFIX{ ".tmp" };
 
@@ -36,6 +44,9 @@ export namespace LostArkMultiTool::Core::APPConstants
 	inline constexpr int CONFIG_CHECK_INTERVAL_MINUTES{ 30 };
 	inline constexpr int CONFIG_CHECK_INTERVAL_MS{ CONFIG_CHECK_INTERVAL_MINUTES * MS_PER_MINUTE };
 
+	//	로스트아크 하루가 바뀌는 시각 (일일 컨텐츠 초기화 오전 6시 → 그래프 · 일별 기록의 날짜 기준)
+	inline constexpr int DAILY_RESET_HOUR{ 6 };
+
 	//	상위 재료(결정·위대한·상급) 사용 기준 아이템 레벨
 	inline constexpr double TOP_MATERIAL_MIN_LEVEL{ 1730.00 };
 
@@ -46,9 +57,81 @@ export namespace LostArkMultiTool::Core::APPConstants
 		"", "Shard", "Dest", "Guard", "Leap", "Fusion", "Yong", "Bing"
 	};
 
-	//	실행 파일이 있는 폴더 기준 데이터 파일 전체 경로 (실행 파일 폴더는 처음 한 번만 계산해 캐싱)
+	//	===== 보석 최저가 검색기 =====
+	//	경매장 검색 조건 (겁화 · 작열은 4티어 보석, 7 ~ 10레벨만 조회 → 호출 수 절약)
+	inline constexpr int GEM_CATEGORY_CODE{ 210000 };		//	경매장 '보석' 카테고리
+	inline constexpr int GEM_TIER_4{ 4 };
+	inline constexpr int MIN_GEM_LEVEL{ 7 };
+	inline constexpr int MAX_GEM_LEVEL{ 10 };
+	inline constexpr std::int64_t MAX_TARGET_PRICE{ 100'000'000 };	//	목표가 입력 최대값
+
+	//	경매장 통신
+	inline constexpr int MAX_CONCURRENT_REQUESTS{ 3 };		//	동시에 보내는 요청 수 (호출 한도 보호)
+	inline constexpr int MAX_SEARCH_PAGES{ 20 };			//	정확한 이름의 매물을 찾을 때까지 넘겨볼 최대 페이지
+	inline constexpr int MAX_TRANSIENT_RETRIES{ 1 };		//	일시적 오류(네트워크 · 5xx) 재시도 횟수
+	inline constexpr int TRANSIENT_RETRY_DELAY_MS{ 500 };	//	재시도 전 대기 시간
+	inline constexpr std::size_t ERROR_DETAIL_MAX_LENGTH{ 120 };	//	오류 메시지에 붙일 서버 설명 최대 길이 (바이트)
+
+	//	자동 갱신 주기 (감시 주기마다 확인하고, 전체 주기가 되면 그 회차를 전체 갱신으로 실행)
+	inline constexpr std::size_t WATCH_INTERVAL_OPTION_COUNT{ 4 };
+	inline constexpr std::array<int, WATCH_INTERVAL_OPTION_COUNT> WATCH_INTERVAL_SECONDS_OPTIONS{ 10, 15, 30, 60 };
+	inline constexpr int DEFAULT_WATCH_INTERVAL_SECONDS{ 10 };
+	inline constexpr std::size_t FULL_INTERVAL_OPTION_COUNT{ 3 };
+	inline constexpr std::array<int, FULL_INTERVAL_OPTION_COUNT> FULL_INTERVAL_MINUTES_OPTIONS{ 1, 3, 5 };
+	inline constexpr int DEFAULT_FULL_INTERVAL_MINUTES{ 1 };
+
+	//	호출 한도 (공식 가이드: 분당 100회)
+	inline constexpr int RATE_LIMIT_PER_MINUTE{ 100 };
+	inline constexpr int RATE_LIMIT_WINDOW_SECONDS{ 60 };				//	Reset 헤더가 없을 때 가정하는 한도 구간 길이
+	inline constexpr int RATE_LIMIT_SAFETY_MARGIN{ 10 };				//	갱신 후에도 이만큼은 남아 있어야 시작함
+	inline constexpr int RATE_LIMIT_FALLBACK_COOLDOWN_SECONDS{ 60 };	//	429인데 초기화 시각을 모를 때 쉬는 시간
+	inline constexpr int MAINTENANCE_RETRY_MINUTES{ 5 };				//	API 서버 점검(503) 중 자동 갱신 재시도 간격
+
+	//	알림 · 기록
+	inline constexpr int HISTORY_KEEP_DAYS{ 365 };			//	시세 기록 보관 기간
+	inline constexpr std::size_t MAX_BALLOON_LINES{ 4 };	//	트레이 풍선 글자 수 제한(약 255자) 때문에 줄 수 제한
+
+	//	===== 유각 시세 검색기 =====
+	//	거래소 검색 조건 (유물 등급 각인서 전체를 현재 최저가 순으로 받아옴)
+	inline constexpr int ENGRAVING_CATEGORY_CODE{ 40000 };				//	거래소 '각인서' 카테고리
+	inline constexpr std::string_view RELIC_GRADE_NAME{ "유물" };			//	유물 등급 (= 유각)
+	inline constexpr int MAX_MARKET_PAGES{ 20 };							//	거래소 목록을 넘겨볼 최대 페이지 (한 페이지 10개 → 최대 200개)
+
+	//	===== 악세 검색기 =====
+	//	경매장 검색 조건 (4티어 악세서리, 부위 · 등급은 화면에서 고름)
+	inline constexpr int NECKLACE_CATEGORY_CODE{ 200010 };				//	경매장 '목걸이' 카테고리
+	inline constexpr int EARRING_CATEGORY_CODE{ 200020 };				//	경매장 '귀걸이' 카테고리
+	inline constexpr int RING_CATEGORY_CODE{ 200030 };					//	경매장 '반지' 카테고리
+	inline constexpr int ACCESSORY_TIER{ 4 };
+	inline constexpr std::string_view ANCIENT_GRADE_NAME{ "고대" };
+	inline constexpr std::string_view POLISH_OPTION_KEYWORD{ "연마" };	//	검색 옵션 중 연마 효과 묶음을 찾을 때 쓰는 글자
+	inline constexpr std::size_t MAX_ACCESSORY_OPTION_FILTERS{ 3 };		//	한 번에 거는 연마 효과 조건 수
+
+	//	===== 강화책 검색기 =====
+	//	거래소 '강화 재료' 카테고리에서 이름으로 검색 (야금술 = 무기, 재봉술 = 방어구)
+	inline constexpr int REFINE_MATERIAL_CATEGORY_CODE{ 50000 };		//	거래소 '강화 재료' 카테고리
+	inline constexpr std::string_view METALLURGY_KEYWORD{ "야금술" };	//	무기 강화책
+	inline constexpr std::string_view TAILORING_KEYWORD{ "재봉술" };		//	방어구 강화책
+
+	//	===== 젬 시세 검색기 =====
+	//	거래소 '강화 재료 > 아크 그리드 재료'의 영웅 등급 젬 (강화 재료 카테고리에서 이름으로 검색)
+	inline constexpr std::string_view ORDER_GEM_KEYWORD{ "질서의 젬" };
+	inline constexpr std::string_view CHAOS_GEM_KEYWORD{ "혼돈의 젬" };
+	inline constexpr std::string_view EPIC_GRADE_NAME{ "영웅" };
+
+	//	귀속 젬 계산기 (젬 탭 아래 표, 원정대 전체 보유 수량을 한 벌로 저장)
+	inline constexpr std::string_view BOUND_GEM_DATA_FILE_NAME{ "BoundGemData.json" };	//	멀티툴 전용 새 파일
+	inline constexpr int MAX_BOUND_GEM_COUNT{ 99'999 };								//	수량 입력 최대값
+
+	//	===== 재련 시뮬레이터 =====
+	inline constexpr std::string_view REFINE_SIMULATOR_DATA_FILE_NAME{ "RefineSimulatorData.json" };	//	시작 · 목표 · 재료 가격 · 귀속 설정 (멀티툴 전용 새 파일)
+
+	//	실행 파일이 있는 폴더 기준 데이터 파일 전체 경로 (실행 파일 폴더는 처음 한 번만 계산해 캐싱, 예전 저장 위치를 찾을 때 사용)
 	std::filesystem::path GetDataFilePath(std::string_view fileName);
 
 	//	사용자 데이터 폴더 기준 파일 전체 경로 (폴더 위치는 처음 한 번만 계산해 캐싱, 폴더 생성은 저장하는 쪽에서)
 	std::filesystem::path GetUserDataFilePath(std::string_view fileName);
+
+	//	%LOCALAPPDATA%\폴더\파일 전체 경로 (다른 프로그램의 저장 파일을 찾을 때 사용, 이름은 UTF-8)
+	std::filesystem::path GetLocalAppDataFilePath(std::string_view folderName, std::string_view fileName);
 }

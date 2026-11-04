@@ -30,6 +30,10 @@ namespace LostArkMultiTool::Views
         constexpr float MIN_OPACITY{ 0.0f };
         constexpr float MAX_OPACITY{ 1.0f };
         constexpr float IDENTITY_SCALE{ 1.0f };               // 변환 행렬 대각선 (변환 없음)
+        constexpr float MITER_LIMIT{ 10.0f };                 // 선 모서리 뾰족함 한계 (Direct2D 기본값)
+        constexpr UINT32 GRADIENT_STOP_COUNT{ 2 };            // 위 색 → 아래 색
+        constexpr float GRADIENT_START{ 0.0f };
+        constexpr float GRADIENT_END{ 1.0f };
 
         // 그래픽 카드가 지원하는 기능 수준 (높은 것부터 시도)
         constexpr std::array FEATURE_LEVELS{
@@ -133,6 +137,11 @@ namespace LostArkMultiTool::Views
             return D2D1_RECT_F{ rect.m_left, rect.m_top, rect.m_right, rect.m_bottom };
         }
 
+        [[nodiscard]] D2D1_POINT_2F ToD2DPoint(const Core::PointF& point) noexcept
+        {
+            return D2D1_POINT_2F{ point.m_x, point.m_y };
+        }
+
         [[nodiscard]] DWRITE_TEXT_ALIGNMENT ToTextAlignment(Core::TextAlign align) noexcept
         {
             switch (align)
@@ -187,6 +196,12 @@ namespace LostArkMultiTool::Views
         void FillRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color);
         void DrawRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color, float strokeWidth);
         void DrawLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth);
+        void DrawDashedLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth);
+        void FillEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color);
+        void DrawEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color, float strokeWidth);
+        void DrawCurve(const Core::PointF& start, std::span<const Core::BezierSegment> segments, const Core::Color& color, float strokeWidth);
+        void FillCurveArea(const Core::PointF& start, std::span<const Core::BezierSegment> segments, float baselineY, float gradientTop,
+            const Core::Color& topColor, const Core::Color& bottomColor);
         void DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style);
 
         [[nodiscard]] Core::SizeF MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth);
@@ -213,6 +228,10 @@ namespace LostArkMultiTool::Views
         [[nodiscard]] IDWriteTextFormat* PrepareTextFormat(const Core::TextStyle& style);
         [[nodiscard]] COMPtr<IDWriteTextLayout> CreateMeasureLayout(std::wstring_view text, const Core::TextStyle& style, float maxWidth);
 
+        // 곡선 도형 만들기 (isClosedToBaseline이면 곡선 끝에서 기준선으로 내려와 시작점 아래로 닫힌 영역)
+        [[nodiscard]] COMPtr<ID2D1PathGeometry> CreateCurveGeometry(const Core::PointF& start, std::span<const Core::BezierSegment> segments,
+            bool isClosedToBaseline, float baselineY);
+
         HWND m_window{};
         float m_dpi{ DEFAULT_DPI };
         int m_pixelWidth{};
@@ -222,6 +241,7 @@ namespace LostArkMultiTool::Views
         // 장치와 무관한 자원 (한 번만 만듦)
         COMPtr<ID2D1Factory1> m_d2dFactory;
         COMPtr<IDWriteFactory> m_writeFactory;
+        COMPtr<ID2D1StrokeStyle> m_dashStrokeStyle;   // 점선 (그래프 눈금선)
         std::map<std::pair<int, Core::FontWeight>, COMPtr<IDWriteTextFormat>> m_textFormats;   // (크기 × 10, 굵기) → 글꼴
 
         // 장치 자원 (선언 순서대로 만들고 반대 순서로 해제)
@@ -244,6 +264,17 @@ namespace LostArkMultiTool::Views
 
         ThrowIfFailed(::DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory),
             reinterpret_cast<IUnknown**>(m_writeFactory.ReleaseAndGetAddressOf())), "DirectWrite 팩토리 생성");
+
+        // 점선 모양 (끝이 둥근 점 → 눈금선이 부드럽게 보임)
+        D2D1_STROKE_STYLE_PROPERTIES dashProperties{};
+        dashProperties.startCap = D2D1_CAP_STYLE_ROUND;
+        dashProperties.endCap = D2D1_CAP_STYLE_ROUND;
+        dashProperties.dashCap = D2D1_CAP_STYLE_ROUND;
+        dashProperties.lineJoin = D2D1_LINE_JOIN_ROUND;
+        dashProperties.miterLimit = MITER_LIMIT;
+        dashProperties.dashStyle = D2D1_DASH_STYLE_DOT;
+        dashProperties.dashOffset = 0.0f;
+        ThrowIfFailed(m_d2dFactory->CreateStrokeStyle(&dashProperties, nullptr, 0, m_dashStrokeStyle.ReleaseAndGetAddressOf()), "점선 모양 생성");
 
         CreateDeviceResources();
     }
@@ -453,6 +484,55 @@ namespace LostArkMultiTool::Views
         m_d2dContext->DrawLine(D2D1_POINT_2F{ startX, startY }, D2D1_POINT_2F{ endX, endY }, PrepareBrush(color), strokeWidth);
     }
 
+    void DX11Renderer::Impl::DrawDashedLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth)
+    {
+        m_d2dContext->DrawLine(D2D1_POINT_2F{ startX, startY }, D2D1_POINT_2F{ endX, endY }, PrepareBrush(color), strokeWidth, m_dashStrokeStyle.Get());
+    }
+
+    void DX11Renderer::Impl::FillEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color)
+    {
+        const D2D1_ELLIPSE ellipse{ ToD2DPoint(center), radiusX, radiusY };
+        m_d2dContext->FillEllipse(&ellipse, PrepareBrush(color));
+    }
+
+    void DX11Renderer::Impl::DrawEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color, float strokeWidth)
+    {
+        const D2D1_ELLIPSE ellipse{ ToD2DPoint(center), radiusX, radiusY };
+        m_d2dContext->DrawEllipse(&ellipse, PrepareBrush(color), strokeWidth, nullptr);
+    }
+
+    void DX11Renderer::Impl::DrawCurve(const Core::PointF& start, std::span<const Core::BezierSegment> segments, const Core::Color& color, float strokeWidth)
+    {
+        if (segments.empty()) return;
+
+        const COMPtr<ID2D1PathGeometry> geometry{ CreateCurveGeometry(start, segments, false, 0.0f) };
+        m_d2dContext->DrawGeometry(geometry.Get(), PrepareBrush(color), strokeWidth, nullptr);
+    }
+
+    // 곡선 아래 영역을 위 → 아래 그라데이션으로 채움 (원본 그래프의 반투명 골드 영역)
+    void DX11Renderer::Impl::FillCurveArea(const Core::PointF& start, std::span<const Core::BezierSegment> segments, float baselineY, float gradientTop,
+        const Core::Color& topColor, const Core::Color& bottomColor)
+    {
+        if (segments.empty()) return;
+
+        const std::array<D2D1_GRADIENT_STOP, GRADIENT_STOP_COUNT> stops{
+            D2D1_GRADIENT_STOP{ GRADIENT_START, ToD2DColor(topColor) },
+            D2D1_GRADIENT_STOP{ GRADIENT_END, ToD2DColor(bottomColor) }
+        };
+
+        COMPtr<ID2D1GradientStopCollection> stopCollection;
+        ThrowIfFailed(m_d2dContext->CreateGradientStopCollection(stops.data(), GRADIENT_STOP_COUNT, stopCollection.ReleaseAndGetAddressOf()),
+            "그라데이션 색 생성");
+
+        const D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES gradientLine{ D2D1_POINT_2F{ start.m_x, gradientTop }, D2D1_POINT_2F{ start.m_x, baselineY } };
+        COMPtr<ID2D1LinearGradientBrush> gradientBrush;
+        ThrowIfFailed(m_d2dContext->CreateLinearGradientBrush(gradientLine, stopCollection.Get(), gradientBrush.ReleaseAndGetAddressOf()),
+            "그라데이션 브러시 생성");
+
+        const COMPtr<ID2D1PathGeometry> geometry{ CreateCurveGeometry(start, segments, true, baselineY) };
+        m_d2dContext->FillGeometry(geometry.Get(), gradientBrush.Get(), nullptr);
+    }
+
     void DX11Renderer::Impl::DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style)
     {
         if (text.empty()) return;
@@ -567,6 +647,32 @@ namespace LostArkMultiTool::Views
         return layout;
     }
 
+    COMPtr<ID2D1PathGeometry> DX11Renderer::Impl::CreateCurveGeometry(const Core::PointF& start, std::span<const Core::BezierSegment> segments,
+        bool isClosedToBaseline, float baselineY)
+    {
+        COMPtr<ID2D1PathGeometry> geometry;
+        ThrowIfFailed(m_d2dFactory->CreatePathGeometry(geometry.ReleaseAndGetAddressOf()), "곡선 도형 생성");
+
+        COMPtr<ID2D1GeometrySink> sink;
+        ThrowIfFailed(geometry->Open(sink.ReleaseAndGetAddressOf()), "곡선 도형 열기");
+
+        // 닫힌 영역: 기준선 위 시작점 → 곡선 → 기준선 위 끝점 (채우기용), 열린 곡선: 곡선만 (선 그리기용)
+        const D2D1_POINT_2F firstPoint{ isClosedToBaseline ? D2D1_POINT_2F{ start.m_x, baselineY } : ToD2DPoint(start) };
+        sink->BeginFigure(firstPoint, isClosedToBaseline ? D2D1_FIGURE_BEGIN_FILLED : D2D1_FIGURE_BEGIN_HOLLOW);
+        if (isClosedToBaseline) sink->AddLine(ToD2DPoint(start));
+
+        for (const Core::BezierSegment& segment : segments)
+        {
+            const D2D1_BEZIER_SEGMENT bezier{ ToD2DPoint(segment.m_control1), ToD2DPoint(segment.m_control2), ToD2DPoint(segment.m_end) };
+            sink->AddBezier(&bezier);
+        }
+
+        if (isClosedToBaseline) sink->AddLine(D2D1_POINT_2F{ segments.back().m_end.m_x, baselineY });
+        sink->EndFigure(isClosedToBaseline ? D2D1_FIGURE_END_CLOSED : D2D1_FIGURE_END_OPEN);
+        ThrowIfFailed(sink->Close(), "곡선 도형 닫기");
+        return geometry;
+    }
+
     // 같은 (크기, 굵기) 글꼴은 한 번만 만들어 재사용 (반환 포인터는 캐시가 소유, 정렬 · 줄바꿈은 PrepareTextFormat에서)
     IDWriteTextFormat* DX11Renderer::Impl::GetTextFormat(const Core::TextStyle& style)
     {
@@ -648,6 +754,32 @@ namespace LostArkMultiTool::Views
     void DX11Renderer::DrawLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth)
     {
         m_impl->DrawLine(startX, startY, endX, endY, color, strokeWidth);
+    }
+
+    void DX11Renderer::DrawDashedLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth)
+    {
+        m_impl->DrawDashedLine(startX, startY, endX, endY, color, strokeWidth);
+    }
+
+    void DX11Renderer::FillEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color)
+    {
+        m_impl->FillEllipse(center, radiusX, radiusY, color);
+    }
+
+    void DX11Renderer::DrawEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color, float strokeWidth)
+    {
+        m_impl->DrawEllipse(center, radiusX, radiusY, color, strokeWidth);
+    }
+
+    void DX11Renderer::DrawCurve(const Core::PointF& start, std::span<const Core::BezierSegment> segments, const Core::Color& color, float strokeWidth)
+    {
+        m_impl->DrawCurve(start, segments, color, strokeWidth);
+    }
+
+    void DX11Renderer::FillCurveArea(const Core::PointF& start, std::span<const Core::BezierSegment> segments, float baselineY, float gradientTop,
+        const Core::Color& topColor, const Core::Color& bottomColor)
+    {
+        m_impl->FillCurveArea(start, segments, baselineY, gradientTop, topColor, bottomColor);
     }
 
     void DX11Renderer::DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style)

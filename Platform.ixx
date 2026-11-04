@@ -2,6 +2,7 @@
 
 import std;
 import LostArkMultiTool.Core.Input;
+import LostArkMultiTool.Core.Notifier;
 import LostArkMultiTool.Core.Renderer;
 
 export namespace LostArkMultiTool::Core
@@ -25,5 +26,13 @@ export namespace LostArkMultiTool::Core
 
         // 기본 브라우저로 열기 (http · https 주소만, 실패하면 false)
         [[nodiscard]] virtual bool OpenURL(std::wstring_view url) = 0;
+
+        // ===== 창 · 트레이 (최소화하면 트레이로 숨고, 백그라운드 작업은 계속 진행) =====
+        [[nodiscard]] virtual bool IsWindowShown() const = 0;   // 트레이로 숨었거나 최소화 중이면 false
+        virtual void RestoreWindow() = 0;                        // 트레이에서 꺼내 맨 앞으로
+
+        // 트레이 풍선 알림 (창이 숨어 있을 때 결과 · 오류를 알림) · 트레이 아이콘에 마우스를 올렸을 때 글자
+        virtual void ShowTrayBalloon(std::wstring_view title, std::wstring_view message, NoticeKind kind) = 0;
+        virtual void SetTrayTooltip(std::wstring_view text) = 0;
     };
 }

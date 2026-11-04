@@ -16,16 +16,22 @@ namespace LostArkMultiTool::Models
     CharacterInfo::CharacterInfo(std::string characterName,
         std::optional<std::string> characterClassName,
         std::optional<std::string> itemMaxLevel,
-        std::optional<std::string> itemAvgLevel)
+        std::optional<std::string> itemAvgLevel,
+        std::optional<std::string> serverName)
         : m_characterName{ std::move(characterName) }
         , m_characterClassName{ std::move(characterClassName) }
         , m_itemMaxLevel{ std::move(itemMaxLevel) }
         , m_itemAvgLevel{ std::move(itemAvgLevel) }
+        , m_serverName{ std::move(serverName) }
     {}
 
     const std::string& CharacterInfo::GetCharacterName() const noexcept
     {
         return m_characterName;
+    }
+    const std::optional<std::string>& CharacterInfo::GetServerName() const noexcept
+    {
+        return m_serverName;
     }
     const std::optional<std::string>& CharacterInfo::GetCharacterClassName() const noexcept
     {

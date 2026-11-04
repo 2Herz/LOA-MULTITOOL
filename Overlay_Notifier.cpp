@@ -3,20 +3,33 @@
 import std;
 import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.Notifier;
+import LostArkMultiTool.Core.Platform;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Views.UI.Dialog;
 import LostArkMultiTool.Views.UI.MessageDialog;
+import LostArkMultiTool.Views.UI.DateRangeDialog;
 import LostArkMultiTool.Views.UI.ToastHost;
 
 namespace LostArkMultiTool::Views::UI
 {
-    OverlayNotifier::OverlayNotifier() = default;
+    namespace
+    {
+        constexpr std::wstring_view TRAY_BALLOON_TITLE{ L"로스트아크 멀티툴" };
+    }
+
+    OverlayNotifier::OverlayNotifier(Core::Platform& platform)
+        : m_platform{ platform }
+    {}
 
     OverlayNotifier::~OverlayNotifier() = default;
 
-    void OverlayNotifier::ShowMessage(std::wstring title, std::wstring message, Core::NoticeKind kind)
+    void OverlayNotifier::ShowMessage(std::wstring title, std::wstring message, Core::NoticeKind kind, std::function<void()> onClosed)
     {
-        OpenDialog(std::make_unique<MessageDialog>(std::move(title), std::move(message), kind, MessageButtons::MESSAGE_OK, nullptr));
+        // [확인] 하나짜리라 어떤 답이든 "닫힘"으로 알림
+        std::function<void(bool)> onAnswer;
+        if (onClosed) onAnswer = [onClosed = std::move(onClosed)](bool /*isConfirmed*/) { onClosed(); };
+
+        OpenDialog(std::make_unique<MessageDialog>(std::move(title), std::move(message), kind, MessageButtons::MESSAGE_OK, std::move(onAnswer)));
     }
 
     void OverlayNotifier::AskYesNo(std::wstring title, std::wstring message, std::function<void(bool isYes)> onAnswer)
@@ -25,8 +38,21 @@ namespace LostArkMultiTool::Views::UI
             MessageButtons::MESSAGE_YES_NO, std::move(onAnswer)));
     }
 
+    void OverlayNotifier::AskDateRange(std::wstring title, std::wstring message,
+        const std::chrono::year_month_day& initialStart, const std::chrono::year_month_day& initialEnd,
+        std::function<std::optional<std::wstring>(const std::chrono::year_month_day& startDate, const std::chrono::year_month_day& endDate)> onConfirm)
+    {
+        OpenDialog(std::make_unique<DateRangeDialog>(m_platform, std::move(title), std::move(message), initialStart, initialEnd, std::move(onConfirm)));
+    }
+
     void OverlayNotifier::ShowToast(std::wstring message, Core::NoticeKind kind)
     {
+        // 창이 숨어 있으면 화면 안 토스트는 아무도 못 보므로 트레이 풍선 알림으로
+        if (!m_platform.IsWindowShown())
+        {
+            m_platform.ShowTrayBalloon(TRAY_BALLOON_TITLE, message, kind);
+            return;
+        }
         m_toastHost.Add(std::move(message), kind);
     }
 

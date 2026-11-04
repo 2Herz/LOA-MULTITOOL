@@ -28,6 +28,7 @@ export namespace LostArkMultiTool::Core
         KEY_C,
         KEY_V,
         KEY_X,
+        KEY_SPACE,
         KEY_1,      // KEY_1 ~ KEY_9는 순서대로 이어져 있어야 함 (탭 단축키 계산)
         KEY_2,
         KEY_3,

@@ -397,4 +397,133 @@ namespace LostArkMultiTool::Services
         JSONParser parser{ text };
         return parser.ParseDocument();
     }
+
+    namespace
+    {
+        // ===== 쓰기 형식 =====
+        constexpr std::size_t INDENT_WIDTH{ 2 };
+        constexpr unsigned CONTROL_CHARACTER_LIMIT{ 0x20 };       // 이보다 작은 글자는 \u00XX로
+        constexpr std::string_view LOWER_HEX_DIGITS{ "0123456789abcdef" };
+        constexpr unsigned NIBBLE_BITS{ 4 };
+        constexpr unsigned NIBBLE_MASK{ 0xF };
+        constexpr std::string_view CONTROL_ESCAPE_PREFIX{ "\\u00" };
+        constexpr double MAX_EXACT_INTEGER{ 9'007'199'254'740'992.0 };   // 2^53 (double이 정수를 정확히 담는 한계)
+
+        void AppendIndent(std::string& out, std::size_t depth)
+        {
+            out.append(depth * INDENT_WIDTH, ' ');
+        }
+
+        void AppendQuoted(std::string& out, std::string_view text)
+        {
+            out.push_back('"');
+            for (const char c : text)
+            {
+                switch (c)
+                {
+                    case '"':  out += "\\\""; break;
+                    case '\\': out += "\\\\"; break;
+                    case '\n': out += "\\n"; break;
+                    case '\r': out += "\\r"; break;
+                    case '\t': out += "\\t"; break;
+                    default:
+                    {
+                        const auto byte{ static_cast<unsigned char>(c) };
+                        if (byte >= CONTROL_CHARACTER_LIMIT)
+                        {
+                            out.push_back(c);   // 한글 등 UTF-8 바이트는 그대로
+                            break;
+                        }
+                        out += CONTROL_ESCAPE_PREFIX;
+                        out.push_back(LOWER_HEX_DIGITS[static_cast<std::size_t>(byte >> NIBBLE_BITS)]);
+                        out.push_back(LOWER_HEX_DIGITS[static_cast<std::size_t>(byte & NIBBLE_MASK)]);
+                        break;
+                    }
+                }
+            }
+            out.push_back('"');
+        }
+
+        void AppendValue(std::string& out, const JSONValue& value, std::size_t depth)
+        {
+            switch (value.GetType())
+            {
+                case JSONType::BOOL_VALUE:
+                    out += value.GetBool() ? TRUE_LITERAL : FALSE_LITERAL;
+                    return;
+
+                case JSONType::NUMBER_VALUE:
+                {
+                    // 정수는 지수 표기 없이 그대로 (예: 100000000 → "1e+08"이 아니라 "100000000")
+                    const double number{ value.GetNumber() };
+                    if (std::trunc(number) == number && std::abs(number) < MAX_EXACT_INTEGER)
+                    {
+                        out += std::to_string(static_cast<std::int64_t>(number));
+                        return;
+                    }
+                    out += std::vformat("{}", std::make_format_args(number));
+                    return;
+                }
+
+                case JSONType::STRING_VALUE:
+                    AppendQuoted(out, value.GetString());
+                    return;
+
+                case JSONType::ARRAY_VALUE:
+                {
+                    const std::vector<JSONValue>& items{ value.GetItems() };
+                    out.push_back('[');
+                    for (std::size_t index{}; index < items.size(); ++index)
+                    {
+                        out += index == 0 ? "\n" : ",\n";
+                        AppendIndent(out, depth + 1);
+                        AppendValue(out, items[index], depth + 1);
+                    }
+                    if (!items.empty())
+                    {
+                        out.push_back('\n');
+                        AppendIndent(out, depth);
+                    }
+                    out.push_back(']');
+                    return;
+                }
+
+                case JSONType::OBJECT_VALUE:
+                {
+                    const std::vector<std::string>& keys{ value.GetKeys() };
+                    const std::vector<JSONValue>& values{ value.GetValues() };
+                    out.push_back('{');
+                    for (std::size_t index{}; index < keys.size(); ++index)
+                    {
+                        out += index == 0 ? "\n" : ",\n";
+                        AppendIndent(out, depth + 1);
+                        AppendQuoted(out, keys[index]);
+                        out += ": ";
+                        AppendValue(out, values[index], depth + 1);
+                    }
+                    if (!keys.empty())
+                    {
+                        out.push_back('\n');
+                        AppendIndent(out, depth);
+                    }
+                    out.push_back('}');
+                    return;
+                }
+
+                default:
+                    out += NULL_LITERAL;
+                    return;
+            }
+        }
+    }
+
+    std::string WriteJSONText(const JSONValue& value)
+    {
+        constexpr std::size_t ROOT_DEPTH{ 0 };
+
+        std::string out;
+        AppendValue(out, value, ROOT_DEPTH);
+        out.push_back('\n');
+        return out;
+    }
 }

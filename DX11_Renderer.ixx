@@ -35,6 +35,12 @@ export namespace LostArkMultiTool::Views
         void FillRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color) override;
         void DrawRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color, float strokeWidth) override;
         void DrawLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth) override;
+        void DrawDashedLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth) override;
+        void FillEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color) override;
+        void DrawEllipse(const Core::PointF& center, float radiusX, float radiusY, const Core::Color& color, float strokeWidth) override;
+        void DrawCurve(const Core::PointF& start, std::span<const Core::BezierSegment> segments, const Core::Color& color, float strokeWidth) override;
+        void FillCurveArea(const Core::PointF& start, std::span<const Core::BezierSegment> segments, float baselineY, float gradientTop,
+            const Core::Color& topColor, const Core::Color& bottomColor) override;
         void DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style) override;
 
         [[nodiscard]] Core::SizeF MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth) override;

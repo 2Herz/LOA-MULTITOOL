@@ -11,9 +11,11 @@ export namespace LostArkMultiTool::Models
         CharacterInfo(std::string characterName,
             std::optional<std::string> characterClassName,
             std::optional<std::string> itemMaxLevel,
-            std::optional<std::string> itemAvgLevel);
+            std::optional<std::string> itemAvgLevel,
+            std::optional<std::string> serverName = std::nullopt);
 
         [[nodiscard]] const std::string& GetCharacterName() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetServerName() const noexcept;   // 서버 이름 (없을 수 있음)
         [[nodiscard]] const std::optional<std::string>& GetCharacterClassName() const noexcept;
         [[nodiscard]] const std::optional<std::string>& GetItemMaxLevel() const noexcept;
         [[nodiscard]] const std::optional<std::string>& GetItemAvgLevel() const noexcept;
@@ -26,5 +28,6 @@ export namespace LostArkMultiTool::Models
         std::optional<std::string> m_characterClassName;
         std::optional<std::string> m_itemMaxLevel;
         std::optional<std::string> m_itemAvgLevel;
+        std::optional<std::string> m_serverName;
     };
 }
