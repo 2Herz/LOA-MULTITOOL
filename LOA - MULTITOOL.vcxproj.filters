@@ -29,21 +29,6 @@
     <Filter Include="1. 코어">
       <UniqueIdentifier>{98fec805-40f6-4cc9-9b18-670b93eb1c3e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="1. 코어\1. 상수">
-      <UniqueIdentifier>{85ae6b9a-babe-42ac-9ca8-cc143644d686}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\2. 예외처리">
-      <UniqueIdentifier>{655d349a-3b92-4cb3-b614-2c2de2096e11}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\3. 리포지트리">
-      <UniqueIdentifier>{2741932a-cdca-40b4-ba84-5215ce045e22}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\3. API">
-      <UniqueIdentifier>{5acdc79f-108e-4a35-a70c-176dd10f1eda}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\4. 시간">
-      <UniqueIdentifier>{18d4824b-7050-43bc-9711-9764b6d976e6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="2. 모델">
       <UniqueIdentifier>{8c3088d8-e850-4854-ab9e-f02e08757f01}</UniqueIdentifier>
     </Filter>
@@ -65,15 +50,6 @@
     <Filter Include="2. 모델\3. 서버">
       <UniqueIdentifier>{2a8b5242-269e-4dc0-91cf-88e22fa97220}</UniqueIdentifier>
     </Filter>
-    <Filter Include="1. 코어\5. 에셋">
-      <UniqueIdentifier>{a34a2335-6eb2-42bc-bcb2-ea75e403739a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\6. 렌더러">
-      <UniqueIdentifier>{a404118b-1aa9-4d62-90d4-52a5b706fd25}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\7. 매니저">
-      <UniqueIdentifier>{e3c8f2ca-5399-4847-b272-495767efdb9c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="4. 뷰">
       <UniqueIdentifier>{b4ba2f77-ed82-44e1-8eb5-a03c69a8cb3e}</UniqueIdentifier>
     </Filter>
@@ -86,40 +62,91 @@
     <Filter Include="4. 뷰\3. 테마">
       <UniqueIdentifier>{9c6b3bc2-4ea2-4a0b-a357-04b53830478d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="1. 코어\7. 매니저\2. 객체">
-      <UniqueIdentifier>{4b4da081-68d9-4fc6-9f97-01b54d4fdd46}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\7. 매니저\2. 객체\2. 귀속재료 계산기 매니저">
-      <UniqueIdentifier>{26a9866d-8773-43d0-ba25-7cf887455f1e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\7. 매니저\2. 객체\3. 보석 최저가 검색기 매니저">
-      <UniqueIdentifier>{b38ec07d-58fb-470d-9ce6-43cc0903c821}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\7. 매니저\2. 객체\4. 낙원력 트래커 매니저">
-      <UniqueIdentifier>{210097e5-6444-44d7-b436-1d5afaeb047a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\7. 매니저\1. 최상위">
-      <UniqueIdentifier>{935d83ce-b482-4f48-a178-aee98ba3cbae}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="1. 코어\7. 매니저\1. 최상위\1. 툴">
-      <UniqueIdentifier>{b2cae1f7-95fd-44a1-8b66-9f5e8654405a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="소스 파일\1. 앱">
       <UniqueIdentifier>{4b7cb060-eb9f-4d2b-a226-815b1fdcf5e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반">
+      <UniqueIdentifier>{6e2e7f24-4547-468a-a080-6fa0ae8b2d1c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저">
+      <UniqueIdentifier>{e3c8f2ca-5399-4847-b272-495767efdb9c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체">
+      <UniqueIdentifier>{4b4da081-68d9-4fc6-9f97-01b54d4fdd46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\2. 귀속재료 계산기 매니저">
+      <UniqueIdentifier>{26a9866d-8773-43d0-ba25-7cf887455f1e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\3. 보석 최저가 검색기 매니저">
+      <UniqueIdentifier>{b38ec07d-58fb-470d-9ce6-43cc0903c821}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\4. 낙원력 트래커 매니저">
+      <UniqueIdentifier>{210097e5-6444-44d7-b436-1d5afaeb047a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\1. 최상위">
+      <UniqueIdentifier>{935d83ce-b482-4f48-a178-aee98ba3cbae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\1. 최상위\1. 툴">
+      <UniqueIdentifier>{b2cae1f7-95fd-44a1-8b66-9f5e8654405a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\1. 상수">
+      <UniqueIdentifier>{85ae6b9a-babe-42ac-9ca8-cc143644d686}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\2. 예외처리">
+      <UniqueIdentifier>{655d349a-3b92-4cb3-b614-2c2de2096e11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\3. API">
+      <UniqueIdentifier>{5acdc79f-108e-4a35-a70c-176dd10f1eda}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\3. 리포지트리">
+      <UniqueIdentifier>{2741932a-cdca-40b4-ba84-5215ce045e22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\4. 시간">
+      <UniqueIdentifier>{18d4824b-7050-43bc-9711-9764b6d976e6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\5. 에셋">
+      <UniqueIdentifier>{a34a2335-6eb2-42bc-bcb2-ea75e403739a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\6. 렌더러">
+      <UniqueIdentifier>{a404118b-1aa9-4d62-90d4-52a5b706fd25}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\2. 입력">
+      <UniqueIdentifier>{115fe241-d4fa-43a2-a5cd-4b04927f4f53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\4. UI">
+      <UniqueIdentifier>{1e33ba82-52ac-4348-b13a-c31cd1f9c989}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\4. UI\1. 컨트롤">
+      <UniqueIdentifier>{f2850dbd-75f0-4022-99b4-f8161117d152}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\4. UI\2. 텍스트박스">
+      <UniqueIdentifier>{ff1b9a57-7024-4e42-9d70-5e93cdc53f7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\4. UI\3. 버튼">
+      <UniqueIdentifier>{a42c25a0-8f69-4422-8883-aa44943aa89d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\4. UI\4. 라벨">
+      <UniqueIdentifier>{382d9263-15ea-4e2c-ad63-e7512704c4b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\4. UI\5. 모달">
+      <UniqueIdentifier>{4393a935-d468-46b2-a559-af7a56082962}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\4. UI\6. 알림창">
+      <UniqueIdentifier>{cfdbf9e7-397c-462f-aa7b-a25a07f1ab07}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="APP_Constants.ixx">
-      <Filter>1. 코어\1. 상수</Filter>
+      <Filter>1. 코어\1. 기반\1. 상수</Filter>
     </ClCompile>
     <ClCompile Include="APP_Constants.cpp">
-      <Filter>1. 코어\1. 상수</Filter>
+      <Filter>1. 코어\1. 기반\1. 상수</Filter>
     </ClCompile>
     <ClCompile Include="APP_Exceptions.ixx">
-      <Filter>1. 코어\2. 예외처리</Filter>
+      <Filter>1. 코어\1. 기반\2. 예외처리</Filter>
     </ClCompile>
     <ClCompile Include="APP_Exceptions.cpp">
-      <Filter>1. 코어\2. 예외처리</Filter>
+      <Filter>1. 코어\1. 기반\2. 예외처리</Filter>
     </ClCompile>
     <ClCompile Include="Item_Data.ixx">
       <Filter>2. 모델\1. 데이터\1. 아이템</Filter>
@@ -158,16 +185,16 @@
       <Filter>2. 모델\3. 서버</Filter>
     </ClCompile>
     <ClCompile Include="Data_Repository.ixx">
-      <Filter>1. 코어\3. 리포지트리</Filter>
+      <Filter>1. 코어\1. 기반\3. 리포지트리</Filter>
     </ClCompile>
     <ClCompile Include="Data_Repository.cpp">
-      <Filter>1. 코어\3. 리포지트리</Filter>
+      <Filter>1. 코어\1. 기반\3. 리포지트리</Filter>
     </ClCompile>
     <ClCompile Include="Asset_Calculator.cpp">
-      <Filter>1. 코어\5. 에셋</Filter>
+      <Filter>1. 코어\1. 기반\5. 에셋</Filter>
     </ClCompile>
     <ClCompile Include="Asset_Calculator.ixx">
-      <Filter>1. 코어\5. 에셋</Filter>
+      <Filter>1. 코어\1. 기반\5. 에셋</Filter>
     </ClCompile>
     <ClCompile Include="JSON_Data_Repository.ixx">
       <Filter>3. 서비스\1. JSON</Filter>
@@ -188,13 +215,13 @@
       <Filter>3. 서비스\1. JSON</Filter>
     </ClCompile>
     <ClCompile Include="WinHTTP_Market_API.ixx">
-      <Filter>1. 코어\3. API</Filter>
+      <Filter>1. 코어\1. 기반\3. API</Filter>
     </ClCompile>
     <ClCompile Include="Local_Time.ixx">
-      <Filter>1. 코어\4. 시간</Filter>
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>
     <ClCompile Include="Local_Time.cpp">
-      <Filter>1. 코어\4. 시간</Filter>
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>
     <ClCompile Include="JSON_File_Store.ixx">
       <Filter>3. 서비스\1. JSON</Filter>
@@ -212,7 +239,7 @@
       <Filter>3. 서비스\4. 서버</Filter>
     </ClCompile>
     <ClCompile Include="WinHTTP_Market_API.cpp">
-      <Filter>1. 코어\3. API</Filter>
+      <Filter>1. 코어\1. 기반\3. API</Filter>
     </ClCompile>
     <ClCompile Include="DPAPI_Key_Store.ixx">
       <Filter>3. 서비스\5. 암호화</Filter>
@@ -242,16 +269,16 @@
       <Filter>3. 서비스\3. API</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.ixx">
-      <Filter>1. 코어\6. 렌더러</Filter>
+      <Filter>1. 코어\1. 기반\6. 렌더러</Filter>
     </ClCompile>
     <ClCompile Include="Renderer.cpp">
-      <Filter>1. 코어\6. 렌더러</Filter>
+      <Filter>1. 코어\1. 기반\6. 렌더러</Filter>
     </ClCompile>
     <ClCompile Include="Tool_Manager.ixx">
-      <Filter>1. 코어\7. 매니저\1. 최상위\1. 툴</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\1. 최상위\1. 툴</Filter>
     </ClCompile>
     <ClCompile Include="Tool_Manager.cpp">
-      <Filter>1. 코어\7. 매니저\1. 최상위\1. 툴</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\1. 최상위\1. 툴</Filter>
     </ClCompile>
     <ClCompile Include="DX11_Renderer.ixx">
       <Filter>4. 뷰\1. DX11</Filter>
@@ -275,31 +302,31 @@
       <Filter>4. 뷰</Filter>
     </ClCompile>
     <ClCompile Include="Calculator_Manager.ixx">
-      <Filter>1. 코어\7. 매니저\2. 객체\2. 귀속재료 계산기 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\2. 귀속재료 계산기 매니저</Filter>
     </ClCompile>
     <ClCompile Include="Calculator_Manager.cpp">
-      <Filter>1. 코어\7. 매니저\2. 객체\2. 귀속재료 계산기 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\2. 귀속재료 계산기 매니저</Filter>
     </ClCompile>
     <ClCompile Include="Gem_Finder_Manager.ixx">
-      <Filter>1. 코어\7. 매니저\2. 객체\3. 보석 최저가 검색기 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\3. 보석 최저가 검색기 매니저</Filter>
     </ClCompile>
     <ClCompile Include="Gem_Finder_Manager.cpp">
-      <Filter>1. 코어\7. 매니저\2. 객체\3. 보석 최저가 검색기 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\3. 보석 최저가 검색기 매니저</Filter>
     </ClCompile>
     <ClCompile Include="Tracker_Manager.ixx">
-      <Filter>1. 코어\7. 매니저\2. 객체\4. 낙원력 트래커 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\4. 낙원력 트래커 매니저</Filter>
     </ClCompile>
     <ClCompile Include="Tracker_Manager.cpp">
-      <Filter>1. 코어\7. 매니저\2. 객체\4. 낙원력 트래커 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\4. 낙원력 트래커 매니저</Filter>
     </ClCompile>
     <ClCompile Include="Text_Encoding.ixx">
-      <Filter>1. 코어\7. 매니저\1. 최상위</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\1. 최상위</Filter>
     </ClCompile>
     <ClCompile Include="Singleton.ixx">
-      <Filter>1. 코어\7. 매니저\1. 최상위</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\1. 최상위</Filter>
     </ClCompile>
     <ClCompile Include="Text_Encoding.cpp">
-      <Filter>1. 코어\7. 매니저\1. 최상위</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\1. 최상위</Filter>
     </ClCompile>
     <ClCompile Include="Application.ixx">
       <Filter>소스 파일\1. 앱</Filter>
@@ -309,6 +336,84 @@
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일\1. 앱</Filter>
+    </ClCompile>
+    <ClCompile Include="Input.ixx">
+      <Filter>1. 코어\2. 입력</Filter>
+    </ClCompile>
+    <ClCompile Include="Platform.ixx">
+      <Filter>1. 코어</Filter>
+    </ClCompile>
+    <ClCompile Include="Platform.cpp">
+      <Filter>1. 코어</Filter>
+    </ClCompile>
+    <ClCompile Include="Notifier.ixx">
+      <Filter>1. 코어</Filter>
+    </ClCompile>
+    <ClCompile Include="Notifier.cpp">
+      <Filter>1. 코어</Filter>
+    </ClCompile>
+    <ClCompile Include="Tool_Context.ixx">
+      <Filter>1. 코어</Filter>
+    </ClCompile>
+    <ClCompile Include="Control_Host.ixx">
+      <Filter>4. 뷰\4. UI\1. 컨트롤</Filter>
+    </ClCompile>
+    <ClCompile Include="Control.cpp">
+      <Filter>4. 뷰\4. UI\1. 컨트롤</Filter>
+    </ClCompile>
+    <ClCompile Include="Control.ixx">
+      <Filter>4. 뷰\4. UI\1. 컨트롤</Filter>
+    </ClCompile>
+    <ClCompile Include="Control_Host.cpp">
+      <Filter>4. 뷰\4. UI\1. 컨트롤</Filter>
+    </ClCompile>
+    <ClCompile Include="Button.cpp">
+      <Filter>4. 뷰\4. UI\3. 버튼</Filter>
+    </ClCompile>
+    <ClCompile Include="Button.ixx">
+      <Filter>4. 뷰\4. UI\3. 버튼</Filter>
+    </ClCompile>
+    <ClCompile Include="Text_Box.ixx">
+      <Filter>4. 뷰\4. UI\2. 텍스트박스</Filter>
+    </ClCompile>
+    <ClCompile Include="Text_Box.cpp">
+      <Filter>4. 뷰\4. UI\2. 텍스트박스</Filter>
+    </ClCompile>
+    <ClCompile Include="Label.ixx">
+      <Filter>4. 뷰\4. UI\4. 라벨</Filter>
+    </ClCompile>
+    <ClCompile Include="Label.cpp">
+      <Filter>4. 뷰\4. UI\4. 라벨</Filter>
+    </ClCompile>
+    <ClCompile Include="API_Key_Dialog.ixx">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="API_Key_Dialog.cpp">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="Dialog.ixx">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="Dialog.cpp">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="Message_Dialog.ixx">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="Message_Dialog.cpp">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="Toast_Host.ixx">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="Toast_Host.cpp">
+      <Filter>4. 뷰\4. UI\5. 모달</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Notifier.ixx">
+      <Filter>4. 뷰\4. UI\6. 알림창</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Notifier.cpp">
+      <Filter>4. 뷰\4. UI\6. 알림창</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

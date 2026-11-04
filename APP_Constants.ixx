@@ -6,7 +6,7 @@ import std;
 export namespace LostArkMultiTool::Core::APPConstants
 {
 	//	프로그램 버전 (원격 설정의 LatestVersion과 비교 → 패치노트 버전을 올릴 때 같이 올릴 것)
-	inline constexpr std::string_view APP_VERSION{ "0.5.0" };
+	inline constexpr std::string_view APP_VERSION{ "0.6.0" };
 
 	//	툴별 저장 파일 이름 (툴마다 파일을 따로 씀, 전체 경로는 GetDataFilePath가 실행 파일 위치 기준으로 계산)
 	inline constexpr std::string_view ROSTER_DATA_FILE_NAME{ "LostArkRosterData.json" };	//	귀속재료 계산기 (원본 C#과 같은 파일)

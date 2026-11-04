@@ -32,8 +32,18 @@ export namespace LostArkMultiTool::Views
         void Clear(const Core::Color& color) override;
         void FillRect(const Core::RectF& rect, const Core::Color& color) override;
         void DrawRect(const Core::RectF& rect, const Core::Color& color, float strokeWidth) override;
+        void FillRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color) override;
+        void DrawRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color, float strokeWidth) override;
         void DrawLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth) override;
         void DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style) override;
+
+        [[nodiscard]] Core::SizeF MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth) override;
+        [[nodiscard]] std::vector<float> MeasureCaretPositions(std::wstring_view text, const Core::TextStyle& style) override;
+
+        void PushClip(const Core::RectF& rect) override;
+        void PopClip() override;
+        void PushOpacity(float opacity) override;
+        void PopOpacity() override;
 
     private:
         class Impl;

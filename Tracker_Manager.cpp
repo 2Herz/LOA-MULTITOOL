@@ -1,7 +1,9 @@
 ﻿module LostArkMultiTool.Views.TrackerManager;
 
 import std;
+import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.Renderer;
+import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Views.PlaceholderView;
 
 namespace LostArkMultiTool::Views
@@ -21,9 +23,9 @@ namespace LostArkMultiTool::Views
         return TAB_TITLE;
     }
 
-    void TrackerManager::Initialize()
+    void TrackerManager::Initialize(Core::ToolContext& /*context*/)
     {
-        // 화면 단계에서 채울 부분: 낙원력 기록 불러오기
+        // 화면 단계에서 채울 부분: 공용 서비스(API · 알림) 보관, 낙원력 기록 불러오기
     }
 
     void TrackerManager::Shutdown()
@@ -43,5 +45,15 @@ namespace LostArkMultiTool::Views
     void TrackerManager::Render(Core::Renderer& renderer, const Core::RectF& contentArea)
     {
         DrawPlaceholder(renderer, contentArea, TAB_TITLE, PLACEHOLDER_DESCRIPTION);
+    }
+
+    bool TrackerManager::HandleInput(const Core::InputEvent& /*event*/)
+    {
+        return false;   // 아직 입력을 받는 부품이 없음
+    }
+
+    Core::CursorShape TrackerManager::GetCursor() const noexcept
+    {
+        return Core::CursorShape::CURSOR_ARROW;
     }
 }

@@ -1,10 +1,13 @@
 ﻿export module LostArkMultiTool.Views.MainWindow;
 
 import std;
+import LostArkMultiTool.Core.Input;
+import LostArkMultiTool.Core.Platform;
+import LostArkMultiTool.Core.Renderer;
 
 export namespace LostArkMultiTool::Views
 {
-    // 창에서 일어난 일을 받는 쪽 (Application이 구현) — 마우스 좌표는 DIP 단위
+    // 창에서 일어난 일을 받는 쪽 (Application이 구현)
     class WindowEventHandler
     {
     public:
@@ -12,10 +15,7 @@ export namespace LostArkMultiTool::Views
 
         virtual void OnResize(int pixelWidth, int pixelHeight) = 0;   // 스왑체인 크기는 실제 픽셀
         virtual void OnDPIChanged(float dpi) = 0;                     // 다른 배율 모니터로 옮겨 갔을 때
-        virtual void OnMouseMove(float x, float y) = 0;
-        virtual void OnMouseLeave() = 0;
-        virtual void OnMouseDown(float x, float y) = 0;               // 왼쪽 버튼
-        virtual void OnKeyDown(unsigned virtualKey, bool isCtrlDown, bool isShiftDown) = 0;
+        virtual void OnInput(const Core::InputEvent& event) = 0;      // 마우스 · 키보드 · 한글 입력 (좌표는 DIP)
     };
 
     // 창 안쪽 크기 (실제 픽셀)
@@ -25,18 +25,20 @@ export namespace LostArkMultiTool::Views
         int m_height{};
     };
 
-    // Win32 창 (DX11 화면이 그려지는 바탕) — Windows 타입(HWND 등)은 구현 파일 안에만 둠
-    class MainWindow
+    // Win32 창 (DX11 화면이 그려지는 바탕) + 운영체제 기능(Core::Platform: 클립보드 · IME · 커서 · 링크 열기)
+    // 창 핸들이 있어야 쓸 수 있는 기능들이라 창이 함께 맡음 — Windows 타입(HWND 등)은 구현 파일 안에만 둠
+    class MainWindow final : public Core::Platform
     {
     public:
         // width, height: 처음 창 안쪽 크기 (DIP, 모니터 배율에 맞춰 픽셀로 늘어남)
         MainWindow(std::wstring_view title, int width, int height, WindowEventHandler& handler);
-        ~MainWindow();
+        ~MainWindow() override;
 
         MainWindow(const MainWindow&) = delete;
         MainWindow& operator=(const MainWindow&) = delete;
 
         void Show(int showCommand);
+        void RequestClose();   // 닫기 요청 (메시지 루프에서 처리 → WM_QUIT)
 
         // 쌓인 메시지를 모두 처리 (창이 닫혀 WM_QUIT를 받으면 false)
         [[nodiscard]] bool ProcessMessages();
@@ -49,6 +51,15 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] PixelSize GetClientPixelSize() const;
         [[nodiscard]] bool IsMinimized() const noexcept;
         [[nodiscard]] int GetExitCode() const noexcept;
+
+        // ===== Core::Platform =====
+        [[nodiscard]] std::wstring GetClipboardText() override;
+        bool SetClipboardText(std::wstring_view text) override;
+        void SetCursor(Core::CursorShape shape) override;
+        void SetIMEEnabled(bool isEnabled) override;
+        void SetIMEPosition(const Core::RectF& caretRect) override;
+        void CancelComposition() override;
+        [[nodiscard]] bool OpenURL(std::wstring_view url) override;
 
     private:
         class Impl;

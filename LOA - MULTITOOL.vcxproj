@@ -90,9 +90,10 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>/utf-8 /Zf %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS /Gm- %(AdditionalOptions)</AdditionalOptions>
       <BuildStlModules>true</BuildStlModules>
       <CompileAs>Default</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -112,7 +113,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>/utf-8 /Zf %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS /Gm- %(AdditionalOptions)</AdditionalOptions>
       <BuildStlModules>true</BuildStlModules>
       <CompileAs>Default</CompileAs>
     </ClCompile>
@@ -132,9 +133,10 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>/utf-8 /Zf %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS /Gm- %(AdditionalOptions)</AdditionalOptions>
       <BuildStlModules>true</BuildStlModules>
       <CompileAs>Default</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -154,7 +156,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalOptions>/utf-8 /Zf %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /FS /Gm- %(AdditionalOptions)</AdditionalOptions>
       <BuildStlModules>true</BuildStlModules>
       <CompileAs>Default</CompileAs>
     </ClCompile>
@@ -168,6 +170,13 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="API_Key_Dialog.cpp" />
+    <ClCompile Include="API_Key_Dialog.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="API_Key_Store.cpp" />
     <ClCompile Include="API_Key_Store.ixx">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
@@ -176,7 +185,12 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
     </ClCompile>
     <ClCompile Include="Application.cpp" />
-    <ClCompile Include="Application.ixx" />
+    <ClCompile Include="Application.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="APP_Constants.cpp" />
     <ClCompile Include="APP_Constants.ixx">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
@@ -195,14 +209,42 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
     </ClCompile>
+    <ClCompile Include="Button.cpp" />
+    <ClCompile Include="Button.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Calculator_Manager.cpp" />
     <ClCompile Include="Calculator_Manager.ixx" />
     <ClCompile Include="Character.cpp" />
     <ClCompile Include="Character.ixx" />
     <ClCompile Include="Character_Info.cpp" />
     <ClCompile Include="Character_Info.ixx" />
+    <ClCompile Include="Control.cpp" />
+    <ClCompile Include="Control.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Control_Host.cpp" />
+    <ClCompile Include="Control_Host.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Data_Repository.cpp" />
     <ClCompile Include="Data_Repository.ixx" />
+    <ClCompile Include="Dialog.cpp" />
+    <ClCompile Include="Dialog.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="DPAPI_Key_Store.cpp" />
     <ClCompile Include="DPAPI_Key_Store.ixx">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
@@ -211,11 +253,22 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
     </ClCompile>
     <ClCompile Include="DX11_Renderer.cpp" />
-    <ClCompile Include="DX11_Renderer.ixx" />
+    <ClCompile Include="DX11_Renderer.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Gem_Finder_Manager.cpp" />
     <ClCompile Include="Gem_Finder_Manager.ixx" />
     <ClCompile Include="Gist_Server_Config_Checker.cpp" />
     <ClCompile Include="Gist_Server_Config_Checker.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Input.ixx">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
@@ -229,6 +282,13 @@
     <ClCompile Include="JSON_File_Store.ixx" />
     <ClCompile Include="JSON_Value.cpp" />
     <ClCompile Include="JSON_Value.ixx" />
+    <ClCompile Include="Label.cpp" />
+    <ClCompile Include="Label.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Local_Time.cpp" />
     <ClCompile Include="Local_Time.ixx" />
     <ClCompile Include="main.cpp" />
@@ -236,8 +296,36 @@
     <ClCompile Include="Main_Window.ixx" />
     <ClCompile Include="Market_API.cpp" />
     <ClCompile Include="Market_API.ixx" />
+    <ClCompile Include="Message_Dialog.cpp" />
+    <ClCompile Include="Message_Dialog.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Notifier.cpp" />
+    <ClCompile Include="Notifier.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Overlay_Notifier.cpp" />
+    <ClCompile Include="Overlay_Notifier.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Placeholder_View.cpp" />
     <ClCompile Include="Placeholder_View.ixx" />
+    <ClCompile Include="Platform.cpp" />
+    <ClCompile Include="Platform.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Price_Data.cpp" />
     <ClCompile Include="Price_Data.ixx" />
     <ClCompile Include="Renderer.cpp" />
@@ -252,9 +340,24 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
     </ClCompile>
     <ClCompile Include="Singleton.ixx" />
+    <ClCompile Include="Text_Box.cpp" />
+    <ClCompile Include="Text_Box.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Text_Encoding.cpp" />
     <ClCompile Include="Text_Encoding.ixx" />
     <ClCompile Include="Theme.ixx" />
+    <ClCompile Include="Toast_Host.cpp" />
+    <ClCompile Include="Toast_Host.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Tool_Context.ixx" />
     <ClCompile Include="Tool_Manager.cpp" />
     <ClCompile Include="Tool_Manager.ixx" />
     <ClCompile Include="Tracker_Manager.cpp" />

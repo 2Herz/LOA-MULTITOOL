@@ -5,8 +5,8 @@
 import std;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Views.Application;
-                                                                            L
-namespace LostArkMultiTool::App
+
+namespace LostArkMultiTool::APP
 {
     namespace
     {
@@ -37,7 +37,7 @@ namespace LostArkMultiTool::App
 }
 
 // GUI 하위 시스템(/SUBSYSTEM:WINDOWS)의 진입점
-int WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ PWSTR, _In_ int showCommand)
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int showCommand)
 {
     using namespace LostArkMultiTool;
 
@@ -48,11 +48,11 @@ int WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ PWSTR, _In_ int sho
     }
     catch (const std::exception& exception)
     {
-        App::ShowFatalError(exception);
+        APP::ShowFatalError(exception);
     }
     catch (...)
     {
-        App::ShowFatalError(App::UNKNOWN_ERROR_MESSAGE);
+        APP::ShowFatalError(APP::UNKNOWN_ERROR_MESSAGE);
     }
-    return App::EXIT_CODE_FAILURE;
+    return APP::EXIT_CODE_FAILURE;
 }

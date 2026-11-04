@@ -26,6 +26,10 @@ namespace LostArkMultiTool::Views
         constexpr UINT BACK_BUFFER_INDEX{ 0 };
         constexpr UINT SYNC_INTERVAL_VSYNC{ 1 };              // 모니터 주사율에 맞춰 표시 (불필요한 CPU · GPU 사용 방지)
         constexpr float FONT_SIZE_KEY_SCALE{ 10.0f };         // 글꼴 캐시 키: 크기를 0.1 단위 정수로
+        constexpr float UNBOUNDED_LAYOUT_SIZE{ 100000.0f };   // 글자 측정용 배치 영역 (사실상 무제한, DIP)
+        constexpr float MIN_OPACITY{ 0.0f };
+        constexpr float MAX_OPACITY{ 1.0f };
+        constexpr float IDENTITY_SCALE{ 1.0f };               // 변환 행렬 대각선 (변환 없음)
 
         // 그래픽 카드가 지원하는 기능 수준 (높은 것부터 시도)
         constexpr std::array FEATURE_LEVELS{
@@ -139,6 +143,21 @@ namespace LostArkMultiTool::Views
             }
         }
 
+        [[nodiscard]] DWRITE_PARAGRAPH_ALIGNMENT ToParagraphAlignment(Core::VerticalAlign align) noexcept
+        {
+            switch (align)
+            {
+                case Core::VerticalAlign::ALIGN_TOP:    return DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
+                case Core::VerticalAlign::ALIGN_BOTTOM: return DWRITE_PARAGRAPH_ALIGNMENT_FAR;
+                default:                                return DWRITE_PARAGRAPH_ALIGNMENT_CENTER;
+            }
+        }
+
+        [[nodiscard]] DWRITE_WORD_WRAPPING ToWordWrapping(Core::TextWrap wrap) noexcept
+        {
+            return wrap == Core::TextWrap::WORD_WRAP ? DWRITE_WORD_WRAPPING_WRAP : DWRITE_WORD_WRAPPING_NO_WRAP;
+        }
+
         [[nodiscard]] DWRITE_FONT_WEIGHT ToFontWeight(Core::FontWeight weight) noexcept
         {
             return weight == Core::FontWeight::BOLD ? DWRITE_FONT_WEIGHT_BOLD : DWRITE_FONT_WEIGHT_NORMAL;
@@ -165,8 +184,18 @@ namespace LostArkMultiTool::Views
         void Clear(const Core::Color& color);
         void FillRect(const Core::RectF& rect, const Core::Color& color);
         void DrawRect(const Core::RectF& rect, const Core::Color& color, float strokeWidth);
+        void FillRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color);
+        void DrawRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color, float strokeWidth);
         void DrawLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth);
         void DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style);
+
+        [[nodiscard]] Core::SizeF MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth);
+        [[nodiscard]] std::vector<float> MeasureCaretPositions(std::wstring_view text, const Core::TextStyle& style);
+
+        void PushClip(const Core::RectF& rect);
+        void PopClip();
+        void PushOpacity(float opacity);
+        void PopOpacity();
 
     private:
         // 장치 자원: 그래픽 장치를 잃으면 버리고 다시 만듦
@@ -181,6 +210,8 @@ namespace LostArkMultiTool::Views
         [[nodiscard]] HRESULT CreateD3DDevice(D3D_DRIVER_TYPE driverType);
         [[nodiscard]] ID2D1SolidColorBrush* PrepareBrush(const Core::Color& color);
         [[nodiscard]] IDWriteTextFormat* GetTextFormat(const Core::TextStyle& style);
+        [[nodiscard]] IDWriteTextFormat* PrepareTextFormat(const Core::TextStyle& style);
+        [[nodiscard]] COMPtr<IDWriteTextLayout> CreateMeasureLayout(std::wstring_view text, const Core::TextStyle& style, float maxWidth);
 
         HWND m_window{};
         float m_dpi{ DEFAULT_DPI };
@@ -405,6 +436,18 @@ namespace LostArkMultiTool::Views
         m_d2dContext->DrawRectangle(ToD2DRect(rect), PrepareBrush(color), strokeWidth);
     }
 
+    void DX11Renderer::Impl::FillRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color)
+    {
+        const D2D1_ROUNDED_RECT roundedRect{ ToD2DRect(rect), radius, radius };
+        m_d2dContext->FillRoundedRectangle(&roundedRect, PrepareBrush(color));
+    }
+
+    void DX11Renderer::Impl::DrawRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color, float strokeWidth)
+    {
+        const D2D1_ROUNDED_RECT roundedRect{ ToD2DRect(rect), radius, radius };
+        m_d2dContext->DrawRoundedRectangle(&roundedRect, PrepareBrush(color), strokeWidth, nullptr);
+    }
+
     void DX11Renderer::Impl::DrawLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth)
     {
         m_d2dContext->DrawLine(D2D1_POINT_2F{ startX, startY }, D2D1_POINT_2F{ endX, endY }, PrepareBrush(color), strokeWidth);
@@ -412,11 +455,85 @@ namespace LostArkMultiTool::Views
 
     void DX11Renderer::Impl::DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style)
     {
-        IDWriteTextFormat* textFormat{ GetTextFormat(style) };
-        textFormat->SetTextAlignment(ToTextAlignment(style.m_align));   // 글꼴은 공유하므로 그릴 때마다 정렬을 맞춤
+        if (text.empty()) return;
 
-        m_d2dContext->DrawText(text.data(), static_cast<UINT32>(text.size()), textFormat, ToD2DRect(rect), PrepareBrush(color),
+        m_d2dContext->DrawText(text.data(), static_cast<UINT32>(text.size()), PrepareTextFormat(style), ToD2DRect(rect), PrepareBrush(color),
             D2D1_DRAW_TEXT_OPTIONS_CLIP);
+    }
+
+    Core::SizeF DX11Renderer::Impl::MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth)
+    {
+        const COMPtr<IDWriteTextLayout> layout{ CreateMeasureLayout(text, style, maxWidth) };
+
+        DWRITE_TEXT_METRICS metrics{};
+        ThrowIfFailed(layout->GetMetrics(&metrics), "글자 크기 측정");
+        return Core::SizeF{ metrics.widthIncludingTrailingWhitespace, metrics.height };
+    }
+
+    // 글자 경계마다 x 위치 (한 글자로 보이는 묶음(클러스터) 안쪽 위치는 묶음의 시작 위치로 맞춤)
+    std::vector<float> DX11Renderer::Impl::MeasureCaretPositions(std::wstring_view text, const Core::TextStyle& style)
+    {
+        std::vector<float> positions(text.size() + 1, 0.0f);
+        if (text.empty()) return positions;
+
+        Core::TextStyle singleLineStyle{ style };
+        singleLineStyle.m_wrap = Core::TextWrap::SINGLE_LINE;
+        const COMPtr<IDWriteTextLayout> layout{ CreateMeasureLayout(text, singleLineStyle, UNBOUNDED_LAYOUT_SIZE) };
+
+        // 1) 묶음 개수 → 2) 묶음별 너비 (첫 호출은 버퍼 부족이 정상)
+        UINT32 clusterCount{};
+        const HRESULT countResult{ layout->GetClusterMetrics(nullptr, 0, &clusterCount) };
+        if (countResult != E_NOT_SUFFICIENT_BUFFER) ThrowIfFailed(countResult, "글자 위치 측정");
+
+        std::vector<DWRITE_CLUSTER_METRICS> clusters(clusterCount);
+        ThrowIfFailed(layout->GetClusterMetrics(clusters.data(), clusterCount, &clusterCount), "글자 위치 측정");
+
+        std::size_t position{};
+        float x{};
+        for (const DWRITE_CLUSTER_METRICS& cluster : clusters)
+        {
+            const std::size_t clusterEnd{ std::min(position + cluster.length, text.size()) };
+            for (std::size_t index{ position }; index < clusterEnd; ++index) positions[index] = x;
+
+            x += cluster.width;
+            position = clusterEnd;
+        }
+        for (std::size_t index{ position }; index < positions.size(); ++index) positions[index] = x;   // 끝 위치
+
+        return positions;
+    }
+
+    void DX11Renderer::Impl::PushClip(const Core::RectF& rect)
+    {
+        m_d2dContext->PushAxisAlignedClip(ToD2DRect(rect), D2D1_ANTIALIAS_MODE_ALIASED);
+    }
+
+    void DX11Renderer::Impl::PopClip()
+    {
+        m_d2dContext->PopAxisAlignedClip();
+    }
+
+    // 레이어를 쌓아 그 안에 그린 것 전체에 투명도 적용 (대화상자 · 알림이 서서히 나타날 때)
+    void DX11Renderer::Impl::PushOpacity(float opacity)
+    {
+        constexpr float INFINITE_BOUND{ std::numeric_limits<float>::max() };
+
+        D2D1_LAYER_PARAMETERS1 parameters{};
+        parameters.contentBounds = D2D1_RECT_F{ -INFINITE_BOUND, -INFINITE_BOUND, INFINITE_BOUND, INFINITE_BOUND };
+        parameters.geometricMask = nullptr;
+        parameters.maskAntialiasMode = D2D1_ANTIALIAS_MODE_PER_PRIMITIVE;
+        parameters.maskTransform._11 = IDENTITY_SCALE;   // 단위 행렬 (나머지 칸은 0)
+        parameters.maskTransform._22 = IDENTITY_SCALE;
+        parameters.opacity = std::clamp(opacity, MIN_OPACITY, MAX_OPACITY);
+        parameters.opacityBrush = nullptr;
+        parameters.layerOptions = D2D1_LAYER_OPTIONS1_NONE;
+
+        m_d2dContext->PushLayer(&parameters, nullptr);   // 레이어 객체는 Direct2D가 알아서 관리 (Windows 8 이상)
+    }
+
+    void DX11Renderer::Impl::PopOpacity()
+    {
+        m_d2dContext->PopLayer();
     }
 
     ID2D1SolidColorBrush* DX11Renderer::Impl::PrepareBrush(const Core::Color& color)
@@ -425,7 +542,32 @@ namespace LostArkMultiTool::Views
         return m_brush.Get();
     }
 
-    // 같은 (크기, 굵기) 글꼴은 한 번만 만들어 재사용 (반환 포인터는 캐시가 소유)
+    // 글꼴은 (크기, 굵기)별로 공유하므로 그릴 때마다 정렬 · 줄바꿈을 맞춤
+    IDWriteTextFormat* DX11Renderer::Impl::PrepareTextFormat(const Core::TextStyle& style)
+    {
+        IDWriteTextFormat* textFormat{ GetTextFormat(style) };
+        textFormat->SetTextAlignment(ToTextAlignment(style.m_align));
+        textFormat->SetParagraphAlignment(ToParagraphAlignment(style.m_verticalAlign));
+        textFormat->SetWordWrapping(ToWordWrapping(style.m_wrap));
+        return textFormat;
+    }
+
+    // 측정 전용 배치 (정렬은 왼쪽 위 고정 → 아주 큰 배치 영역에서도 위치 계산이 흔들리지 않음)
+    COMPtr<IDWriteTextLayout> DX11Renderer::Impl::CreateMeasureLayout(std::wstring_view text, const Core::TextStyle& style, float maxWidth)
+    {
+        IDWriteTextFormat* textFormat{ PrepareTextFormat(style) };
+        const float layoutWidth{ style.m_wrap == Core::TextWrap::WORD_WRAP ? std::max(maxWidth, 0.0f) : UNBOUNDED_LAYOUT_SIZE };
+
+        COMPtr<IDWriteTextLayout> layout;
+        ThrowIfFailed(m_writeFactory->CreateTextLayout(text.data(), static_cast<UINT32>(text.size()), textFormat,
+            layoutWidth, UNBOUNDED_LAYOUT_SIZE, layout.ReleaseAndGetAddressOf()), "글자 배치");
+
+        layout->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+        layout->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+        return layout;
+    }
+
+    // 같은 (크기, 굵기) 글꼴은 한 번만 만들어 재사용 (반환 포인터는 캐시가 소유, 정렬 · 줄바꿈은 PrepareTextFormat에서)
     IDWriteTextFormat* DX11Renderer::Impl::GetTextFormat(const Core::TextStyle& style)
     {
         const std::pair key{ static_cast<int>(std::lround(style.m_size * FONT_SIZE_KEY_SCALE)), style.m_weight };
@@ -435,9 +577,6 @@ namespace LostArkMultiTool::Views
         ThrowIfFailed(m_writeFactory->CreateTextFormat(Theme::FONT_FAMILY, nullptr, ToFontWeight(style.m_weight),
             DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, style.m_size, Theme::FONT_LOCALE,
             textFormat.ReleaseAndGetAddressOf()), "글꼴 생성");
-
-        textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);   // 사각형 안에서 세로 가운데
-        textFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);              // 한 줄로만
 
         IDWriteTextFormat* rawFormat{ textFormat.Get() };
         m_textFormats.emplace(key, std::move(textFormat));
@@ -496,6 +635,16 @@ namespace LostArkMultiTool::Views
         m_impl->DrawRect(rect, color, strokeWidth);
     }
 
+    void DX11Renderer::FillRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color)
+    {
+        m_impl->FillRoundedRect(rect, radius, color);
+    }
+
+    void DX11Renderer::DrawRoundedRect(const Core::RectF& rect, float radius, const Core::Color& color, float strokeWidth)
+    {
+        m_impl->DrawRoundedRect(rect, radius, color, strokeWidth);
+    }
+
     void DX11Renderer::DrawLine(float startX, float startY, float endX, float endY, const Core::Color& color, float strokeWidth)
     {
         m_impl->DrawLine(startX, startY, endX, endY, color, strokeWidth);
@@ -504,5 +653,35 @@ namespace LostArkMultiTool::Views
     void DX11Renderer::DrawString(std::wstring_view text, const Core::RectF& rect, const Core::Color& color, const Core::TextStyle& style)
     {
         m_impl->DrawString(text, rect, color, style);
+    }
+
+    Core::SizeF DX11Renderer::MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth)
+    {
+        return m_impl->MeasureString(text, style, maxWidth);
+    }
+
+    std::vector<float> DX11Renderer::MeasureCaretPositions(std::wstring_view text, const Core::TextStyle& style)
+    {
+        return m_impl->MeasureCaretPositions(text, style);
+    }
+
+    void DX11Renderer::PushClip(const Core::RectF& rect)
+    {
+        m_impl->PushClip(rect);
+    }
+
+    void DX11Renderer::PopClip()
+    {
+        m_impl->PopClip();
+    }
+
+    void DX11Renderer::PushOpacity(float opacity)
+    {
+        m_impl->PushOpacity(opacity);
+    }
+
+    void DX11Renderer::PopOpacity()
+    {
+        m_impl->PopOpacity();
     }
 }

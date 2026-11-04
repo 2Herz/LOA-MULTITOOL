@@ -1,15 +1,24 @@
 ﻿export module LostArkMultiTool.Views.Application;
 
 import std;
+import LostArkMultiTool.Core.APIKeyStore;
+import LostArkMultiTool.Core.Input;
+import LostArkMultiTool.Core.MarketAPI;
 import LostArkMultiTool.Core.Renderer;
+import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Core.ToolManager;
-import LostArkMultiTool.Views.MainWindow;
+import LostArkMultiTool.Views.APIKeyDialog;
 import LostArkMultiTool.Views.DX11Renderer;
+import LostArkMultiTool.Views.MainWindow;
+import LostArkMultiTool.Views.UI.Button;
+import LostArkMultiTool.Views.UI.ControlHost;
+import LostArkMultiTool.Views.UI.OverlayNotifier;
 
 export namespace LostArkMultiTool::Views
 {
     // 프로그램 본체 (xmind의 Main)
-    // 창 · 렌더러를 소유하고, 최상위 매니저 3종을 탭으로 전환하며 매 프레임 갱신 · 그리기를 맡김
+    // 창 · 렌더러 · 공용 서비스(API 키 · API · 알림)를 소유하고, 최상위 매니저 3종을 탭으로 전환하며
+    // 매 프레임 갱신 · 그리기 · 입력 나눠 주기를 맡김 (구현 클래스를 만드는 곳은 여기 한 곳 → 매니저는 인터페이스만 앎)
     class Application final : public WindowEventHandler
     {
     public:
@@ -25,35 +34,69 @@ export namespace LostArkMultiTool::Views
         // ===== WindowEventHandler =====
         void OnResize(int pixelWidth, int pixelHeight) override;
         void OnDPIChanged(float dpi) override;
-        void OnMouseMove(float x, float y) override;
-        void OnMouseLeave() override;
-        void OnMouseDown(float x, float y) override;
-        void OnKeyDown(unsigned virtualKey, bool isCtrlDown, bool isShiftDown) override;
+        void OnInput(const Core::InputEvent& event) override;
 
     private:
         static constexpr std::size_t TOOL_COUNT{ 3 };   // 귀속재료 계산기 · 보석 최저가 검색기 · 낙원력 트래커
 
+        // 마우스를 누른 곳 (뗄 때까지 같은 곳으로 입력을 보냄 → 탭 화면에서 끌다가 탭 막대로 넘어가도 끊기지 않음)
+        enum class PointerOwner
+        {
+            POINTER_NONE,
+            POINTER_HEADER,   // 탭 막대
+            POINTER_TOOL      // 탭 내용
+        };
+
+        // ===== 매니저 =====
         void InitializeTools();
         void ShutdownTools();
         void SelectTool(std::size_t index);
 
+        // ===== API 키 =====
+        void OpenAPIKeyDialog(APIKeyDialogMode mode);
+        [[nodiscard]] bool SaveAPIKey(const std::string& apiKey);
+
+        // ===== 입력 =====
+        [[nodiscard]] bool HandleShortcut(const Core::KeyEvent& event);
+        void RouteInput(const Core::InputEvent& event);
+        void RouteMouseButton(const Core::InputEvent& event, const Core::MouseButtonEvent& button);
+        void SyncModalState();
+        void UpdateCursor();
+
+        // ===== 프레임 =====
         void Update(double deltaSeconds);
         void Render();
         void RenderTabBar();
+        void LayoutHeader();
 
         [[nodiscard]] Core::RectF GetTabRect(std::size_t index) const noexcept;
         [[nodiscard]] Core::RectF GetContentRect() const noexcept;
+        [[nodiscard]] Core::RectF GetScreenRect() const noexcept;
         [[nodiscard]] std::optional<std::size_t> FindTabAt(float x, float y) const noexcept;
+        [[nodiscard]] static bool IsInHeader(float y) noexcept;
         [[nodiscard]] Core::ToolManager& GetActiveTool() const noexcept;
 
         std::array<std::reference_wrapper<Core::ToolManager>, TOOL_COUNT> m_tools;   // 탭 순서 (매니저는 싱글톤이 소유)
-        std::unique_ptr<MainWindow> m_window;        // 렌더러보다 먼저 선언 → 렌더러(스왑체인)가 창보다 먼저 해제됨
+
+        // 선언 순서 = 생성 순서, 해제는 반대 순서 (알림 · 렌더러가 창보다 먼저 해제됨)
+        std::unique_ptr<MainWindow> m_window;
         std::unique_ptr<DX11Renderer> m_renderer;
+        std::unique_ptr<Core::APIKeyStore> m_keyStore;
+        std::unique_ptr<Core::MarketAPI> m_marketAPI;
+        std::unique_ptr<UI::OverlayNotifier> m_notifier;
+        std::unique_ptr<Core::ToolContext> m_toolContext;   // 매니저에 빌려주는 공용 서비스 묶음 (주소가 바뀌지 않게 힙에)
+        UI::ControlHost m_headerHost;                       // 탭 막대 오른쪽 버튼
+        UI::Button* m_apiKeyButton{};                       // m_headerHost가 소유
 
         std::size_t m_activeIndex{};
-        std::optional<std::size_t> m_hoverIndex;     // 마우스를 올린 탭
-        std::size_t m_initializedToolCount{};        // Initialize가 끝난 매니저 수 (그만큼만 Shutdown)
-        float m_indicatorPosition{};                 // 탭 밑줄 위치 (탭 번호 단위, 선택한 탭을 부드럽게 따라감)
-        float m_contentFade{};                       // 탭을 바꾼 직후 내용 영역을 덮는 배경색 투명도 (1 → 0)
+        std::optional<std::size_t> m_hoverIndex;            // 마우스를 올린 탭
+        std::size_t m_initializedToolCount{};               // Initialize가 끝난 매니저 수 (그만큼만 Shutdown)
+        PointerOwner m_pointerOwner{ PointerOwner::POINTER_NONE };
+        bool m_isPointerInHeader{};
+        bool m_isModal{};                                   // 대화상자가 열려 있음 (탭 · 단축키 입력 막힘)
+        bool m_hasAPIKey{};
+        bool m_isAPIKeyDialogOpen{};                        // API 키 창이 두 번 열리지 않게
+        float m_indicatorPosition{};                        // 탭 밑줄 위치 (탭 번호 단위, 선택한 탭을 부드럽게 따라감)
+        float m_contentFade{};                              // 탭을 바꾼 직후 내용 영역을 덮는 배경색 투명도 (1 → 0)
     };
 }

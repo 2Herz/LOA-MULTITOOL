@@ -1,9 +1,11 @@
 ﻿export module LostArkMultiTool.Views.GemFinderManager;
 
 import std;
+import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.Renderer;
-import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Core.Singleton;
+import LostArkMultiTool.Core.ToolContext;
+import LostArkMultiTool.Core.ToolManager;
 
 export namespace LostArkMultiTool::Views
 {
@@ -14,7 +16,7 @@ export namespace LostArkMultiTool::Views
     public:
         [[nodiscard]] std::wstring_view GetTabTitle() const noexcept override;
 
-        void Initialize() override;
+        void Initialize(Core::ToolContext& context) override;
         void Shutdown() override;
 
         void OnActivated() override;
@@ -22,6 +24,9 @@ export namespace LostArkMultiTool::Views
 
         void Update(double deltaSeconds) override;
         void Render(Core::Renderer& renderer, const Core::RectF& contentArea) override;
+
+        [[nodiscard]] bool HandleInput(const Core::InputEvent& event) override;
+        [[nodiscard]] Core::CursorShape GetCursor() const noexcept override;
 
     private:
         friend class Core::Singleton<GemFinderManager>;   // GetInstance만 생성 · 소멸할 수 있게
