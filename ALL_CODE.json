@@ -1,0 +1,2617 @@
+﻿export module LostArkCalculator.Core.APPConstants;
+
+import std;
+
+//	프로그램 전체에서 쓰는 상수 모음 (코드에 숫자·문자열을 직접 적지 않기 위함)
+export namespace LostArkCalculator::Core::APPConstants
+{
+	//	저장 파일 이름 (전체 경로는 아래 함수가 실행 파일 위치 기준으로 계산)
+	inline constexpr std::string_view SAVE_FILE_NAME{ "LostArkTotalData.json" };
+	inline constexpr std::string_view BACKUP_FILE_SUFFIX{ ".bak" };
+	inline constexpr std::string_view TEMP_FILE_SUFFIX{ ".tmp" };
+
+	inline constexpr std::string_view DEFAULT_CHARACTER_NAME{ "본캐" };
+
+	inline constexpr int SECONDS_PER_MINUTE{ 60 };
+	inline constexpr int MS_PER_SECOND{ 1000 };
+	inline constexpr int MS_PER_MINUTE{ SECONDS_PER_MINUTE * MS_PER_SECOND };
+
+	inline constexpr int AUTO_REFRESH_MINUTES{ 5 };
+	inline constexpr int AUTO_REFRESH_INTERVAL_MS{ AUTO_REFRESH_MINUTES * MS_PER_MINUTE };
+
+	inline constexpr int API_TIMEOUT_SECONDS{ 15 };
+	inline constexpr int CONFIG_TIMEOUT_SECONDS{ 5 };
+	inline constexpr std::string_view DEFAULT_MAINTENANCE_MESSAGE{ "서버 점검중!, 점검이 완료되면 새 파일 다운로드 후에 실행하세요!" };
+
+	//	실행 중 점검 스위치 확인 주기
+	inline constexpr int CONFIG_CHECK_INTERVAL_MINUTES{ 30 };
+	inline constexpr int CONFIG_CHECK_INTERVAL_MS{ CONFIG_CHECK_INTERVAL_MINUTES * MS_PER_MINUTE };
+
+	//	상위 재료(결정·위대한·상급) 사용 기준 아이템 레벨
+	inline constexpr double TOP_MATERIAL_MIN_LEVEL{ 1730.00 };
+
+	//	표와 열 번호(1~7)와 같은 순서의 재료 키 (0번은 구분 열이라 비워 둠)
+	inline constexpr size_t MAT_COLUMN_COUNT{ 8 };
+	inline constexpr std::array<std::string_view, MAT_COLUMN_COUNT> MAT_KEYS
+	{
+		"", "Shard", "Dest", "Guard", "Leap", "Fusion", "Yong", "Bing"
+	};
+
+	//	실행 파일이 있는 폴더 기준 전체 경로
+	std::filesystem::path GetSaveFilePath();
+	std::filesystem::path GetBackupFilePath();
+	std::filesystem::path GetTempFilePath();
+}﻿export module LostArkCalculator.Core.APPExceptions;
+
+import std;
+
+export namespace LostArkCalculator::Core
+{
+	//	API 키가 잘못됐을 때 (HTTP 401)
+	class APIKeyInvalidException : public std::runtime_error
+	{
+	public:
+		APIKeyInvalidException();
+	};
+
+	//	API 호출 한도를 넘었을 때 (HTTP 429)
+	class APIRateLimitException : public std::runtime_error
+	{
+	public:
+		APIRateLimitException();
+	};
+}﻿export module LostArkCalculator.Core.AssetCalculator;
+
+import std;
+import LostArkCalculator.Core.MarketAPI;
+import LostArkCalculator.Models.PriceData;
+
+export namespace LostArkCalculator::Core
+{
+    // 재료 자산 계산 인터페이스
+    class AssetCalculator
+    {
+    public:
+        virtual ~AssetCalculator();
+
+        // 계산이 끝났을 때 호출될 함수 등록 (원본 C# event Action 대응)
+        virtual void AddAssetCalculatedListener(std::function<void()> listener) = 0;
+
+        // 복사본을 반환: 백그라운드 시세 갱신과 동시에 읽어도 안전하도록
+        [[nodiscard]] virtual std::unordered_map<std::string, Models::PriceData> GetTopPrices() const = 0;
+        [[nodiscard]] virtual std::unordered_map<std::string, Models::PriceData> GetBotPrices() const = 0;
+        [[nodiscard]] virtual bool HasPrices() const = 0;
+
+        virtual void FetchMarketPrices(MarketAPI& api) = 0;
+        virtual void CalculateCharacterAssets(std::string_view charName) = 0;
+        virtual void CalculateAllCharacters() = 0;
+        virtual void CalculateRosterHistory() = 0;
+    };
+}﻿export module LostArkCalculator.Services.AssetCalculationService;
+
+import std;
+import LostArkCalculator.Core.DataRepository;
+import LostArkCalculator.Core.MarketAPI;
+import LostArkCalculator.Core.AssetCalculator;
+import LostArkCalculator.Models.PriceData;
+
+export namespace LostArkCalculator::Services
+{
+    // 재료 자산 계산 서비스
+    // 시세 갱신(FetchMarketPrices)만 백그라운드 스레드에서 호출하고,
+    // 계산·리스너 등록·저장은 UI 스레드에서 호출할 것
+    class AssetCalculationService final : public Core::AssetCalculator
+    {
+    public:
+        // repository는 이 서비스보다 오래 살아 있어야 함
+        explicit AssetCalculationService(Core::DataRepository& repository);
+
+        AssetCalculationService(const AssetCalculationService&) = delete;
+        AssetCalculationService& operator=(const AssetCalculationService&) = delete;
+
+        void AddAssetCalculatedListener(std::function<void()> listener) override;
+
+        [[nodiscard]] std::unordered_map<std::string, Models::PriceData> GetTopPrices() const override;
+        [[nodiscard]] std::unordered_map<std::string, Models::PriceData> GetBotPrices() const override;
+        [[nodiscard]] bool HasPrices() const override;
+
+        void FetchMarketPrices(Core::MarketAPI& api) override;
+        void CalculateCharacterAssets(std::string_view charName) override;
+        void CalculateAllCharacters() override;
+        void CalculateRosterHistory() override;
+
+    private:
+        // 모든 캐릭터의 재료 가치를 다시 계산하고 원정대 합계를 반환
+        double ApplyAllCharacterValues();
+
+        // 등록된 계산 완료 함수들을 차례로 호출
+        void NotifyAssetCalculated();
+
+        Core::DataRepository& m_repository;
+        mutable std::mutex m_pricesMutex;   // 시세 맵 보호 (백그라운드 갱신 ↔ UI 읽기)
+        std::unordered_map<std::string, Models::PriceData> m_topPrices;
+        std::unordered_map<std::string, Models::PriceData> m_botPrices;
+        std::vector<std::function<void()>> m_assetCalculatedListeners;
+    };
+}﻿export module LostArkCalculator.Models.Character;
+
+import std;
+import LostArkCalculator.Models.ItemData;
+
+export namespace LostArkCalculator::Models
+{
+    // 캐릭터 한 명의 정보 + 재료 목록
+    class Character
+    {
+    public:
+        Character();
+
+        [[nodiscard]] const std::optional<std::string>& GetClassName() const noexcept;
+        void SetClassName(std::optional<std::string> className);
+
+        [[nodiscard]] double GetItemLevel() const noexcept;
+        void SetItemLevel(double itemLevel) noexcept;
+
+        [[nodiscard]] const std::unordered_map<std::string, ItemData>& GetMaterials() const noexcept;
+        void SetMaterials(std::unordered_map<std::string, ItemData> materials);
+
+        [[nodiscard]] ItemData& GetMaterial(std::string_view key);
+        [[nodiscard]] const ItemData& GetMaterial(std::string_view key) const;
+
+        // 누락된 재료 키를 빈 ItemData로 채움 (생성·불러오기 후 호출)
+        void EnsureMaterials();
+
+    private:
+        std::optional<std::string> m_className;   // 직업명 (없을 수 있음)
+        double m_itemLevel{};
+        std::unordered_map<std::string, ItemData> m_materials;
+    };
+}﻿export module LostArkCalculator.Models.CharacterInfo;
+
+import std;
+
+export namespace LostArkCalculator::Models
+{
+    // 원정대 API 응답 한 줄 (읽기 전용 값 객체)
+    class CharacterInfo
+    {
+    public:
+        CharacterInfo(std::string characterName,
+            std::optional<std::string> characterClassName,
+            std::optional<std::string> itemMaxLevel,
+            std::optional<std::string> itemAvgLevel);
+
+        [[nodiscard]] const std::string& GetCharacterName() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetCharacterClassName() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetItemMaxLevel() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetItemAvgLevel() const noexcept;
+
+        // "1,740.00" 같은 문자열을 숫자로 바꿈 (실패하면 0)
+        [[nodiscard]] double GetNumericItemLevel() const;
+
+    private:
+        std::string m_characterName;
+        std::optional<std::string> m_characterClassName;
+        std::optional<std::string> m_itemMaxLevel;
+        std::optional<std::string> m_itemAvgLevel;
+    };
+}﻿export module LostArkCalculator.Core.DataRepository;
+
+import std;
+import LostArkCalculator.Models.UserData;
+
+export namespace LostArkCalculator::Core
+{
+    // 저장 파일 읽기·쓰기 인터페이스 (실제 구현은 JSON 저장소가 맡음)
+    class DataRepository
+    {
+    public:
+        virtual ~DataRepository();
+
+        [[nodiscard]] virtual Models::UserData& GetData() = 0;
+        [[nodiscard]] virtual const Models::UserData& GetData() const = 0;
+
+        // 손상 복구 안내 문구 (없으면 nullopt)
+        [[nodiscard]] virtual const std::optional<std::string>& GetLoadWarning() const noexcept = 0;
+
+        virtual void Save() = 0;
+    };
+}﻿export module LostArkCalculator.Models.ItemData;
+
+export namespace LostArkCalculator::Models
+{
+    // 재료 하나의 보유 수량 + 계산된 가치
+    class ItemData
+    {
+    public:
+        ItemData() noexcept;
+
+        [[nodiscard]] double GetTopQty() const noexcept;
+        void SetTopQty(double topQty) noexcept;
+
+        [[nodiscard]] double GetBottomQty() const noexcept;
+        void SetBottomQty(double bottomQty) noexcept;
+
+        [[nodiscard]] double GetCalculatedTopValue() const noexcept;
+        void SetCalculatedTopValue(double calculatedTopValue) noexcept;
+
+        [[nodiscard]] double GetCalculatedBotValue() const noexcept;
+        void SetCalculatedBotValue(double calculatedBotValue) noexcept;
+
+    private:
+        double m_topQty{};
+        double m_bottomQty{};
+        double m_calculatedTopValue{};   // 저장 대상 아님 (원본 [JsonIgnore])
+        double m_calculatedBotValue{};   // 저장 대상 아님 (원본 [JsonIgnore])
+    };
+}﻿export module LostArkCalculator.Services.JSONDataRepository;
+
+import std;
+import LostArkCalculator.Core.DataRepository;
+import LostArkCalculator.Models.UserData;
+
+export namespace LostArkCalculator::Services
+{
+    // JSON 파일 저장소 (손상 시 백업 복구, 임시 파일 → 교체 방식으로 안전하게 저장)
+    class JSONDataRepository final : public Core::DataRepository
+    {
+    public:
+        JSONDataRepository();
+
+        [[nodiscard]] Models::UserData& GetData() override;
+        [[nodiscard]] const Models::UserData& GetData() const override;
+        [[nodiscard]] const std::optional<std::string>& GetLoadWarning() const noexcept override;
+        void Save() override;
+
+    private:
+        Models::UserData m_data;
+        std::optional<std::string> m_loadWarning;
+    };
+}﻿export module LostArkCalculator.Services.JSONValue;
+
+import std;
+
+export namespace LostArkCalculator::Services
+{
+    // JSON 값의 종류
+    enum class JsonType
+    {
+        NULL_VALUE,
+        BOOL_VALUE,
+        NUMBER_VALUE,
+        STRING_VALUE,
+        ARRAY_VALUE,
+        OBJECT_VALUE
+    };
+
+    // JSON 트리의 값 하나 (외부 API 응답처럼 구조가 정해진 응답을 읽을 때 사용)
+    class JSONValue
+    {
+    public:
+        // null 값
+        JSONValue() noexcept;
+
+        [[nodiscard]] static JSONValue CreateBool(bool value);
+        [[nodiscard]] static JSONValue CreateNumber(double value);
+        [[nodiscard]] static JSONValue CreateString(std::string value);
+        [[nodiscard]] static JSONValue CreateArray(std::vector<JSONValue> items);
+        [[nodiscard]] static JSONValue CreateObject(std::vector<std::string> keys, std::vector<JSONValue> values);
+
+        [[nodiscard]] JsonType GetType() const noexcept;
+        [[nodiscard]] bool GetBool() const noexcept;                             // 불리언이 아니면 false
+        [[nodiscard]] double GetNumber() const noexcept;                         // 숫자가 아니면 0
+        [[nodiscard]] const std::string& GetString() const noexcept;             // 문자열이 아니면 빈 문자열
+        [[nodiscard]] const std::vector<JSONValue>& GetItems() const noexcept;   // 배열이 아니면 빈 배열
+
+        // 객체에서 키로 값 찾기 (없거나 객체가 아니면 null 값을 참조)
+        [[nodiscard]] const JSONValue& FindMember(std::string_view key) const noexcept;
+
+    private:
+        JsonType m_type{ JsonType::NULL_VALUE };
+        bool m_boolValue{};
+        double m_numberValue{};
+        std::string m_stringValue;
+        std::vector<JSONValue> m_items;      // 배열의 원소 또는 객체의 값들 (m_keys와 같은 순서)
+        std::vector<std::string> m_keys;     // 객체의 키들
+    };
+
+    // JSON 문자열을 트리로 만듦 (형식이 잘못되면 std::runtime_error)
+    [[nodiscard]] JSONValue ParseJsonText(std::string_view text);
+}﻿export module LostArkCalculator.Services.MarketsAPI;
+
+import std;
+import LostArkCalculator.Core.MarketAPI;
+import LostArkCalculator.Models.CharacterInfo;
+
+export namespace LostArkCalculator::Services
+{
+    // 로스트아크 Open API 통신 (거래소 시세 · 원정대 목록)
+    // 모든 메서드는 블로킹이므로 백그라운드 스레드에서 호출할 것
+    class MarketsAPI final : public Core::MarketAPI
+    {
+    public:
+        explicit MarketsAPI(std::string apiKey);
+        ~MarketsAPI() override;
+
+        MarketsAPI(const MarketsAPI&) = delete;
+        MarketsAPI& operator=(const MarketsAPI&) = delete;
+
+        void SetApiKey(std::string apiKey) override;
+
+        [[nodiscard]] double GetPrice(std::string_view itemName, bool isShard, bool isBundle) override;
+        [[nodiscard]] std::vector<Models::CharacterInfo> GetRoster(std::string_view charName) override;
+
+    private:
+        // WinHTTP 핸들은 구현 파일 안에만 두어 Windows 헤더 매크로가 다른 파일로 새지 않게 함
+        class Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
+}﻿export module LostArkCalculator.Core.MarketAPI;
+
+import std;
+import LostArkCalculator.Models.CharacterInfo;
+
+export namespace LostArkCalculator::Core
+{
+    // 로스트아크 Open API (거래소 시세 · 원정대 목록)
+    // 메서드는 블로킹이므로 화면(UI) 스레드가 아닌 백그라운드 스레드에서 호출할 것
+    class MarketAPI
+    {
+    public:
+        virtual ~MarketAPI();
+
+        virtual void SetApiKey(std::string apiKey) = 0;
+
+        [[nodiscard]] virtual double GetPrice(std::string_view itemName, bool isShard, bool isBundle) = 0;
+        [[nodiscard]] virtual std::vector<Models::CharacterInfo> GetRoster(std::string_view charName) = 0;
+    };
+}﻿export module LostArkCalculator.Models.PriceData;
+
+export namespace LostArkCalculator::Models
+{
+    // 재료 단가 (현재 / 직전 갱신)
+    class PriceData
+    {
+    public:
+        PriceData() noexcept;
+
+        [[nodiscard]] double GetCurrent() const noexcept;
+        void SetCurrent(double current) noexcept;
+
+        [[nodiscard]] double GetPrevious() const noexcept;
+        void SetPrevious(double previous) noexcept;
+
+        [[nodiscard]] double GetDiff() const noexcept;   // 현재 - 직전 (원본 Diff 속성)
+
+    private:
+        double m_current{};
+        double m_previous{};
+    };
+}﻿export module LostArkCalculator.Models.ServerConfig;
+
+import std;
+
+export namespace LostArkCalculator::Models
+{
+    // 원격 설정 (Gist AppConfig.json) — 읽기 전용 값 객체
+    class ServerConfig
+    {
+    public:
+        ServerConfig(bool isMaintenance,
+            std::optional<std::string> maintenanceMessage,
+            std::optional<std::string> latestVersion,
+            std::optional<std::string> downloadUrl,
+            std::optional<std::string> notice);
+
+        [[nodiscard]] bool IsMaintenance() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetMaintenanceMessage() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetLatestVersion() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetDownloadUrl() const noexcept;
+        [[nodiscard]] const std::optional<std::string>& GetNotice() const noexcept;
+
+    private:
+        bool m_isMaintenance{};
+        std::optional<std::string> m_maintenanceMessage;
+        std::optional<std::string> m_latestVersion;
+        std::optional<std::string> m_downloadUrl;
+        std::optional<std::string> m_notice;
+    };
+}﻿export module LostArkCalculator.Models.UserData;
+
+import std;
+import LostArkCalculator.Models.Character;
+
+export namespace LostArkCalculator::Models
+{
+    // 저장 파일 전체 (캐릭터 목록 + 날짜별 원정대 자산 기록)
+    class UserData
+    {
+    public:
+        [[nodiscard]] const std::unordered_map<std::string, Character>& GetCharacters() const noexcept;
+        void SetCharacters(std::unordered_map<std::string, Character> characters);
+
+        // 이름으로 캐릭터 찾기 (없으면 nullptr, 소유권은 UserData가 가짐)
+        [[nodiscard]] Character* FindCharacter(std::string_view name);
+        [[nodiscard]] const Character* FindCharacter(std::string_view name) const;
+
+        [[nodiscard]] const std::map<std::string, double>& GetHistory() const noexcept;
+        void SetHistory(std::map<std::string, double> history);
+
+        // 날짜 키("yyyy-MM-dd")에 원정대 총 자산 기록 (같은 날짜면 덮어씀)
+        void RecordHistory(const std::string& dateKey, double totalAsset);
+
+        // 기존 "MM-dd" 키를 "yyyy-MM-dd"로 변환 (기준일 이후 날짜면 작년으로 간주)
+        void MigrateLegacyHistory(const std::chrono::year_month_day& today);
+
+        // 날짜 ↔ 저장 키 변환
+        [[nodiscard]] static std::string MakeHistoryKey(const std::chrono::year_month_day& date);
+        [[nodiscard]] static std::optional<std::chrono::year_month_day> ParseHistoryKey(std::string_view key);
+
+    private:
+        std::unordered_map<std::string, Character> m_characters;
+        std::map<std::string, double> m_history;   // 키 순서(날짜순)가 필요해서 정렬 맵 사용
+    };
+}﻿module;
+
+#define NOMINMAX
+#include <Windows.h>
+
+module LostArkCalculator.Core.APPConstants;
+
+import std;
+
+namespace LostArkCalculator::Core::APPConstants
+{
+	namespace
+	{
+		//	윈도우가 지원하는 가장 긴 경로 길이 (긴 경로 기능 기준)
+		inline constexpr size_t EXE_PATH_BUFFER_SIZE{ 32767 };
+
+		//	실행 파일 폴더 (작업 디렉터리와 무관하게 항상 exe 옆)
+		std::filesystem::path GetExecutableDirectory()
+		{
+			std::wstring buffer(EXE_PATH_BUFFER_SIZE, L'\0');
+			const DWORD length{ ::GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size())) };
+			if (length == 0) throw std::runtime_error{ "실행 파일 경로를 가져오지 못했어요!" };
+
+			buffer.resize(length);
+			return std::filesystem::path{ buffer }.parent_path();
+		}
+	}
+
+	std::filesystem::path GetSaveFilePath()
+	{
+		return GetExecutableDirectory() / std::filesystem::path{ SAVE_FILE_NAME };
+	}
+
+	std::filesystem::path GetBackupFilePath()
+	{
+		std::filesystem::path backupPath{ GetSaveFilePath() };
+		backupPath += BACKUP_FILE_SUFFIX;
+
+		return backupPath;
+	}
+
+	std::filesystem::path GetTempFilePath()
+	{
+		std::filesystem::path tempPath{ GetSaveFilePath() };
+		tempPath += TEMP_FILE_SUFFIX;
+
+		return tempPath;
+	}
+}﻿module LostArkCalculator.Core.APPExceptions;
+
+import std;
+
+namespace LostArkCalculator::Core
+{
+	namespace
+	{
+		constexpr std::string_view API_KEY_INVALID_MESSAGE{ "API 키가 유효하지 않아요!, 키를 확인해 주세요!" };
+		constexpr std::string_view API_RATE_LIMIT_MESSAGE{ "API 호출 한도를 초과했어요!, 잠시 후 다시 시도해 주세요!" };
+	}
+
+	APIKeyInvalidException::APIKeyInvalidException()
+		: std::runtime_error{ std::string{ API_KEY_INVALID_MESSAGE } }
+	{
+	}
+
+	APIRateLimitException::APIRateLimitException()
+		: std::runtime_error{ std::string{ API_RATE_LIMIT_MESSAGE } }
+	{
+	}
+}﻿module LostArkCalculator.Core.AssetCalculator;
+
+namespace LostArkCalculator::Core
+{
+    AssetCalculator::~AssetCalculator() = default;
+}﻿module;
+
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#define NOUSER   // winuser.h 제외: GetClassName 같은 매크로 충돌 방지
+#include <Windows.h>
+
+module LostArkCalculator.Services.AssetCalculationService;
+
+import std;
+import LostArkCalculator.Core.APPConstants;
+import LostArkCalculator.Core.DataRepository;
+import LostArkCalculator.Core.MarketAPI;
+import LostArkCalculator.Models.Character;
+import LostArkCalculator.Models.ItemData;
+import LostArkCalculator.Models.PriceData;
+import LostArkCalculator.Models.UserData;
+
+namespace LostArkCalculator::Services
+{
+    namespace
+    {
+        using PriceTable = std::unordered_map<std::string, Models::PriceData>;
+
+        // 조회할 재료 정의 (C# MaterialQuery 대응)
+        struct MaterialQuery
+        {
+            std::string_view m_name;
+            std::size_t m_col;      // 표의 열 번호 = Core::APPConstants::MAT_KEYS 인덱스
+            bool m_isShard;         // 파편 주머니 (3000개 단위 시세)
+            bool m_isBundle;        // 묶음 판매 (묶음 개수로 나눈 시세)
+        };
+
+        // 표의 열 번호 (MAT_KEYS 인덱스와 같음)
+        constexpr std::size_t COL_SHARD{ 1 };
+        constexpr std::size_t COL_DEST{ 2 };
+        constexpr std::size_t COL_GUARD{ 3 };
+        constexpr std::size_t COL_LEAP{ 4 };
+        constexpr std::size_t COL_FUSION{ 5 };
+        constexpr std::size_t COL_YONG{ 6 };
+        constexpr std::size_t COL_BING{ 7 };
+
+        constexpr double ZERO_PRICE{ 0.0 };
+
+        // 상위 재료 (1730 이상)
+        constexpr std::array TOP_MATERIALS{
+            MaterialQuery{ .m_name = "운명의 파편 주머니(대)", .m_col = COL_SHARD, .m_isShard = true, .m_isBundle = false },
+            MaterialQuery{ .m_name = "운명의 파괴석 결정", .m_col = COL_DEST, .m_isShard = false, .m_isBundle = true },
+            MaterialQuery{ .m_name = "운명의 수호석 결정", .m_col = COL_GUARD, .m_isShard = false, .m_isBundle = true },
+            MaterialQuery{ .m_name = "위대한 운명의 돌파석", .m_col = COL_LEAP, .m_isShard = false, .m_isBundle = false },
+            MaterialQuery{ .m_name = "상급 아비도스 융화 재료", .m_col = COL_FUSION, .m_isShard = false, .m_isBundle = false },
+            MaterialQuery{ .m_name = "용암의 숨결", .m_col = COL_YONG, .m_isShard = false, .m_isBundle = false },
+            MaterialQuery{ .m_name = "빙하의 숨결", .m_col = COL_BING, .m_isShard = false, .m_isBundle = false }
+        };
+
+        // 하위 재료 (1730 미만)
+        constexpr std::array BOT_MATERIALS{
+            MaterialQuery{ .m_name = "운명의 파괴석", .m_col = COL_DEST, .m_isShard = false, .m_isBundle = true },
+            MaterialQuery{ .m_name = "운명의 수호석", .m_col = COL_GUARD, .m_isShard = false, .m_isBundle = true },
+            MaterialQuery{ .m_name = "운명의 돌파석", .m_col = COL_LEAP, .m_isShard = false, .m_isBundle = false },
+            MaterialQuery{ .m_name = "아비도스 융화 재료", .m_col = COL_FUSION, .m_isShard = false, .m_isBundle = false }
+        };
+
+        // 상위·하위 단가가 같은 재료 (운파, 용숨, 빙숨)
+        constexpr std::array SHARED_MATERIAL_COLS{ COL_SHARD, COL_YONG, COL_BING };
+
+        // 기준일 (오늘 날짜 기록 키용) - Windows 로컬 시간 = 원본 C# DateTime.Now와 같은 기준
+        std::chrono::year_month_day GetLocalToday()
+        {
+            SYSTEMTIME now{};
+            ::GetLocalTime(&now);
+            return std::chrono::year_month_day{
+                std::chrono::year{ static_cast<int>(now.wYear) },
+                std::chrono::month{ static_cast<unsigned>(now.wMonth) },
+                std::chrono::day{ static_cast<unsigned>(now.wDay) }
+            };
+        }
+
+        // 단가 갱신 (처음이면 직전값 = 현재값 → 등락 0)
+        void UpdatePriceDict(PriceTable& dict, const std::string& key, double newPrice)
+        {
+            Models::PriceData& data{ dict[key] };
+            const double currentPrice{ data.GetCurrent() };
+            data.SetPrevious(currentPrice == ZERO_PRICE ? newPrice : currentPrice);
+            data.SetCurrent(newPrice);
+        }
+
+        // 현재 단가 조회 (없으면 0)
+        double GetCurrentPrice(const PriceTable& dict, std::string_view key)
+        {
+            const auto found{ dict.find(std::string{ key }) };
+            return found != dict.end() ? found->second.GetCurrent() : ZERO_PRICE;
+        }
+
+        // 캐릭터 한 명의 재료 가치 계산 → 합계 반환
+        double ApplyMaterialValues(Models::Character& charData, const PriceTable& topPrices, const PriceTable& botPrices)
+        {
+            double total{};
+            for (const std::string_view key : Core::APPConstants::MAT_KEYS)
+            {
+                if (key.empty()) continue;
+
+                Models::ItemData& item{ charData.GetMaterial(key) };
+                item.SetCalculatedTopValue(std::floor(item.GetTopQty() * GetCurrentPrice(topPrices, key)));
+                item.SetCalculatedBotValue(std::floor(item.GetBottomQty() * GetCurrentPrice(botPrices, key)));
+                total += item.GetCalculatedTopValue() + item.GetCalculatedBotValue();
+            }
+            return total;
+        }
+    }
+
+    AssetCalculationService::AssetCalculationService(Core::DataRepository& repository)
+        : m_repository{ repository }
+    {}
+
+    void AssetCalculationService::AddAssetCalculatedListener(std::function<void()> listener)
+    {
+        if (!listener) return;   // 빈 함수는 등록하지 않음 (C# event 구독 없음과 같음)
+        m_assetCalculatedListeners.push_back(std::move(listener));
+    }
+
+    std::unordered_map<std::string, Models::PriceData> AssetCalculationService::GetTopPrices() const
+    {
+        std::scoped_lock lock{ m_pricesMutex };
+        return m_topPrices;   // 복사본 반환 → 호출 쪽은 잠금 없이 안전하게 읽음
+    }
+
+    std::unordered_map<std::string, Models::PriceData> AssetCalculationService::GetBotPrices() const
+    {
+        std::scoped_lock lock{ m_pricesMutex };
+        return m_botPrices;
+    }
+
+    bool AssetCalculationService::HasPrices() const
+    {
+        std::scoped_lock lock{ m_pricesMutex };
+        return !m_topPrices.empty() && !m_botPrices.empty();
+    }
+
+    void AssetCalculationService::FetchMarketPrices(Core::MarketAPI& api)
+    {
+        // 네트워크 호출은 잠금 밖에서 수행 (화면 읽기를 오래 막지 않도록)
+        // 임시 맵에 전부 모은 뒤, 모두 성공했을 때만 반영 (부분 갱신 방지)
+        std::unordered_map<std::string, double> newTop;
+        std::unordered_map<std::string, double> newBot;
+
+        for (const MaterialQuery& material : TOP_MATERIALS)
+        {
+            const std::string key{ Core::APPConstants::MAT_KEYS.at(material.m_col) };
+            newTop.insert_or_assign(key, api.GetPrice(material.m_name, material.m_isShard, material.m_isBundle));
+        }
+
+        for (const MaterialQuery& material : BOT_MATERIALS)
+        {
+            const std::string key{ Core::APPConstants::MAT_KEYS.at(material.m_col) };
+            newBot.insert_or_assign(key, api.GetPrice(material.m_name, material.m_isShard, material.m_isBundle));
+        }
+
+        // 상위·하위 단가가 같은 재료는 상위 시세를 그대로 사용
+        for (const std::size_t col : SHARED_MATERIAL_COLS)
+        {
+            const std::string key{ Core::APPConstants::MAT_KEYS.at(col) };
+            newBot.insert_or_assign(key, newTop.at(key));
+        }
+
+        // 여기서만 잠금: 맵 반영 구간
+        std::scoped_lock lock{ m_pricesMutex };
+        for (const auto& [key, price] : newTop) UpdatePriceDict(m_topPrices, key, price);
+        for (const auto& [key, price] : newBot) UpdatePriceDict(m_botPrices, key, price);
+    }
+
+    void AssetCalculationService::CalculateCharacterAssets(std::string_view charName)
+    {
+        Models::Character* charData{ m_repository.GetData().FindCharacter(charName) };
+        if (charData == nullptr) return;   // 없는 캐릭터는 조용히 무시 (원본과 같음)
+
+        {
+            std::scoped_lock lock{ m_pricesMutex };
+            ApplyMaterialValues(*charData, m_topPrices, m_botPrices);
+        }
+        NotifyAssetCalculated();   // 리스너는 잠금을 푼 뒤 호출 (데드락 방지)
+    }
+
+    void AssetCalculationService::CalculateAllCharacters()
+    {
+        ApplyAllCharacterValues();
+        NotifyAssetCalculated();
+    }
+
+    // 모든 캐릭터의 계산값까지 갱신하므로 호출 측에서 CalculateCharacterAssets를 따로 부를 필요 없음 (알림 1회)
+    void AssetCalculationService::CalculateRosterHistory()
+    {
+        if (!HasPrices()) return;   // 시세 없이 0원이 기록되는 것 방지
+
+        const double totalRosterAsset{ ApplyAllCharacterValues() };
+
+        Models::UserData& data{ m_repository.GetData() };
+        data.RecordHistory(Models::UserData::MakeHistoryKey(GetLocalToday()), totalRosterAsset);
+
+        // 원본 C# finally 대응: 저장이 실패해도 화면 갱신은 보장하고, 예외는 그대로 다시 던짐
+        try
+        {
+            m_repository.Save();
+        }
+        catch (...)
+        {
+            NotifyAssetCalculated();
+            throw;
+        }
+        NotifyAssetCalculated();
+    }
+
+    double AssetCalculationService::ApplyAllCharacterValues()
+    {
+        Models::UserData& data{ m_repository.GetData() };
+
+        // 맵 구조는 바뀌지 않으므로 const로 순회하고, 값 수정은 FindCharacter가 준 포인터로 함
+        std::scoped_lock lock{ m_pricesMutex };
+        double totalRosterAsset{};
+        for (const auto& entry : std::as_const(data).GetCharacters())
+        {
+            if (Models::Character* charData{ data.FindCharacter(entry.first) }; charData != nullptr)
+            {
+                totalRosterAsset += ApplyMaterialValues(*charData, m_topPrices, m_botPrices);
+            }
+        }
+        return totalRosterAsset;
+    }
+
+    void AssetCalculationService::NotifyAssetCalculated()
+    {
+        for (const auto& listener : m_assetCalculatedListeners)
+        {
+            listener();
+        }
+    }
+}﻿module LostArkCalculator.Models.Character;
+
+import std;
+import LostArkCalculator.Core.APPConstants;
+
+namespace LostArkCalculator::Models
+{
+    Character::Character()
+    {
+        EnsureMaterials();
+    }
+
+    const std::optional<std::string>& Character::GetClassName() const noexcept
+    {
+        return m_className;
+    }
+    void Character::SetClassName(std::optional<std::string> className)
+    {
+        m_className = std::move(className);
+    }
+
+    double Character::GetItemLevel() const noexcept
+    {
+        return m_itemLevel;
+    }
+    void Character::SetItemLevel(double itemLevel) noexcept
+    {
+        m_itemLevel = itemLevel;
+    }
+
+    const std::unordered_map<std::string, ItemData>& Character::GetMaterials() const noexcept
+    {
+        return m_materials;
+    }
+
+    void Character::SetMaterials(std::unordered_map<std::string, ItemData> materials)
+    {
+        m_materials = std::move(materials);
+        EnsureMaterials();   // 빠진 키가 있으면 채워서 항상 전체 키를 유지
+    }
+
+    ItemData& Character::GetMaterial(std::string_view key)
+    {
+        return m_materials.at(std::string{ key });
+    }
+
+    const ItemData& Character::GetMaterial(std::string_view key) const
+    {
+        return m_materials.at(std::string{ key });
+    }
+
+    void Character::EnsureMaterials()
+    {
+        for (const std::string_view key : Core::APPConstants::MAT_KEYS)
+        {
+            if (key.empty()) continue;   // 0번 열(구분)은 재료가 아님
+            m_materials.try_emplace(std::string{ key });
+        }
+    }
+}﻿module LostArkCalculator.Models.CharacterInfo;
+
+import std;
+
+namespace LostArkCalculator::Models
+{
+    namespace
+    {
+        // 숫자로 바꾸기 전에 지우는 글자 (천 단위 콤마, 공백)
+        bool IsIgnoredLevelChar(char c)
+        {
+            return c == ',' || std::isspace(static_cast<unsigned char>(c));
+        }
+    }
+
+    CharacterInfo::CharacterInfo(std::string characterName,
+        std::optional<std::string> characterClassName,
+        std::optional<std::string> itemMaxLevel,
+        std::optional<std::string> itemAvgLevel)
+        : m_characterName{ std::move(characterName) }
+        , m_characterClassName{ std::move(characterClassName) }
+        , m_itemMaxLevel{ std::move(itemMaxLevel) }
+        , m_itemAvgLevel{ std::move(itemAvgLevel) }
+    {}
+
+    const std::string& CharacterInfo::GetCharacterName() const noexcept
+    {
+        return m_characterName;
+    }
+    const std::optional<std::string>& CharacterInfo::GetCharacterClassName() const noexcept
+    {
+        return m_characterClassName;
+    }
+    const std::optional<std::string>& CharacterInfo::GetItemMaxLevel() const noexcept
+    {
+        return m_itemMaxLevel;
+    }
+    const std::optional<std::string>& CharacterInfo::GetItemAvgLevel() const noexcept
+    {
+        return m_itemAvgLevel;
+    }
+
+    double CharacterInfo::GetNumericItemLevel() const
+    {
+        // 원본과 같은 규칙: 최대 레벨 값이 있으면 그것을, 없으면 평균 레벨 사용
+        const std::optional<std::string>& source{ m_itemMaxLevel.has_value() ? m_itemMaxLevel : m_itemAvgLevel };
+        if (!source.has_value()) return 0.0;
+
+        std::string cleaned;
+        for (const char c : *source)
+        {
+            if (!IsIgnoredLevelChar(c)) cleaned.push_back(c);
+        }
+        if (cleaned.empty()) return 0.0;
+
+        double level{};
+        const char* first{ cleaned.data() };
+        const char* last{ cleaned.data() + cleaned.size() };
+        const auto [ptr, ec] { std::from_chars(first, last, level) };
+        return (ec == std::errc{} && ptr == last) ? level : 0.0;
+    }
+}﻿module LostArkCalculator.Core.DataRepository;
+
+namespace LostArkCalculator::Core
+{
+    DataRepository::~DataRepository() = default;
+}﻿module LostArkCalculator.Models.ItemData;
+
+namespace LostArkCalculator::Models
+{
+    ItemData::ItemData() noexcept
+    {}
+
+    double ItemData::GetTopQty() const noexcept
+    {
+        return m_topQty;
+    }
+    void ItemData::SetTopQty(double topQty) noexcept
+    {
+        m_topQty = topQty;
+    }
+
+    double ItemData::GetBottomQty() const noexcept
+    {
+        return m_bottomQty;
+    }
+    void ItemData::SetBottomQty(double bottomQty) noexcept
+    {
+        m_bottomQty = bottomQty;
+    }
+
+    double ItemData::GetCalculatedTopValue() const noexcept
+    {
+        return m_calculatedTopValue;
+    }
+    void ItemData::SetCalculatedTopValue(double calculatedTopValue) noexcept
+    {
+        m_calculatedTopValue = calculatedTopValue;
+    }
+
+    double ItemData::GetCalculatedBotValue() const noexcept
+    {
+        return m_calculatedBotValue;
+    }
+    void ItemData::SetCalculatedBotValue(double calculatedBotValue) noexcept
+    {
+        m_calculatedBotValue = calculatedBotValue;
+    }
+}﻿module;
+
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#define NOUSER   // winuser.h 제외: GetClassName 등이 GetClassNameW로 치환되는 매크로 충돌 방지
+#include <Windows.h>
+
+module LostArkCalculator.Services.JSONDataRepository;
+
+import std;
+import LostArkCalculator.Core.APPConstants;
+import LostArkCalculator.Models.Character;
+import LostArkCalculator.Models.ItemData;
+
+namespace LostArkCalculator::Services
+{
+    namespace
+    {
+        // ===== 저장 파일 키 이름 (원본 C# 저장 파일과 같아야 옛 기록을 그대로 읽음) =====
+        constexpr std::string_view KEY_CHARACTERS{ "Characters" };
+        constexpr std::string_view KEY_HISTORY{ "History" };
+        constexpr std::string_view KEY_CLASS_NAME{ "ClassName" };
+        constexpr std::string_view KEY_ITEM_LEVEL{ "ItemLevel" };
+        constexpr std::string_view KEY_MATERIALS{ "Materials" };
+        constexpr std::string_view KEY_TOP_QTY{ "TopQty" };
+        constexpr std::string_view KEY_BOTTOM_QTY{ "BottomQty" };
+
+        // ===== JSON 문법 상수 =====
+        constexpr std::string_view NULL_LITERAL{ "null" };
+        constexpr std::string_view TRUE_LITERAL{ "true" };
+        constexpr std::string_view FALSE_LITERAL{ "false" };
+        constexpr std::string_view UTF8_BOM{ "\xEF\xBB\xBF" };
+        constexpr std::string_view JSON_FORMAT_ERROR_MESSAGE{ "JSON 형식이 올바르지 않습니다." };
+        constexpr char END_OF_TEXT{ '\0' };
+        constexpr unsigned ASCII_LIMIT{ 0x80 };
+        constexpr unsigned CONTROL_CHAR_LIMIT{ 0x20 };
+        constexpr std::size_t HEX_DIGIT_COUNT{ 4 };
+        constexpr int HEX_RADIX{ 16 };
+
+        // ===== 쓰기 형식 =====
+        constexpr std::size_t INDENT_WIDTH{ 2 };
+        constexpr std::size_t ROOT_DEPTH{ 0 };
+        constexpr std::size_t ROOT_MEMBER_DEPTH{ 1 };
+        constexpr std::string_view HEX_DIGITS{ "0123456789abcdef" };
+        constexpr unsigned NIBBLE_BITS{ 4 };
+        constexpr unsigned NIBBLE_MASK{ 0xF };
+
+        // 파일 읽기 결과 상태
+        enum class LoadStatus
+        {
+            NOT_FOUND,
+            LOADED,
+            CORRUPTED
+        };
+
+        [[noreturn]] void ThrowFormatError()
+        {
+            throw std::runtime_error{ std::string{ JSON_FORMAT_ERROR_MESSAGE } };
+        }
+
+        // 지금 시각 (Windows 로컬 시간 = 원본 C#의 DateTime.Now와 같은 기준)
+        SYSTEMTIME GetLocalNow()
+        {
+            SYSTEMTIME now{};
+            ::GetLocalTime(&now);
+            return now;
+        }
+
+        // 오늘 날짜 - 옛 "MM-dd" 기록 변환에 사용
+        std::chrono::year_month_day GetLocalToday()
+        {
+            const SYSTEMTIME now{ GetLocalNow() };
+            return std::chrono::year_month_day{
+                std::chrono::year{ static_cast<int>(now.wYear) },
+                std::chrono::month{ static_cast<unsigned>(now.wMonth) },
+                std::chrono::day{ static_cast<unsigned>(now.wDay) }
+            };
+        }
+
+        // 파일 이름용 타임스탬프 "yyyyMMdd_HHmmss"
+        std::string MakeTimestamp()
+        {
+            const SYSTEMTIME now{ GetLocalNow() };
+            return std::format("{:04}{:02}{:02}_{:02}{:02}{:02}",
+                static_cast<int>(now.wYear), static_cast<int>(now.wMonth), static_cast<int>(now.wDay),
+                static_cast<int>(now.wHour), static_cast<int>(now.wMinute), static_cast<int>(now.wSecond));
+        }
+
+        // 경로를 UTF-8 문자열로 (한글 경로가 깨지지 않도록 Windows 변환 API 사용)
+        std::string ToUtf8String(const std::filesystem::path& path)
+        {
+            const std::wstring wide{ path.wstring() };
+            if (wide.empty()) return {};
+
+            const int wideLength{ static_cast<int>(wide.size()) };
+            const int utf8Length{ ::WideCharToMultiByte(CP_UTF8, 0, wide.data(), wideLength, nullptr, 0, nullptr, nullptr) };
+            std::string utf8(static_cast<std::size_t>(utf8Length), '\0');
+            ::WideCharToMultiByte(CP_UTF8, 0, wide.data(), wideLength, utf8.data(), utf8Length, nullptr, nullptr);
+            return utf8;
+        }
+
+        bool IsJsonWhitespace(char c) noexcept
+        {
+            return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+        }
+
+        bool IsNumberChar(char c) noexcept
+        {
+            return (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E';
+        }
+
+        // ===== 읽기: 필요한 구조만 순서대로 읽는 최소 JSON 리더 =====
+        class JsonReader
+        {
+        public:
+            explicit JsonReader(std::string_view text)
+                : m_text{ text }
+            {}
+
+            // 공백을 건너뛰고 다음 글자를 봄 (끝이면 END_OF_TEXT)
+            [[nodiscard]] char PeekChar()
+            {
+                SkipWhitespace();
+                return IsRawEnd() ? END_OF_TEXT : m_text[m_position];
+            }
+
+            // 공백을 건너뛴 뒤 끝까지 읽었는지 확인
+            [[nodiscard]] bool IsAtEnd()
+            {
+                SkipWhitespace();
+                return IsRawEnd();
+            }
+
+            void ExpectChar(char expected)
+            {
+                if (PeekChar() != expected) ThrowFormatError();
+                ++m_position;
+            }
+
+            // "null"이면 소비하고 true
+            [[nodiscard]] bool TryReadNull()
+            {
+                if (PeekChar() != NULL_LITERAL.front()) return false;
+                ExpectLiteral(NULL_LITERAL);
+                return true;
+            }
+
+            std::string ReadString()
+            {
+                ExpectChar('"');
+
+                std::string result;
+                while (true)
+                {
+                    if (IsRawEnd()) ThrowFormatError();
+                    const char current{ m_text[m_position++] };
+
+                    if (current == '"') return result;
+                    if (current != '\\')
+                    {
+                        result.push_back(current);
+                        continue;
+                    }
+
+                    if (IsRawEnd()) ThrowFormatError();
+                    const char escaped{ m_text[m_position++] };
+                    switch (escaped)
+                    {
+                        case '"':  result.push_back('"'); break;
+                        case '\\': result.push_back('\\'); break;
+                        case '/':  result.push_back('/'); break;
+                        case 'b':  result.push_back('\b'); break;
+                        case 'f':  result.push_back('\f'); break;
+                        case 'n':  result.push_back('\n'); break;
+                        case 'r':  result.push_back('\r'); break;
+                        case 't':  result.push_back('\t'); break;
+                        case 'u':
+                        {
+                            // Newtonsoft는 제어 문자만 \u로 쓰므로 ASCII 범위만 처리
+                            const unsigned codepoint{ ReadHexCodepoint() };
+                            if (codepoint >= ASCII_LIMIT) ThrowFormatError();
+                            result.push_back(static_cast<char>(codepoint));
+                            break;
+                        }
+                        default:
+                            ThrowFormatError();
+                    }
+                }
+            }
+
+            double ReadNumber()
+            {
+                SkipWhitespace();
+                const std::size_t start{ m_position };
+                while (!IsRawEnd() && IsNumberChar(m_text[m_position])) ++m_position;
+
+                const std::string_view token{ m_text.substr(start, m_position - start) };
+                const char* first{ token.data() };
+                const char* last{ token.data() + token.size() };
+
+                double value{};
+                const auto [ptr, ec] { std::from_chars(first, last, value) };
+                if (token.empty() || ec != std::errc{} || ptr != last) ThrowFormatError();
+                return value;
+            }
+
+            // 필요 없는 값은 구조만 건너뜀
+            void SkipValue()
+            {
+                switch (PeekChar())
+                {
+                    case '{':
+                        ReadObject([this](const std::string&) { SkipValue(); });
+                        break;
+                    case '[':
+                        SkipArray();
+                        break;
+                    case '"':
+                        ReadString();
+                        break;
+                    case 'n':
+                        ExpectLiteral(NULL_LITERAL);
+                        break;
+                    case 't':
+                        ExpectLiteral(TRUE_LITERAL);
+                        break;
+                    case 'f':
+                        ExpectLiteral(FALSE_LITERAL);
+                        break;
+                    default:
+                        ReadNumber();
+                        break;
+                }
+            }
+
+            // "{ key: value, ... }" 를 읽으면서 각 key마다 onMember 호출 (onMember가 value를 소비해야 함)
+            void ReadObject(const std::function<void(const std::string&)>& onMember)
+            {
+                ExpectChar('{');
+                if (PeekChar() == '}')
+                {
+                    ++m_position;
+                    return;
+                }
+
+                while (true)
+                {
+                    const std::string key{ ReadString() };
+                    ExpectChar(':');
+                    onMember(key);
+
+                    const char next{ PeekChar() };
+                    if (next == ',')
+                    {
+                        ++m_position;
+                        continue;
+                    }
+                    if (next == '}')
+                    {
+                        ++m_position;
+                        return;
+                    }
+                    ThrowFormatError();
+                }
+            }
+
+        private:
+            void SkipWhitespace() noexcept
+            {
+                while (!IsRawEnd() && IsJsonWhitespace(m_text[m_position])) ++m_position;
+            }
+
+            [[nodiscard]] bool IsRawEnd() const noexcept
+            {
+                return m_position >= m_text.size();
+            }
+
+            void ExpectLiteral(std::string_view literal)
+            {
+                SkipWhitespace();
+                if (m_text.substr(m_position, literal.size()) != literal) ThrowFormatError();
+                m_position += literal.size();
+            }
+
+            void SkipArray()
+            {
+                ExpectChar('[');
+                if (PeekChar() == ']')
+                {
+                    ++m_position;
+                    return;
+                }
+
+                while (true)
+                {
+                    SkipValue();
+
+                    const char next{ PeekChar() };
+                    if (next == ',')
+                    {
+                        ++m_position;
+                        continue;
+                    }
+                    if (next == ']')
+                    {
+                        ++m_position;
+                        return;
+                    }
+                    ThrowFormatError();
+                }
+            }
+
+            unsigned ReadHexCodepoint()
+            {
+                if (m_position + HEX_DIGIT_COUNT > m_text.size()) ThrowFormatError();
+
+                const char* first{ m_text.data() + m_position };
+                const char* last{ first + HEX_DIGIT_COUNT };
+                unsigned codepoint{};
+                const auto [ptr, ec] { std::from_chars(first, last, codepoint, HEX_RADIX) };
+                if (ec != std::errc{} || ptr != last) ThrowFormatError();
+
+                m_position += HEX_DIGIT_COUNT;
+                return codepoint;
+            }
+
+            std::string_view m_text;
+            std::size_t m_position{};
+        };
+
+        Models::ItemData ReadItem(JsonReader& reader)
+        {
+            Models::ItemData item;
+            reader.ReadObject([&](const std::string& key) {
+                if (key == KEY_TOP_QTY) item.SetTopQty(reader.ReadNumber());
+                else if (key == KEY_BOTTOM_QTY) item.SetBottomQty(reader.ReadNumber());
+                else reader.SkipValue();
+            });
+            return item;
+        }
+
+        std::unordered_map<std::string, Models::ItemData> ReadMaterials(JsonReader& reader)
+        {
+            std::unordered_map<std::string, Models::ItemData> materials;
+            if (reader.TryReadNull()) return materials;
+
+            reader.ReadObject([&](const std::string& key) {
+                materials.insert_or_assign(key, ReadItem(reader));
+            });
+            return materials;
+        }
+
+        std::optional<std::string> ReadNullableString(JsonReader& reader)
+        {
+            if (reader.TryReadNull()) return std::nullopt;
+            return reader.ReadString();
+        }
+
+        Models::Character ReadCharacter(JsonReader& reader)
+        {
+            Models::Character character;
+            reader.ReadObject([&](const std::string& key) {
+                if (key == KEY_CLASS_NAME) character.SetClassName(ReadNullableString(reader));
+                else if (key == KEY_ITEM_LEVEL) character.SetItemLevel(reader.ReadNumber());
+                else if (key == KEY_MATERIALS) character.SetMaterials(ReadMaterials(reader));
+                else reader.SkipValue();
+            });
+            character.EnsureMaterials();   // 빠진 재료 키 보정 (원본 OnDeserialized와 같은 역할)
+            return character;
+        }
+
+        Models::UserData ReadUserData(JsonReader& reader)
+        {
+            std::unordered_map<std::string, Models::Character> characters;
+            std::map<std::string, double> history;
+
+            reader.ReadObject([&](const std::string& key) {
+                if (key == KEY_CHARACTERS)
+                {
+                    if (reader.TryReadNull()) return;
+                    reader.ReadObject([&](const std::string& name) {
+                        characters.insert_or_assign(name, reader.TryReadNull() ? Models::Character{} : ReadCharacter(reader));
+                    });
+                }
+                else if (key == KEY_HISTORY)
+                {
+                    if (reader.TryReadNull()) return;
+                    reader.ReadObject([&](const std::string& date) {
+                        history.insert_or_assign(date, reader.ReadNumber());
+                    });
+                }
+                else reader.SkipValue();
+            });
+
+            Models::UserData data;
+            data.SetCharacters(std::move(characters));
+            data.SetHistory(std::move(history));
+            return data;
+        }
+
+        // ===== 쓰기 =====
+        void AppendIndent(std::string& out, std::size_t depth)
+        {
+            out.append(depth * INDENT_WIDTH, ' ');
+        }
+
+        void AppendQuoted(std::string& out, std::string_view text)
+        {
+            out.push_back('"');
+            for (const char c : text)
+            {
+                switch (c)
+                {
+                    case '"':  out += "\\\""; break;
+                    case '\\': out += "\\\\"; break;
+                    case '\n': out += "\\n"; break;
+                    case '\r': out += "\\r"; break;
+                    case '\t': out += "\\t"; break;
+                    default:
+                        if (static_cast<unsigned char>(c) < CONTROL_CHAR_LIMIT)
+                        {
+                            // \u00XX 형식을 직접 만듦 (std::format 없이 16진수 두 자리)
+                            const auto value{ static_cast<unsigned char>(c) };
+                            out += "\\u00";
+                            out.push_back(HEX_DIGITS[static_cast<std::size_t>(value >> NIBBLE_BITS)]);
+                            out.push_back(HEX_DIGITS[static_cast<std::size_t>(value & NIBBLE_MASK)]);
+                        }
+                        else
+                        {
+                            out.push_back(c);   // 한글 등 UTF-8 바이트는 그대로 씀 (원본과 같음)
+                        }
+                        break;
+                }
+            }
+            out.push_back('"');
+        }
+
+        // 객체 멤버 하나 시작 (첫 멤버는 쉼표 없이)
+        void AppendMemberPrefix(std::string& out, bool& isFirst, std::size_t depth)
+        {
+            out += isFirst ? "\n" : ",\n";
+            isFirst = false;
+            AppendIndent(out, depth);
+        }
+
+        // 객체 닫기 (객체 자신의 들여쓰기 depth 기준)
+        void AppendMemberClose(std::string& out, bool isFirst, std::size_t depth)
+        {
+            if (!isFirst)
+            {
+                out.push_back('\n');
+                AppendIndent(out, depth);
+            }
+            out.push_back('}');
+        }
+
+        std::string FormatNumber(double value)
+        {
+            return std::format("{}", value);
+        }
+
+        void AppendItem(std::string& out, const Models::ItemData& item, std::size_t depth)
+        {
+            out.push_back('{');
+            bool isFirst{ true };
+
+            AppendMemberPrefix(out, isFirst, depth + 1);
+            AppendQuoted(out, KEY_TOP_QTY);
+            out += ": " + FormatNumber(item.GetTopQty());
+
+            AppendMemberPrefix(out, isFirst, depth + 1);
+            AppendQuoted(out, KEY_BOTTOM_QTY);
+            out += ": " + FormatNumber(item.GetBottomQty());
+
+            AppendMemberClose(out, isFirst, depth);
+        }
+
+        void AppendMaterials(std::string& out, const Models::Character& character, std::size_t depth)
+        {
+            out.push_back('{');
+            bool isFirst{ true };
+
+            for (const std::string_view key : Core::APPConstants::MAT_KEYS)
+            {
+                if (key.empty()) continue;
+
+                AppendMemberPrefix(out, isFirst, depth + 1);
+                AppendQuoted(out, key);
+                out += ": ";
+                AppendItem(out, character.GetMaterial(key), depth + 1);
+            }
+
+            AppendMemberClose(out, isFirst, depth);
+        }
+
+        void AppendCharacter(std::string& out, const Models::Character& character, std::size_t depth)
+        {
+            out.push_back('{');
+            bool isFirst{ true };
+
+            AppendMemberPrefix(out, isFirst, depth + 1);
+            AppendQuoted(out, KEY_CLASS_NAME);
+            out += ": ";
+            if (character.GetClassName().has_value()) AppendQuoted(out, *character.GetClassName());
+            else out += "null";
+
+            AppendMemberPrefix(out, isFirst, depth + 1);
+            AppendQuoted(out, KEY_ITEM_LEVEL);
+            out += ": " + FormatNumber(character.GetItemLevel());
+
+            AppendMemberPrefix(out, isFirst, depth + 1);
+            AppendQuoted(out, KEY_MATERIALS);
+            out += ": ";
+            AppendMaterials(out, character, depth + 1);
+
+            AppendMemberClose(out, isFirst, depth);
+        }
+
+        void AppendCharacters(std::string& out, const Models::UserData& data, std::size_t depth)
+        {
+            const auto& characters{ data.GetCharacters() };
+
+            // 저장 순서를 고정하려고 이름순 정렬
+            std::vector<std::string_view> names;
+            names.reserve(characters.size());
+            for (const auto& entry : characters) names.push_back(entry.first);
+            std::sort(names.begin(), names.end());
+
+            out.push_back('{');
+            bool isFirst{ true };
+            for (const std::string_view name : names)
+            {
+                AppendMemberPrefix(out, isFirst, depth + 1);
+                AppendQuoted(out, name);
+                out += ": ";
+                AppendCharacter(out, characters.at(std::string{ name }), depth + 1);
+            }
+            AppendMemberClose(out, isFirst, depth);
+        }
+
+        void AppendHistory(std::string& out, const Models::UserData& data, std::size_t depth)
+        {
+            out.push_back('{');
+            bool isFirst{ true };
+            for (const auto& entry : data.GetHistory())   // std::map이라 이미 날짜순
+            {
+                AppendMemberPrefix(out, isFirst, depth + 1);
+                AppendQuoted(out, entry.first);
+                out += ": " + FormatNumber(entry.second);
+            }
+            AppendMemberClose(out, isFirst, depth);
+        }
+
+        std::string BuildJsonText(const Models::UserData& data)
+        {
+            std::string out;
+            out.push_back('{');
+            bool isFirst{ true };
+
+            AppendMemberPrefix(out, isFirst, ROOT_MEMBER_DEPTH);
+            AppendQuoted(out, KEY_CHARACTERS);
+            out += ": ";
+            AppendCharacters(out, data, ROOT_MEMBER_DEPTH);
+
+            AppendMemberPrefix(out, isFirst, ROOT_MEMBER_DEPTH);
+            AppendQuoted(out, KEY_HISTORY);
+            out += ": ";
+            AppendHistory(out, data, ROOT_MEMBER_DEPTH);
+
+            AppendMemberClose(out, isFirst, ROOT_DEPTH);
+            out.push_back('\n');
+            return out;
+        }
+
+        // ===== 파일 입출력 =====
+        Models::UserData ParseUserDataFile(const std::filesystem::path& path)
+        {
+            std::ifstream in{ path, std::ios::binary };
+            if (!in) throw std::runtime_error{ "저장 파일을 열지 못했습니다." };
+
+            std::string text{ std::istreambuf_iterator<char>{ in }, std::istreambuf_iterator<char>{} };
+            std::string_view view{ text };
+            if (view.starts_with(UTF8_BOM)) view.remove_prefix(UTF8_BOM.size());
+
+            JsonReader reader{ view };
+            Models::UserData data{ ReadUserData(reader) };
+            if (!reader.IsAtEnd()) ThrowFormatError();   // 뒤에 쓰레기 글자가 있으면 손상으로 봄
+            return data;
+        }
+
+        // 파일 읽기: 없음 / 성공 / 손상 구분 (손상이면 예외 없이 CORRUPTED)
+        std::pair<LoadStatus, std::optional<Models::UserData>> TryLoad(const std::filesystem::path& path)
+        {
+            std::error_code errorCode;
+            if (!std::filesystem::exists(path, errorCode)) return { LoadStatus::NOT_FOUND, std::nullopt };
+
+            try
+            {
+                Models::UserData data{ ParseUserDataFile(path) };
+                data.MigrateLegacyHistory(GetLocalToday());
+                return { LoadStatus::LOADED, std::move(data) };
+            }
+            catch (const std::exception&)
+            {
+                return { LoadStatus::CORRUPTED, std::nullopt };
+            }
+        }
+
+        // 손상본은 별도 이름으로 보관하고, 본 파일 자리는 비움
+        std::string PreserveCorruptFile(const std::filesystem::path& savePath)
+        {
+            std::filesystem::path corruptPath{ savePath };
+            corruptPath += ".corrupt_" + MakeTimestamp();
+
+            try
+            {
+                std::filesystem::rename(savePath, corruptPath);
+                return ToUtf8String(corruptPath);
+            }
+            catch (const std::filesystem::filesystem_error& error)
+            {
+                return std::format("(보관 실패: {})", error.what());
+            }
+        }
+
+        void WriteTextFile(const std::filesystem::path& path, const std::string& text)
+        {
+            std::ofstream out{ path, std::ios::binary | std::ios::trunc };
+            if (!out) throw std::runtime_error{ "저장 파일을 열지 못했습니다." };
+
+            out << text;
+            out.close();
+            if (out.fail()) throw std::runtime_error{ "저장 파일 쓰기에 실패했습니다." };
+        }
+    }
+
+    JSONDataRepository::JSONDataRepository()
+    {
+        const std::filesystem::path savePath{ Core::APPConstants::GetSaveFilePath() };
+        auto primary{ TryLoad(savePath) };
+
+        if (primary.first == LoadStatus::CORRUPTED)
+        {
+            // 손상본을 먼저 치워야 다음 저장 때 .bak이 덮어써지지 않음
+            const std::string corruptLocation{ PreserveCorruptFile(savePath) };
+            auto backup{ TryLoad(Core::APPConstants::GetBackupFilePath()) };
+
+            primary.second = std::move(backup.second);
+            m_loadWarning = primary.second.has_value()
+                ? std::format("저장 파일이 손상되어 백업에서 복구했습니다.\n손상된 원본: {}", corruptLocation)
+                : std::format("저장 파일이 손상되어 새로 시작합니다.\n손상된 원본: {}", corruptLocation);
+        }
+
+        m_data = primary.second.has_value() ? std::move(*primary.second) : Models::UserData{};
+
+        // 캐릭터가 하나도 없으면 기본 캐릭터 추가 (원본과 같음)
+        if (m_data.GetCharacters().empty())
+        {
+            auto characters{ m_data.GetCharacters() };
+            characters.try_emplace(std::string{ Core::APPConstants::DEFAULT_CHARACTER_NAME }, Models::Character{});
+            m_data.SetCharacters(std::move(characters));
+        }
+    }
+
+    Models::UserData& JSONDataRepository::GetData()
+    {
+        return m_data;
+    }
+
+    const Models::UserData& JSONDataRepository::GetData() const
+    {
+        return m_data;
+    }
+
+    const std::optional<std::string>& JSONDataRepository::GetLoadWarning() const noexcept
+    {
+        return m_loadWarning;
+    }
+
+    void JSONDataRepository::Save()
+    {
+        const std::filesystem::path savePath{ Core::APPConstants::GetSaveFilePath() };
+        const std::filesystem::path tempPath{ Core::APPConstants::GetTempFilePath() };
+        const std::filesystem::path backupPath{ Core::APPConstants::GetBackupFilePath() };
+
+        // 1) 임시 파일에 먼저 전부 씀 (여기서 실패하면 기존 저장본은 그대로)
+        WriteTextFile(tempPath, BuildJsonText(m_data));
+
+        // 2) 처음 저장이면 그냥 이름 변경
+        if (!std::filesystem::exists(savePath))
+        {
+            std::filesystem::rename(tempPath, savePath);
+            return;
+        }
+
+        // 3) 기존 저장본은 .bak으로 보관하면서 원자적으로 교체 (원본 File.Replace와 같은 역할)
+        if (!::ReplaceFileW(savePath.c_str(), tempPath.c_str(), backupPath.c_str(), 0, nullptr, nullptr))
+        {
+            // 교체가 막히면 복사로 대신하고 임시 파일 정리 (원본 IOException 대응)
+            std::filesystem::copy_file(tempPath, savePath, std::filesystem::copy_options::overwrite_existing);
+            std::filesystem::remove(tempPath);
+        }
+    }
+}﻿module LostArkCalculator.Services.JSONValue;
+
+import std;
+
+namespace LostArkCalculator::Services
+{
+    namespace
+    {
+        constexpr std::string_view JSON_FORMAT_ERROR_MESSAGE{ "API 응답 형식이 올바르지 않습니다." };
+        constexpr std::string_view NULL_LITERAL{ "null" };
+        constexpr std::string_view TRUE_LITERAL{ "true" };
+        constexpr std::string_view FALSE_LITERAL{ "false" };
+        constexpr char END_OF_TEXT{ '\0' };
+
+        // \uXXXX 이스케이프 처리용
+        constexpr std::size_t HEX_DIGIT_COUNT{ 4 };
+        constexpr int HEX_RADIX{ 16 };
+        constexpr unsigned HIGH_SURROGATE_FIRST{ 0xD800 };
+        constexpr unsigned HIGH_SURROGATE_LAST{ 0xDBFF };
+        constexpr unsigned LOW_SURROGATE_FIRST{ 0xDC00 };
+        constexpr unsigned LOW_SURROGATE_LAST{ 0xDFFF };
+        constexpr unsigned SURROGATE_PAIR_BASE{ 0x10000 };
+        constexpr unsigned SURROGATE_PAYLOAD_BITS{ 10 };
+        constexpr std::size_t UNICODE_ESCAPE_PREFIX_LENGTH{ 2 };
+        constexpr std::string_view UNICODE_ESCAPE_PREFIX{ "\\u" };
+
+        // 코드 포인트 → UTF-8 변환용
+        constexpr unsigned UTF8_2BYTE_START{ 0x80 };
+        constexpr unsigned UTF8_3BYTE_START{ 0x800 };
+        constexpr unsigned UTF8_4BYTE_START{ 0x10000 };
+        constexpr unsigned UTF8_2BYTE_LEAD{ 0xC0 };
+        constexpr unsigned UTF8_3BYTE_LEAD{ 0xE0 };
+        constexpr unsigned UTF8_4BYTE_LEAD{ 0xF0 };
+        constexpr unsigned UTF8_CONTINUATION{ 0x80 };
+        constexpr unsigned UTF8_PAYLOAD_MASK{ 0x3F };
+        constexpr unsigned UTF8_SHIFT_6{ 6 };
+        constexpr unsigned UTF8_SHIFT_12{ 12 };
+        constexpr unsigned UTF8_SHIFT_18{ 18 };
+
+        [[noreturn]] void ThrowFormatError()
+        {
+            throw std::runtime_error{ std::string{ JSON_FORMAT_ERROR_MESSAGE } };
+        }
+
+        bool IsJsonWhitespace(char c) noexcept
+        {
+            return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+        }
+
+        bool IsNumberChar(char c) noexcept
+        {
+            return (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E';
+        }
+
+        // 코드 포인트 하나를 UTF-8 바이트열로 덧붙임
+        void AppendUtf8(std::string& out, unsigned codepoint)
+        {
+            if (codepoint < UTF8_2BYTE_START)
+            {
+                out.push_back(static_cast<char>(codepoint));
+            }
+            else if (codepoint < UTF8_3BYTE_START)
+            {
+                out.push_back(static_cast<char>(UTF8_2BYTE_LEAD | (codepoint >> UTF8_SHIFT_6)));
+                out.push_back(static_cast<char>(UTF8_CONTINUATION | (codepoint & UTF8_PAYLOAD_MASK)));
+            }
+            else if (codepoint < UTF8_4BYTE_START)
+            {
+                out.push_back(static_cast<char>(UTF8_3BYTE_LEAD | (codepoint >> UTF8_SHIFT_12)));
+                out.push_back(static_cast<char>(UTF8_CONTINUATION | ((codepoint >> UTF8_SHIFT_6) & UTF8_PAYLOAD_MASK)));
+                out.push_back(static_cast<char>(UTF8_CONTINUATION | (codepoint & UTF8_PAYLOAD_MASK)));
+            }
+            else
+            {
+                out.push_back(static_cast<char>(UTF8_4BYTE_LEAD | (codepoint >> UTF8_SHIFT_18)));
+                out.push_back(static_cast<char>(UTF8_CONTINUATION | ((codepoint >> UTF8_SHIFT_12) & UTF8_PAYLOAD_MASK)));
+                out.push_back(static_cast<char>(UTF8_CONTINUATION | ((codepoint >> UTF8_SHIFT_6) & UTF8_PAYLOAD_MASK)));
+                out.push_back(static_cast<char>(UTF8_CONTINUATION | (codepoint & UTF8_PAYLOAD_MASK)));
+            }
+        }
+
+        // 재귀 하강 방식의 JSON 파서 (내부 전용)
+        class JSONParser
+        {
+        public:
+            explicit JSONParser(std::string_view text) noexcept
+                : m_text{ text }
+            {}
+
+            JSONValue ParseDocument()
+            {
+                JSONValue root{ ParseValue() };
+                SkipWhitespace();
+                if (!IsRawEnd()) ThrowFormatError();   // 값 뒤에 남은 글자가 있으면 형식 오류
+                return root;
+            }
+
+        private:
+            JSONValue ParseValue()
+            {
+                switch (PeekChar())
+                {
+                    case '{': return ParseObject();
+                    case '[': return ParseArray();
+                    case '"': return JSONValue::CreateString(ParseString());
+                    case 't':
+                        ExpectLiteral(TRUE_LITERAL);
+                        return JSONValue::CreateBool(true);
+                    case 'f':
+                        ExpectLiteral(FALSE_LITERAL);
+                        return JSONValue::CreateBool(false);
+                    case 'n':
+                        ExpectLiteral(NULL_LITERAL);
+                        return JSONValue{};
+                    default:
+                        return JSONValue::CreateNumber(ParseNumber());
+                }
+            }
+
+            JSONValue ParseObject()
+            {
+                ExpectChar('{');
+                std::vector<std::string> keys;
+                std::vector<JSONValue> values;
+
+                if (PeekChar() == '}')
+                {
+                    ++m_position;
+                    return JSONValue::CreateObject(std::move(keys), std::move(values));
+                }
+
+                while (true)
+                {
+                    keys.push_back(ParseString());
+                    ExpectChar(':');
+                    values.push_back(ParseValue());
+
+                    const char next{ PeekChar() };
+                    if (next == ',')
+                    {
+                        ++m_position;
+                        continue;
+                    }
+                    if (next == '}')
+                    {
+                        ++m_position;
+                        break;
+                    }
+                    ThrowFormatError();
+                }
+                return JSONValue::CreateObject(std::move(keys), std::move(values));
+            }
+
+            JSONValue ParseArray()
+            {
+                ExpectChar('[');
+                std::vector<JSONValue> items;
+
+                if (PeekChar() == ']')
+                {
+                    ++m_position;
+                    return JSONValue::CreateArray(std::move(items));
+                }
+
+                while (true)
+                {
+                    items.push_back(ParseValue());
+
+                    const char next{ PeekChar() };
+                    if (next == ',')
+                    {
+                        ++m_position;
+                        continue;
+                    }
+                    if (next == ']')
+                    {
+                        ++m_position;
+                        break;
+                    }
+                    ThrowFormatError();
+                }
+                return JSONValue::CreateArray(std::move(items));
+            }
+
+            std::string ParseString()
+            {
+                ExpectChar('"');
+
+                std::string result;
+                while (true)
+                {
+                    if (IsRawEnd()) ThrowFormatError();
+                    const char current{ m_text[m_position++] };
+
+                    if (current == '"') return result;
+                    if (current != '\\')
+                    {
+                        result.push_back(current);
+                        continue;
+                    }
+
+                    if (IsRawEnd()) ThrowFormatError();
+                    const char escaped{ m_text[m_position++] };
+                    switch (escaped)
+                    {
+                        case '"':  result.push_back('"'); break;
+                        case '\\': result.push_back('\\'); break;
+                        case '/':  result.push_back('/'); break;
+                        case 'b':  result.push_back('\b'); break;
+                        case 'f':  result.push_back('\f'); break;
+                        case 'n':  result.push_back('\n'); break;
+                        case 'r':  result.push_back('\r'); break;
+                        case 't':  result.push_back('\t'); break;
+                        case 'u':  AppendUtf8(result, ReadUnicodeEscape()); break;
+                        default:   ThrowFormatError();
+                    }
+                }
+            }
+
+            // \uXXXX 한 개 (상위·하위 대리 문자면 쌍으로 묶어서 코드 포인트를 만듦)
+            unsigned ReadUnicodeEscape()
+            {
+                const unsigned first{ ReadHex4() };
+                if (first < HIGH_SURROGATE_FIRST || first > LOW_SURROGATE_LAST) return first;   // 일반 글자
+                if (first >= LOW_SURROGATE_FIRST) ThrowFormatError();                           // 짝 없는 하위 대리 문자
+
+                // 상위 대리 문자 바로 뒤에는 하위 대리 문자 이스케이프가 반드시 와야 함
+                if (m_text.substr(m_position, UNICODE_ESCAPE_PREFIX_LENGTH) != UNICODE_ESCAPE_PREFIX) ThrowFormatError();
+                m_position += UNICODE_ESCAPE_PREFIX_LENGTH;
+
+                const unsigned second{ ReadHex4() };
+                if (second < LOW_SURROGATE_FIRST || second > LOW_SURROGATE_LAST) ThrowFormatError();
+
+                return SURROGATE_PAIR_BASE
+                    + ((first - HIGH_SURROGATE_FIRST) << SURROGATE_PAYLOAD_BITS)
+                    + (second - LOW_SURROGATE_FIRST);
+            }
+
+            unsigned ReadHex4()
+            {
+                if (m_position + HEX_DIGIT_COUNT > m_text.size()) ThrowFormatError();
+
+                const char* first{ m_text.data() + m_position };
+                const char* last{ first + HEX_DIGIT_COUNT };
+                unsigned value{};
+                const auto [ptr, ec] { std::from_chars(first, last, value, HEX_RADIX) };
+                if (ec != std::errc{} || ptr != last) ThrowFormatError();
+
+                m_position += HEX_DIGIT_COUNT;
+                return value;
+            }
+
+            double ParseNumber()
+            {
+                SkipWhitespace();
+                const std::size_t start{ m_position };
+                while (!IsRawEnd() && IsNumberChar(m_text[m_position])) ++m_position;
+
+                const std::string_view token{ m_text.substr(start, m_position - start) };
+                double value{};
+                const auto [ptr, ec] { std::from_chars(token.data(), token.data() + token.size(), value) };
+                if (token.empty() || ec != std::errc{} || ptr != token.data() + token.size()) ThrowFormatError();
+                return value;
+            }
+
+            void ExpectLiteral(std::string_view literal)
+            {
+                SkipWhitespace();
+                if (m_text.substr(m_position, literal.size()) != literal) ThrowFormatError();
+                m_position += literal.size();
+            }
+
+            void ExpectChar(char expected)
+            {
+                if (PeekChar() != expected) ThrowFormatError();
+                ++m_position;
+            }
+
+            // 공백을 건너뛴 다음 글자를 봄 (끝이면 END_OF_TEXT)
+            char PeekChar()
+            {
+                SkipWhitespace();
+                return IsRawEnd() ? END_OF_TEXT : m_text[m_position];
+            }
+
+            void SkipWhitespace() noexcept
+            {
+                while (!IsRawEnd() && IsJsonWhitespace(m_text[m_position])) ++m_position;
+            }
+
+            [[nodiscard]] bool IsRawEnd() const noexcept
+            {
+                return m_position >= m_text.size();
+            }
+
+            std::string_view m_text;
+            std::size_t m_position{};
+        };
+    }
+
+    JSONValue::JSONValue() noexcept = default;
+
+    JSONValue JSONValue::CreateBool(bool value)
+    {
+        JSONValue result;
+        result.m_type = JsonType::BOOL_VALUE;
+        result.m_boolValue = value;
+        return result;
+    }
+
+    JSONValue JSONValue::CreateNumber(double value)
+    {
+        JSONValue result;
+        result.m_type = JsonType::NUMBER_VALUE;
+        result.m_numberValue = value;
+        return result;
+    }
+
+    JSONValue JSONValue::CreateString(std::string value)
+    {
+        JSONValue result;
+        result.m_type = JsonType::STRING_VALUE;
+        result.m_stringValue = std::move(value);
+        return result;
+    }
+
+    JSONValue JSONValue::CreateArray(std::vector<JSONValue> items)
+    {
+        JSONValue result;
+        result.m_type = JsonType::ARRAY_VALUE;
+        result.m_items = std::move(items);
+        return result;
+    }
+
+    JSONValue JSONValue::CreateObject(std::vector<std::string> keys, std::vector<JSONValue> values)
+    {
+        JSONValue result;
+        result.m_type = JsonType::OBJECT_VALUE;
+        result.m_keys = std::move(keys);
+        result.m_items = std::move(values);
+        return result;
+    }
+
+    JsonType JSONValue::GetType() const noexcept
+    {
+        return m_type;
+    }
+
+    bool JSONValue::GetBool() const noexcept
+    {
+        return m_type == JsonType::BOOL_VALUE && m_boolValue;
+    }
+
+    double JSONValue::GetNumber() const noexcept
+    {
+        return m_type == JsonType::NUMBER_VALUE ? m_numberValue : 0.0;
+    }
+
+    const std::string& JSONValue::GetString() const noexcept
+    {
+        static const std::string EMPTY_STRING{};
+        return m_type == JsonType::STRING_VALUE ? m_stringValue : EMPTY_STRING;
+    }
+
+    const std::vector<JSONValue>& JSONValue::GetItems() const noexcept
+    {
+        static const std::vector<JSONValue> EMPTY_ITEMS{};
+        return m_type == JsonType::ARRAY_VALUE ? m_items : EMPTY_ITEMS;
+    }
+
+    const JSONValue& JSONValue::FindMember(std::string_view key) const noexcept
+    {
+        static const JSONValue NULL_NODE{};
+        if (m_type != JsonType::OBJECT_VALUE) return NULL_NODE;
+
+        for (std::size_t index{}; index < m_keys.size(); ++index)
+        {
+            if (m_keys[index] == key) return m_items[index];
+        }
+        return NULL_NODE;
+    }
+
+    JSONValue ParseJsonText(std::string_view text)
+    {
+        JSONParser parser{ text };
+        return parser.ParseDocument();
+    }
+}﻿#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#define NOUSER   // winuser.h 제외: GetClassName 같은 매크로 충돌 방지
+#include <Windows.h>
+
+namespace LostArkCalculator::App
+{
+    namespace
+    {
+        // 프로그램 정상 종료 코드
+        constexpr int EXIT_CODE_SUCCESS{ 0 };
+    }
+}
+
+// GUI 하위 시스템(/SUBSYSTEM:WINDOWS)의 진입점
+// DX11 창 셸을 붙이기 전까지는 바로 종료하는 임시 구현
+int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
+{
+    return LostArkCalculator::App::EXIT_CODE_SUCCESS;
+}﻿module;
+
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#define NOUSER   // winuser.h 제외: GetClassName 같은 매크로 충돌 방지
+#include <Windows.h>
+#include <winhttp.h>
+
+#pragma comment(lib, "winhttp.lib")
+
+module LostArkCalculator.Services.MarketsAPI;
+
+import std;
+import LostArkCalculator.Core.APPConstants;
+import LostArkCalculator.Core.APPExceptions;
+import LostArkCalculator.Models.CharacterInfo;
+import LostArkCalculator.Services.JSONValue;
+
+namespace LostArkCalculator::Services
+{
+    namespace
+    {
+        // ===== 서버 주소와 경로 =====
+        constexpr const wchar_t* API_HOST{ L"developer-lostark.game.onstove.com" };
+        constexpr const wchar_t* MARKET_PATH{ L"/markets/items" };
+        constexpr std::string_view SIBLINGS_PATH_PREFIX{ "/characters/" };
+        constexpr std::string_view SIBLINGS_PATH_SUFFIX{ "/siblings" };
+
+        // ===== HTTP 동사 · 헤더 =====
+        constexpr const wchar_t* USER_AGENT{ L"LostArkCalculator" };
+        constexpr const wchar_t* VERB_GET{ L"GET" };
+        constexpr const wchar_t* VERB_POST{ L"POST" };
+        constexpr std::wstring_view ACCEPT_HEADER{ L"accept: application/json\r\n" };
+        constexpr std::wstring_view CONTENT_TYPE_HEADER{ L"Content-Type: application/json\r\n" };
+
+        // ===== 응답 상태 코드 =====
+        constexpr int HTTP_STATUS_SUCCESS_MIN{ 200 };
+        constexpr int HTTP_STATUS_SUCCESS_MAX{ 299 };
+        constexpr int HTTP_STATUS_UNAUTHORIZED{ 401 };
+        constexpr int HTTP_STATUS_TOO_MANY_REQUESTS{ 429 };
+
+        // ===== 시간 제한 · 시세 계산 =====
+        constexpr int API_TIMEOUT_MS{ Core::APPConstants::API_TIMEOUT_SECONDS * Core::APPConstants::MS_PER_SECOND };
+        constexpr std::size_t MARKET_CATEGORY_CODE{ 50000 };   // 거래소 재료 카테고리
+        constexpr int FIRST_PAGE{ 1 };
+        constexpr double SHARD_POUCH_COUNT{ 3000.0 };          // 파편 주머니 1개당 파편 수
+        constexpr double PRICE_SCALE{ 100.0 };                 // 소수 둘째 자리까지 (10^2)
+
+        // ===== 응답 JSON 키 =====
+        constexpr std::string_view KEY_ITEMS{ "Items" };
+        constexpr std::string_view KEY_NAME{ "Name" };
+        constexpr std::string_view KEY_RECENT_PRICE{ "RecentPrice" };
+        constexpr std::string_view KEY_CURRENT_MIN_PRICE{ "CurrentMinPrice" };
+        constexpr std::string_view KEY_BUNDLE_COUNT{ "BundleCount" };
+        constexpr std::string_view KEY_CHARACTER_NAME{ "CharacterName" };
+        constexpr std::string_view KEY_CHARACTER_CLASS_NAME{ "CharacterClassName" };
+        constexpr std::string_view KEY_ITEM_MAX_LEVEL{ "ItemMaxLevel" };
+        constexpr std::string_view KEY_ITEM_AVG_LEVEL{ "ItemAvgLevel" };
+
+        // ===== URL 인코딩 =====
+        constexpr std::string_view HEX_DIGITS{ "0123456789ABCDEF" };
+        constexpr char PERCENT_SIGN{ '%' };
+        constexpr int NIBBLE_BITS{ 4 };
+        constexpr unsigned NIBBLE_MASK{ 0x0F };
+
+        // ===== 오류 메시지 =====
+        constexpr std::string_view TIMEOUT_MESSAGE{ "API 응답 시간이 초과되었습니다." };
+
+        // WinHTTP 핸들 해제기
+        // 함수 포인터 대신 기본 생성 가능한 함수 객체를 써야 unique_ptr의 "포인터 하나" 생성자가 살아 있음
+        struct WinHttpCloser
+        {
+            void operator()(HINTERNET handle) const noexcept
+            {
+                ::WinHttpCloseHandle(handle);
+            }
+        };
+
+        // WinHTTP 핸들을 RAII로 관리 (소멸 시 WinHttpCloser 호출)
+        using WinHttpHandle = std::unique_ptr<std::remove_pointer_t<HINTERNET>, WinHttpCloser>;
+
+        struct HttpResponse
+        {
+            int m_statusCode;
+            std::string m_body;
+        };
+
+        [[noreturn]] void ThrowNetworkError()
+        {
+            const DWORD errorCode{ ::GetLastError() };
+            if (errorCode == ERROR_WINHTTP_TIMEOUT) throw std::runtime_error{ std::string{ TIMEOUT_MESSAGE } };
+            throw std::runtime_error{ std::format("API 네트워크 오류 (코드 {})", errorCode) };
+        }
+
+        WinHttpHandle MakeHandle(HINTERNET handle)
+        {
+            if (handle == nullptr) ThrowNetworkError();
+            return WinHttpHandle{ handle };
+        }
+
+        // UTF-8 → UTF-16 (WinHTTP는 와이드 문자열을 사용)
+        std::wstring Utf8ToWide(std::string_view text)
+        {
+            if (text.empty()) return {};
+
+            const int inputLength{ static_cast<int>(text.size()) };
+            const int wideLength{ ::MultiByteToWideChar(CP_UTF8, 0, text.data(), inputLength, nullptr, 0) };
+            if (wideLength == 0) throw std::runtime_error{ "문자 변환에 실패했습니다." };
+
+            std::wstring wide(static_cast<std::size_t>(wideLength), L'\0');
+            ::MultiByteToWideChar(CP_UTF8, 0, text.data(), inputLength, wide.data(), wideLength);
+            return wide;
+        }
+
+        // 영문·숫자·-_.~ 만 그대로 두고 나머지는 %XX로 바꿈 (C# Uri.EscapeDataString과 같은 규칙)
+        bool IsUnreservedByte(unsigned char byte) noexcept
+        {
+            return (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z') || (byte >= '0' && byte <= '9')
+                || byte == '-' || byte == '_' || byte == '.' || byte == '~';
+        }
+
+        std::string EscapeDataString(std::string_view text)
+        {
+            std::string escaped;
+            escaped.reserve(text.size());
+
+            for (const char character : text)
+            {
+                const auto byte{ static_cast<unsigned char>(character) };
+                if (IsUnreservedByte(byte))
+                {
+                    escaped.push_back(character);
+                    continue;
+                }
+
+                escaped.push_back(PERCENT_SIGN);
+                escaped.push_back(HEX_DIGITS[static_cast<std::size_t>(byte >> NIBBLE_BITS)]);
+                escaped.push_back(HEX_DIGITS[static_cast<std::size_t>(byte & NIBBLE_MASK)]);
+            }
+            return escaped;
+        }
+
+        // JSON 문자열 리터럴로 감쌈 (재료 이름에 들어갈 수 있는 따옴표와 역슬래시만 이스케이프)
+        std::string QuoteJsonString(std::string_view text)
+        {
+            std::string quoted{ '"' };
+            for (const char c : text)
+            {
+                if (c == '"' || c == '\\') quoted.push_back('\\');
+                quoted.push_back(c);
+            }
+            quoted.push_back('"');
+            return quoted;
+        }
+
+        // 거래소 검색 요청 본문 (C# JObject와 같은 키 순서)
+        std::string BuildMarketPayload(std::string_view itemName)
+        {
+            return std::format(R"({{"Sort":"CURRENT_MIN_PRICE","CategoryCode":{},"ItemName":{},"PageNo":{},"SortCondition":"ASC"}})",
+                MARKET_CATEGORY_CODE, QuoteJsonString(itemName), FIRST_PAGE);
+        }
+
+        // C# Math.Round(value, 2)와 같이 짝수 반올림 (std::nearbyint의 기본 반올림 모드)
+        double RoundPrice(double value) noexcept
+        {
+            return std::nearbyint(value * PRICE_SCALE) / PRICE_SCALE;
+        }
+
+        // 실패 응답을 상황별 예외로 바꿈 (C# EnsureSuccess와 같음)
+        void EnsureSuccess(const HttpResponse& response, std::string_view apiName)
+        {
+            if (response.m_statusCode >= HTTP_STATUS_SUCCESS_MIN && response.m_statusCode <= HTTP_STATUS_SUCCESS_MAX) return;
+            if (response.m_statusCode == HTTP_STATUS_UNAUTHORIZED) throw Core::APIKeyInvalidException{};
+            if (response.m_statusCode == HTTP_STATUS_TOO_MANY_REQUESTS) throw Core::APIRateLimitException{};
+            throw std::runtime_error{ std::format("{} API 요청 실패 (HTTP {})", apiName, response.m_statusCode) };
+        }
+
+        // 거래소 응답에서 이름이 정확히 같은 아이템 찾기 (C# FirstOrDefault와 같음)
+        const JSONValue* FindExactItem(const JSONValue& root, std::string_view itemName)
+        {
+            for (const JSONValue& item : root.FindMember(KEY_ITEMS).GetItems())
+            {
+                if (std::string_view{ item.FindMember(KEY_NAME).GetString() } == itemName) return &item;
+            }
+            return nullptr;
+        }
+
+        // 문자열 또는 숫자로 온 값을 텍스트로 바꿈 (C# object → ToString과 같음, 없으면 nullopt)
+        std::optional<std::string> ReadOptionalText(const JSONValue& parent, std::string_view key)
+        {
+            const JSONValue& value{ parent.FindMember(key) };
+            switch (value.GetType())
+            {
+                case JsonType::STRING_VALUE:
+                    return value.GetString();
+                case JsonType::NUMBER_VALUE:
+                {
+                    // 편집기의 consteval 형식 검사를 거치지 않도록 런타임 포맷 사용 (결과는 std::format과 같음)
+                    const double number{ value.GetNumber() };
+                    return std::vformat("{}", std::make_format_args(number));
+                }
+                default:
+                    return std::nullopt;
+            }
+        }
+    }
+
+    // ===== 실제 WinHTTP 통신 구현 =====
+    class MarketsAPI::Impl
+    {
+    public:
+        explicit Impl(std::string apiKey);
+
+        void SetApiKey(std::string apiKey);
+        [[nodiscard]] double GetPrice(std::string_view itemName, bool isShard, bool isBundle);
+        [[nodiscard]] std::vector<Models::CharacterInfo> GetRoster(std::string_view charName);
+
+    private:
+        [[nodiscard]] std::wstring BuildHeaders();
+        [[nodiscard]] HttpResponse Send(const wchar_t* verb, const std::wstring& path, std::string body);
+
+        WinHttpHandle m_session;
+        WinHttpHandle m_connection;
+        std::mutex m_headerMutex;               // SetApiKey(UI 스레드) ↔ 요청(백그라운드 스레드) 보호
+        std::wstring m_authorizationHeader;     // "authorization: Bearer <키>\r\n"
+    };
+
+    MarketsAPI::Impl::Impl(std::string apiKey)
+        : m_session{ MakeHandle(::WinHttpOpen(USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                                              WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0)) }
+        , m_connection{ MakeHandle(::WinHttpConnect(m_session.get(), API_HOST, INTERNET_DEFAULT_HTTPS_PORT, 0)) }
+    {
+        if (!::WinHttpSetTimeouts(m_session.get(), API_TIMEOUT_MS, API_TIMEOUT_MS, API_TIMEOUT_MS, API_TIMEOUT_MS))
+        {
+            ThrowNetworkError();
+        }
+        SetApiKey(std::move(apiKey));
+    }
+
+    void MarketsAPI::Impl::SetApiKey(std::string apiKey)
+    {
+        std::wstring header{ std::format(L"authorization: Bearer {}\r\n", Utf8ToWide(apiKey)) };
+
+        std::scoped_lock lock{ m_headerMutex };
+        m_authorizationHeader = std::move(header);
+    }
+
+    std::wstring MarketsAPI::Impl::BuildHeaders()
+    {
+        std::scoped_lock lock{ m_headerMutex };
+
+        std::wstring headers{ ACCEPT_HEADER };
+        headers += CONTENT_TYPE_HEADER;
+        headers += m_authorizationHeader;
+        return headers;
+    }
+
+    HttpResponse MarketsAPI::Impl::Send(const wchar_t* verb, const std::wstring& path, std::string body)
+    {
+        const std::wstring headers{ BuildHeaders() };
+
+        WinHttpHandle request{ MakeHandle(::WinHttpOpenRequest(m_connection.get(), verb, path.c_str(), nullptr,
+                                                               WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                                               WINHTTP_FLAG_SECURE)) };
+
+        const DWORD bodyLength{ static_cast<DWORD>(body.size()) };
+        if (!::WinHttpSendRequest(request.get(), headers.c_str(), static_cast<DWORD>(headers.size()),
+            body.empty() ? nullptr : body.data(), bodyLength, bodyLength, 0))
+        {
+            ThrowNetworkError();
+        }
+
+        if (!::WinHttpReceiveResponse(request.get(), nullptr)) ThrowNetworkError();
+
+        DWORD statusCode{};
+        DWORD statusSize{ static_cast<DWORD>(sizeof(statusCode)) };
+        if (!::WinHttpQueryHeaders(request.get(), WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+            WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusSize, WINHTTP_NO_HEADER_INDEX))
+        {
+            ThrowNetworkError();
+        }
+
+        // 응답 본문을 남은 만큼 전부 읽음
+        std::string responseBody;
+        DWORD available{};
+        while (true)
+        {
+            if (!::WinHttpQueryDataAvailable(request.get(), &available)) ThrowNetworkError();
+            if (available == 0) break;
+
+            const std::size_t previousSize{ responseBody.size() };
+            responseBody.resize(previousSize + available);
+
+            DWORD readSize{};
+            if (!::WinHttpReadData(request.get(), responseBody.data() + previousSize, available, &readSize))
+            {
+                ThrowNetworkError();
+            }
+            responseBody.resize(previousSize + readSize);
+        }
+
+        return HttpResponse{ static_cast<int>(statusCode), std::move(responseBody) };
+    }
+
+    double MarketsAPI::Impl::GetPrice(std::string_view itemName, bool isShard, bool isBundle)
+    {
+        const HttpResponse response{ Send(VERB_POST, MARKET_PATH, BuildMarketPayload(itemName)) };
+        EnsureSuccess(response, "거래소");
+
+        const JSONValue root{ ParseJsonText(response.m_body) };
+        const JSONValue* item{ FindExactItem(root, itemName) };
+        if (item == nullptr)
+        {
+            throw std::runtime_error{ std::format("거래소에서 '{}' 시세를 찾을 수 없습니다.", itemName) };
+        }
+
+        // 최근 거래가가 있으면 우선, 없으면 현재 최저가 (C# 원본 순서와 같음)
+        const double recentPrice{ item->FindMember(KEY_RECENT_PRICE).GetNumber() };
+        const double price{ recentPrice > 0.0 ? recentPrice : item->FindMember(KEY_CURRENT_MIN_PRICE).GetNumber() };
+        if (price <= 0.0) throw std::runtime_error{ std::format("'{}'의 유효한 시세가 없습니다.", itemName) };
+
+        if (isShard) return RoundPrice(price / SHARD_POUCH_COUNT);
+        if (!isBundle) return price;
+
+        // 하드코딩 묶음 수량 대신 응답의 실제 BundleCount 사용
+        const int bundleCount{ static_cast<int>(item->FindMember(KEY_BUNDLE_COUNT).GetNumber()) };
+        if (bundleCount <= 0) throw std::runtime_error{ std::format("'{}'의 묶음 수량 정보가 없습니다.", itemName) };
+        return RoundPrice(price / static_cast<double>(bundleCount));
+    }
+
+    std::vector<Models::CharacterInfo> MarketsAPI::Impl::GetRoster(std::string_view charName)
+    {
+        const std::string path{ std::string{ SIBLINGS_PATH_PREFIX } + EscapeDataString(charName)
+                                + std::string{ SIBLINGS_PATH_SUFFIX } };
+
+        const HttpResponse response{ Send(VERB_GET, Utf8ToWide(path), std::string{}) };
+        EnsureSuccess(response, "원정대");
+
+        // 없는 닉네임은 200 + null로 옴 → 빈 목록 (C# roster ?? [] 와 같음)
+        const JSONValue root{ response.m_body.empty() ? JSONValue{} : ParseJsonText(response.m_body) };
+
+        std::vector<Models::CharacterInfo> roster;
+        roster.reserve(root.GetItems().size());
+        for (const JSONValue& entry : root.GetItems())
+        {
+            roster.emplace_back(
+                std::string{ entry.FindMember(KEY_CHARACTER_NAME).GetString() },
+                ReadOptionalText(entry, KEY_CHARACTER_CLASS_NAME),
+                ReadOptionalText(entry, KEY_ITEM_MAX_LEVEL),
+                ReadOptionalText(entry, KEY_ITEM_AVG_LEVEL));
+        }
+        return roster;
+    }
+
+    // ===== 공개 인터페이스 (구현은 Impl에 위임) =====
+    MarketsAPI::MarketsAPI(std::string apiKey)
+        : m_impl{ std::make_unique<Impl>(std::move(apiKey)) }
+    {}
+
+    MarketsAPI::~MarketsAPI() = default;
+
+    void MarketsAPI::SetApiKey(std::string apiKey)
+    {
+        m_impl->SetApiKey(std::move(apiKey));
+    }
+
+    double MarketsAPI::GetPrice(std::string_view itemName, bool isShard, bool isBundle)
+    {
+        return m_impl->GetPrice(itemName, isShard, isBundle);
+    }
+
+    std::vector<Models::CharacterInfo> MarketsAPI::GetRoster(std::string_view charName)
+    {
+        return m_impl->GetRoster(charName);
+    }
+}﻿module LostArkCalculator.Core.MarketAPI;
+
+namespace LostArkCalculator::Core
+{
+    MarketAPI::~MarketAPI() = default;
+}﻿module LostArkCalculator.Models.PriceData;
+
+namespace LostArkCalculator::Models
+{
+    PriceData::PriceData() noexcept
+    {}
+
+    double PriceData::GetCurrent() const noexcept
+    {
+        return m_current;
+    }
+    void PriceData::SetCurrent(double current) noexcept
+    {
+        m_current = current;
+    }
+
+    double PriceData::GetPrevious() const noexcept
+    {
+        return m_previous;
+    }
+    void PriceData::SetPrevious(double previous) noexcept
+    {
+        m_previous = previous;
+    }
+
+    double PriceData::GetDiff() const noexcept
+    {
+        return m_current - m_previous;
+    }
+}﻿module LostArkCalculator.Models.ServerConfig;
+
+import std;
+
+namespace LostArkCalculator::Models
+{
+    ServerConfig::ServerConfig(bool isMaintenance,
+        std::optional<std::string> maintenanceMessage,
+        std::optional<std::string> latestVersion,
+        std::optional<std::string> downloadUrl,
+        std::optional<std::string> notice)
+        : m_isMaintenance{ isMaintenance }
+        , m_maintenanceMessage{ std::move(maintenanceMessage) }
+        , m_latestVersion{ std::move(latestVersion) }
+        , m_downloadUrl{ std::move(downloadUrl) }
+        , m_notice{ std::move(notice) }
+    {}
+
+    bool ServerConfig::IsMaintenance() const noexcept
+    {
+        return m_isMaintenance;
+    }
+    const std::optional<std::string>& ServerConfig::GetMaintenanceMessage() const noexcept
+    {
+        return m_maintenanceMessage;
+    }
+    const std::optional<std::string>& ServerConfig::GetLatestVersion() const noexcept
+    {
+        return m_latestVersion;
+    }
+    const std::optional<std::string>& ServerConfig::GetDownloadUrl() const noexcept
+    {
+        return m_downloadUrl;
+    }
+    const std::optional<std::string>& ServerConfig::GetNotice() const noexcept
+    {
+        return m_notice;
+    }
+}﻿module LostArkCalculator.Models.UserData;
+
+import std;
+
+namespace LostArkCalculator::Models
+{
+    namespace
+    {
+        constexpr std::size_t LEGACY_KEY_LENGTH{ 5 };     // "MM-dd"
+        constexpr std::size_t HISTORY_KEY_LENGTH{ 10 };   // "yyyy-MM-dd"
+        constexpr std::size_t HISTORY_YEAR_LENGTH{ 4 };   // "yyyy"
+        constexpr std::size_t HISTORY_MONTH_START{ 5 };
+        constexpr std::size_t HISTORY_MONTH_END{ 7 };
+        constexpr std::size_t HISTORY_DAY_START{ 8 };
+        constexpr char HISTORY_SEPARATOR{ '-' };
+
+        // 숫자 문자열 전체를 값으로 바꿈 (남는 글자가 있으면 실패)
+        template <typename T>
+        bool TryParseDigits(std::string_view text, T& value)
+        {
+            const char* first{ text.data() };
+            const char* last{ text.data() + text.size() };
+            const auto [ptr, ec] { std::from_chars(first, last, value) };
+            return ec == std::errc{} && ptr == last;
+        }
+
+        // "MM-dd" → 날짜 (기준일 이후면 작년으로 간주, 달력에 없는 날짜면 nullopt)
+        std::optional<std::chrono::year_month_day> ConvertLegacyKey(std::string_view legacyKey, const std::chrono::year_month_day& today)
+        {
+            const std::size_t separatorPos{ legacyKey.find(HISTORY_SEPARATOR) };
+            if (separatorPos == std::string_view::npos) return std::nullopt;
+
+            unsigned month{};
+            unsigned day{};
+            if (!TryParseDigits(legacyKey.substr(0, separatorPos), month)) return std::nullopt;
+            if (!TryParseDigits(legacyKey.substr(separatorPos + 1), day)) return std::nullopt;
+
+            const std::chrono::month monthValue{ month };
+            const std::chrono::day dayValue{ day };
+            const bool isFuture{ monthValue > today.month() || (monthValue == today.month() && dayValue > today.day()) };
+            const std::chrono::year year{ isFuture ? today.year() - std::chrono::years{ 1 } : today.year() };
+
+            const std::chrono::year_month_day candidate{ year, monthValue, dayValue };
+            if (!candidate.ok()) return std::nullopt;
+            return candidate;
+        }
+    }
+
+    const std::unordered_map<std::string, Character>& UserData::GetCharacters() const noexcept
+    {
+        return m_characters;
+    }
+
+    void UserData::SetCharacters(std::unordered_map<std::string, Character> characters)
+    {
+        m_characters = std::move(characters);
+    }
+
+    Character* UserData::FindCharacter(std::string_view name)
+    {
+        const auto found{ m_characters.find(std::string{ name }) };
+        return found != m_characters.end() ? &found->second : nullptr;
+    }
+
+    const Character* UserData::FindCharacter(std::string_view name) const
+    {
+        const auto found{ m_characters.find(std::string{ name }) };
+        return found != m_characters.end() ? &found->second : nullptr;
+    }
+
+    const std::map<std::string, double>& UserData::GetHistory() const noexcept
+    {
+        return m_history;
+    }
+
+    void UserData::SetHistory(std::map<std::string, double> history)
+    {
+        m_history = std::move(history);
+    }
+
+    void UserData::RecordHistory(const std::string& dateKey, double totalAsset)
+    {
+        m_history.insert_or_assign(dateKey, totalAsset);
+    }
+
+    void UserData::MigrateLegacyHistory(const std::chrono::year_month_day& today)
+    {
+        // 옛 형식 키만 먼저 모음 (맵을 돌면서 지우면 순회가 꼬이므로)
+        std::vector<std::string> legacyKeys;
+        for (const auto& entry : m_history)
+        {
+            if (entry.first.size() == LEGACY_KEY_LENGTH) legacyKeys.push_back(entry.first);
+        }
+
+        for (const std::string& oldKey : legacyKeys)
+        {
+            const double value{ m_history.at(oldKey) };
+            m_history.erase(oldKey);   // 옛 키는 변환 성공 여부와 관계없이 항상 제거 (원본과 동일)
+
+            if (const auto migrated{ ConvertLegacyKey(oldKey, today) }; migrated)
+            {
+                m_history.try_emplace(MakeHistoryKey(*migrated), value);   // 같은 날짜 키가 이미 있으면 기존 값 유지
+            }
+        }
+    }
+
+    std::string UserData::MakeHistoryKey(const std::chrono::year_month_day& date)
+    {
+        return std::format("{:04}-{:02}-{:02}",
+            static_cast<int>(date.year()),
+            static_cast<unsigned>(date.month()),
+            static_cast<unsigned>(date.day()));
+    }
+
+    std::optional<std::chrono::year_month_day> UserData::ParseHistoryKey(std::string_view key)
+    {
+        if (key.size() != HISTORY_KEY_LENGTH) return std::nullopt;
+        if (key[HISTORY_YEAR_LENGTH] != HISTORY_SEPARATOR || key[HISTORY_MONTH_END] != HISTORY_SEPARATOR) return std::nullopt;
+
+        int year{};
+        unsigned month{};
+        unsigned day{};
+        if (!TryParseDigits(key.substr(0, HISTORY_YEAR_LENGTH), year)) return std::nullopt;
+        if (!TryParseDigits(key.substr(HISTORY_MONTH_START, HISTORY_MONTH_END - HISTORY_MONTH_START), month)) return std::nullopt;
+        if (!TryParseDigits(key.substr(HISTORY_DAY_START), day)) return std::nullopt;
+
+        const std::chrono::year_month_day date{ std::chrono::year{ year }, std::chrono::month{ month }, std::chrono::day{ day } };
+        if (!date.ok()) return std::nullopt;
+        return date;
+    }
+}
