@@ -37,7 +37,7 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view TIER_SERCA_NAME{ "세르카" };
 
         // 부위 이름 (RefineSlot 순서, 저장 파일 키)
-        constexpr std::array<std::string_view, Models::REFINE_SLOT_COUNT> SLOT_NAMES{ "무기", "투구", "어깨", "상의", "하의", "장갑" };
+        constexpr std::array<std::string_view, Models::REFINE_SLOT_COUNT> SLOT_NAMES{ "투구", "어깨", "상의", "하의", "장갑", "무기" };
 
         // ===== 기본값 =====
         constexpr int DEFAULT_TARGET_ITEM_LEVEL{ 1750 };

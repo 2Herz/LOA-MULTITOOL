@@ -8,9 +8,11 @@ import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Models.AccessoryListing;
 import LostArkMultiTool.Models.AccessorySearchQuery;
 import LostArkMultiTool.Models.AuctionOption;
+import LostArkMultiTool.Models.CharacterArmory;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Models.MarketItem;
 import LostArkMultiTool.Models.RateLimitState;
+import LostArkMultiTool.Services.ArmoryParser;
 import LostArkMultiTool.Services.JSONValue;
 import LostArkMultiTool.Services.WinHTTPClient;
 
@@ -25,6 +27,15 @@ namespace LostArkMultiTool::Services
         constexpr std::wstring_view AUCTION_OPTIONS_PATH{ L"/auctions/options" };
         constexpr std::string_view SIBLINGS_PATH_PREFIX{ "/characters/" };
         constexpr std::string_view SIBLINGS_PATH_SUFFIX{ "/siblings" };
+        constexpr std::string_view ARMORY_PATH_PREFIX{ "/armories/characters/" };
+#ifdef _DEBUG
+        // Debug 빌드: 필터 없이 전체 묶음을 받아 원본 응답을 파일로 남김 (악세 · 각인 · 아크 패시브 · 아크 그리드 등 필드 이름 확인용)
+        constexpr std::string_view ARMORY_PATH_SUFFIX{ "" };
+        constexpr std::string_view ARMORY_DEBUG_DUMP_FILE_NAME{ "ArmoryDebugDump.json" };   // 사용자 데이터 폴더에 저장
+#else
+        // Release 빌드도 필터 없이 전체 묶음을 받음 (악세 · 팔찌 · 스톤 · 아바타 · 각인 · 아크 패시브 · 아크 그리드까지 필요하고, 필터 이름을 확인하지 못해서 전체 응답이 가장 안전함)
+        constexpr std::string_view ARMORY_PATH_SUFFIX{ "" };
+#endif
 
         // ===== HTTP 동사 · 헤더 =====
         constexpr std::wstring_view VERB_GET{ L"GET" };
@@ -55,6 +66,7 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view INVALID_AUCTION_RESPONSE_MESSAGE{ "경매장 API 응답 형식이 올바르지 않습니다." };
         constexpr std::string_view INVALID_MARKET_RESPONSE_MESSAGE{ "거래소 API 응답 형식이 올바르지 않습니다." };
         constexpr std::string_view INVALID_OPTIONS_RESPONSE_MESSAGE{ "경매장 옵션 API 응답 형식이 올바르지 않습니다." };
+        constexpr std::string_view INVALID_ARMORY_RESPONSE_MESSAGE{ "무기고 API 응답 형식이 올바르지 않습니다." };
 
         // ===== 시간 제한 · 시세 계산 =====
         constexpr int API_TIMEOUT_MS{ Core::APPConstants::API_TIMEOUT_SECONDS * Core::APPConstants::MS_PER_SECOND };
@@ -422,6 +434,30 @@ namespace LostArkMultiTool::Services
                 ReadOptionalText(entry, KEY_SERVER_NAME));   // 낙원력 트래커의 닉네임 변경 감지(같은 서버 · 직업)에 사용
         }
         return roster;
+    }
+
+    Models::CharacterArmory WinHTTPMarketAPI::GetArmory(std::string_view charName)
+    {
+        const std::string path{ std::string{ ARMORY_PATH_PREFIX } + EscapeDataString(charName) + std::string{ ARMORY_PATH_SUFFIX } };
+
+        const HTTPResponse response{ SendRequest(VERB_GET, Core::TextEncoding::UTF8ToWide(path), std::string{}) };
+        EnsureSuccess(response, "무기고");
+
+#ifdef _DEBUG
+        // 원본 응답 저장 (실패해도 조회는 계속 → 예외를 삼킴, Debug 전용)
+        try
+        {
+            std::ofstream dump{ Core::APPConstants::GetUserDataFilePath(ARMORY_DEBUG_DUMP_FILE_NAME), std::ios::binary | std::ios::trunc };
+            dump.write(response.m_body.data(), static_cast<std::streamsize>(response.m_body.size()));
+        }
+        catch (const std::exception&)
+        {
+        }
+#endif
+
+        // 없는 닉네임은 200 + null로 옴 → ParseArmory가 "캐릭터를 찾을 수 없어요" 예외
+        const JSONValue root{ response.m_body.empty() ? JSONValue{} : ParseResponseBody(response, INVALID_ARMORY_RESPONSE_MESSAGE) };
+        return ParseArmory(root);
     }
 
     std::vector<Models::MarketItem> WinHTTPMarketAPI::SearchMarketItems(int categoryCode, std::string_view itemGrade, std::string_view itemName)

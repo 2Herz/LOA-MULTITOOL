@@ -1,6 +1,7 @@
 ﻿export module LostArkMultiTool.Core.MarketAPI;
 
 import std;
+import LostArkMultiTool.Models.CharacterArmory;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Models.AccessoryListing;
 import LostArkMultiTool.Models.AccessorySearchQuery;
@@ -22,6 +23,9 @@ export namespace LostArkMultiTool::Core
 
         [[nodiscard]] virtual double GetPrice(std::string_view itemName, bool isShard, bool isBundle) = 0;
         [[nodiscard]] virtual std::vector<Models::CharacterInfo> GetRoster(std::string_view charName) = 0;
+
+        // 캐릭터 무기고 (프로필 · 장비 · 보석 → 전투력 시뮬레이터, 없는 캐릭터면 std::runtime_error)
+        [[nodiscard]] virtual Models::CharacterArmory GetArmory(std::string_view charName) = 0;
 
         // 거래소 카테고리의 아이템 전체 (현재 최저가 높은 순, 마지막 페이지까지 넘겨서 모음 → 유각 · 강화책 검색기)
         // itemGrade · itemName이 비어 있으면 그 조건 없이 (itemName은 부분 일치)

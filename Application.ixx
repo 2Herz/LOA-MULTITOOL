@@ -44,7 +44,7 @@ export namespace LostArkMultiTool::Views
         void OnHiddenToTray() override;
 
     private:
-        static constexpr std::size_t TOOL_COUNT{ 8 };   // 귀속재료 계산기 · 보석 최저가 검색기 · 낙원력 트래커 · 유각 시세 검색기 · 악세 검색기 · 강화책 검색기 · 젬 시세 검색기 · 재련 시뮬레이터
+        static constexpr std::size_t TOOL_COUNT{ 9 };   // 귀속재료 계산기 · 보석 최저가 검색기 · 낙원력 트래커 · 유각 시세 검색기 · 악세 검색기 · 강화책 검색기 · 젬 시세 검색기 · 전투력 시뮬레이터 · 재련 시뮬레이터
 
         // 마우스를 누른 곳 (뗄 때까지 같은 곳으로 입력을 보냄 → 탭 화면에서 끌다가 탭 막대로 넘어가도 끊기지 않음)
         enum class PointerOwner

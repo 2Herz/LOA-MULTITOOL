@@ -263,6 +263,21 @@
     <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\8. 재련 시뮬레이터 매니저">
       <UniqueIdentifier>{bb94d703-4e81-4ce5-9976-bf5c63060f41}</UniqueIdentifier>
     </Filter>
+    <Filter Include="2. 모델\1. 데이터\11. 전투력">
+      <UniqueIdentifier>{cc1d5bb0-c5c3-4576-b01a-5cf57d274fff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\12. 전투력">
+      <UniqueIdentifier>{3fcbbbc1-0cc0-4d39-bec5-ebc51abd0027}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3. 서비스\15. 전투력">
+      <UniqueIdentifier>{042140d0-b543-4526-9688-75b846a1c1c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\13. 전투력시뮬레이터">
+      <UniqueIdentifier>{c76c7d01-ea36-41c9-ba4a-f1c8147c122e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\9. 전투력 시뮬레이터 매니저">
+      <UniqueIdentifier>{ef8e90db-879a-4305-b700-2439eaa27ec0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="APP_Constants.ixx">
@@ -921,6 +936,78 @@
     </ClCompile>
     <ClCompile Include="Refine_Simulator_Manager.cpp">
       <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\8. 재련 시뮬레이터 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Character_Armory.ixx">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Character_Armory.cpp">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Coefficient_Data.ixx">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Coefficient_Data.cpp">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_State.ixx">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_State.cpp">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Extra_State.ixx">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Extra_State.cpp">
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Factor_Component.ixx">
+      <Filter>1. 코어\12. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Factor_Component.cpp">
+      <Filter>1. 코어\12. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Extra_Component.ixx">
+      <Filter>1. 코어\12. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Extra_Component.cpp">
+      <Filter>1. 코어\12. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Power_Calculator.ixx">
+      <Filter>1. 코어\12. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Power_Calculator.cpp">
+      <Filter>1. 코어\12. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Armory_Parser.ixx">
+      <Filter>3. 서비스\15. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Armory_Parser.cpp">
+      <Filter>3. 서비스\15. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Simulator_Store.ixx">
+      <Filter>3. 서비스\15. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Simulator_Store.cpp">
+      <Filter>3. 서비스\15. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Simulator_View.ixx">
+      <Filter>4. 뷰\13. 전투력시뮬레이터</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Simulator_View.cpp">
+      <Filter>4. 뷰\13. 전투력시뮬레이터</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Extra_Editor.ixx">
+      <Filter>4. 뷰\13. 전투력시뮬레이터</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Extra_Editor.cpp">
+      <Filter>4. 뷰\13. 전투력시뮬레이터</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Simulator_Manager.ixx">
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\9. 전투력 시뮬레이터 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Simulator_Manager.cpp">
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\9. 전투력 시뮬레이터 매니저</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

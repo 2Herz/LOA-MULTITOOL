@@ -1,0 +1,4 @@
+# graphify 프로젝트 설정 (graphify는 graphify.toml이 아니라 이 파일을 읽음)
+# MSVC C++23 모듈 인터페이스(.ixx)와 .cppm을 C++로 분석
+language.ixx=cpp
+language.cppm=cpp

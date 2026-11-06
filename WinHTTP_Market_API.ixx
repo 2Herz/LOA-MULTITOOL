@@ -2,6 +2,7 @@
 
 import std;
 import LostArkMultiTool.Core.MarketAPI;
+import LostArkMultiTool.Models.CharacterArmory;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Models.AccessoryListing;
 import LostArkMultiTool.Models.AccessorySearchQuery;
@@ -27,6 +28,7 @@ export namespace LostArkMultiTool::Services
 
         [[nodiscard]] double GetPrice(std::string_view itemName, bool isShard, bool isBundle) override;
         [[nodiscard]] std::vector<Models::CharacterInfo> GetRoster(std::string_view charName) override;
+        [[nodiscard]] Models::CharacterArmory GetArmory(std::string_view charName) override;
         [[nodiscard]] std::vector<Models::MarketItem> SearchMarketItems(int categoryCode, std::string_view itemGrade, std::string_view itemName) override;
         [[nodiscard]] std::vector<Models::AuctionOption> GetAuctionOptions() override;
         [[nodiscard]] Models::AccessorySearchPage SearchAccessories(const Models::AccessorySearchQuery& query) override;

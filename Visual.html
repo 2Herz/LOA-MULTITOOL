@@ -155,6 +155,7 @@
       <aside class="detail" id="detail"><p class="hint">모듈을 하나 골라 줘.</p></aside>
     </div>
   </div>
+  <p class="lead">지식 그래프(graphify): <code>.graphifyrc</code>가 .ixx를 C++로 읽게 하고, <code>tools/Graphify-ModuleEdges.py</code>가 <code>export module</code> · <code>import</code> 줄을 읽어 모듈 115개 · 모듈 의존 616개를 <code>graphify-out/graph.json</code>에 넣어. <code>/graphify --update</code> 뒤에 이어서 실행하면 <code>graphify path "모듈A" "모듈B"</code>로 의존 경로를 따라갈 수 있어.</p>
 
   <h2>실행 · 데이터 흐름</h2>
   <div class="flow">
@@ -252,7 +253,7 @@ const MODULES = [
   "module": "LostArkMultiTool.Core.APPConstants",
   "imports": [],
   "cppImports": [],
-  "lines": 137,
+  "lines": 140,
   "cppLines": 128,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\1. 상수",
@@ -426,6 +427,7 @@ const MODULES = [
    "LostArkMultiTool.Views.AccessoryFinderManager",
    "LostArkMultiTool.Views.ArkGemFinderManager",
    "LostArkMultiTool.Views.CalculatorManager",
+   "LostArkMultiTool.Views.CombatSimulatorManager",
    "LostArkMultiTool.Views.EngravingFinderManager",
    "LostArkMultiTool.Views.GemFinderManager",
    "LostArkMultiTool.Views.RefineBookFinderManager",
@@ -435,7 +437,7 @@ const MODULES = [
    "LostArkMultiTool.Views.TrackerManager"
   ],
   "lines": 122,
-  "cppLines": 767,
+  "cppLines": 776,
   "hasCpp": true,
   "filter": "소스 파일\\1. 앱",
   "desc": "프로그램 본체 (xmind의 Main)",
@@ -554,6 +556,24 @@ const MODULES = [
   "types": [
    "ArkGemQuote"
   ]
+ },
+ {
+  "file": "Armory_Parser.ixx",
+  "module": "LostArkMultiTool.Services.ArmoryParser",
+  "imports": [
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Models.CombatCoefficientData",
+   "LostArkMultiTool.Models.CombatExtraState"
+  ],
+  "lines": 17,
+  "cppLines": 666,
+  "hasCpp": true,
+  "filter": "3. 서비스\\15. 전투력",
+  "desc": "무기고 응답 해석 (API /armories/characters/{이름}?filters=profiles+equipment+gems)",
+  "types": []
  },
  {
   "file": "Asset_Calculator.ixx",
@@ -836,6 +856,23 @@ const MODULES = [
   ]
  },
  {
+  "file": "Character_Armory.ixx",
+  "module": "LostArkMultiTool.Models.CharacterArmory",
+  "imports": [
+   "LostArkMultiTool.Models.CombatExtraState"
+  ],
+  "cppImports": [],
+  "lines": 62,
+  "cppLines": 44,
+  "hasCpp": true,
+  "filter": "2. 모델\\1. 데이터\\11. 전투력",
+  "desc": "전투력 시뮬레이터가 다루는 장비 부위 (표 행 순서 = 이 순서)",
+  "types": [
+   "GearItem",
+   "CharacterArmory"
+  ]
+ },
+ {
   "file": "Character_Info.ixx",
   "module": "LostArkMultiTool.Models.CharacterInfo",
   "imports": [],
@@ -867,6 +904,257 @@ const MODULES = [
   "desc": "켜고 끄는 상자 + 글자 (원본 CheckBox: \"시세갱신\" 자동 갱신 켜기)",
   "types": [
    "CheckBox"
+  ]
+ },
+ {
+  "file": "Combat_Coefficient_Data.ixx",
+  "module": "LostArkMultiTool.Models.CombatCoefficientData",
+  "imports": [],
+  "cppImports": [],
+  "lines": 179,
+  "cppLines": 1285,
+  "hasCpp": true,
+  "filter": "2. 모델\\1. 데이터\\11. 전투력",
+  "desc": "전투력 시뮬레이터 계수 (lopec 측정 데이터를 분석한 data/CombatCoefficients.json)",
+  "types": [
+   "EquipmentTable",
+   "AdvancedBonus",
+   "ItemLevelRule",
+   "QualityCurve",
+   "KeyedValue",
+   "AccessoryFormula",
+   "BraceletWeaponLine",
+   "EngravingBook"
+  ]
+ },
+ {
+  "file": "Combat_Extra_Component.ixx",
+  "module": "LostArkMultiTool.Core.CombatExtraComponent",
+  "imports": [
+   "LostArkMultiTool.Core.CombatFactorComponent",
+   "LostArkMultiTool.Models.CombatState"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Models.CombatCoefficientData",
+   "LostArkMultiTool.Models.CombatExtraState"
+  ],
+  "lines": 68,
+  "cppLines": 363,
+  "hasCpp": true,
+  "filter": "1. 코어\\12. 전투력",
+  "desc": "악세서리 연마 옵션: 슬롯마다 옵션 3줄의 ln을 합산 → 배율 = exp(목표 합 - 현재 합)",
+  "types": [
+   "AccessoryFactorComponent",
+   "BraceletFactorComponent",
+   "EngravingFactorComponent",
+   "AvatarFactorComponent",
+   "ArkCoreFactorComponent",
+   "ArkGemFactorComponent",
+   "ArkPassiveFactorComponent"
+  ]
+ },
+ {
+  "file": "Combat_Extra_Editor.ixx",
+  "module": "LostArkMultiTool.Views.CombatExtraEditor",
+  "imports": [
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Views.CombatSimulatorView"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.NumberFormat",
+   "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Models.CombatCoefficientData"
+  ],
+  "lines": 45,
+  "cppLines": 394,
+  "hasCpp": true,
+  "filter": "4. 뷰\\13. 전투력시뮬레이터",
+  "desc": "목록형 카드(악세서리 · 아크 그리드 · 팔찌/스톤/각인서 · 아크 패시브/아바타)의 행 명세 + 편집 반영",
+  "types": [
+   "CombatExtraEditor",
+   "RowSpec"
+  ]
+ },
+ {
+  "file": "Combat_Extra_State.ixx",
+  "module": "LostArkMultiTool.Models.CombatExtraState",
+  "imports": [],
+  "cppImports": [
+   "LostArkMultiTool.Models.CombatCoefficientData"
+  ],
+  "lines": 140,
+  "cppLines": 127,
+  "hasCpp": true,
+  "filter": "2. 모델\\1. 데이터\\11. 전투력",
+  "desc": "===== 개수 =====",
+  "types": [
+   "AccessoryState",
+   "BraceletStat",
+   "StoneLine",
+   "BookState",
+   "ArkCoreState",
+   "ArkPassiveState",
+   "ExtraState"
+  ]
+ },
+ {
+  "file": "Combat_Factor_Component.ixx",
+  "module": "LostArkMultiTool.Core.CombatFactorComponent",
+  "imports": [
+   "LostArkMultiTool.Models.CombatState"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Models.CombatCoefficientData",
+   "LostArkMultiTool.Models.CombatExtraState"
+  ],
+  "lines": 63,
+  "cppLines": 123,
+  "hasCpp": true,
+  "filter": "1. 코어\\12. 전투력",
+  "desc": "전투력 배율 요소 종류 (화면의 배율 내역 순서)",
+  "types": [
+   "CombatFactorComponent",
+   "GearFactorComponent",
+   "WeaponQualityComponent",
+   "GemFactorComponent"
+  ]
+ },
+ {
+  "file": "Combat_Power_Calculator.ixx",
+  "module": "LostArkMultiTool.Core.CombatPowerCalculator",
+  "imports": [
+   "LostArkMultiTool.Core.CombatFactorComponent",
+   "LostArkMultiTool.Models.CombatState"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.CombatExtraComponent",
+   "LostArkMultiTool.Models.CharacterArmory"
+  ],
+  "lines": 47,
+  "cppLines": 61,
+  "hasCpp": true,
+  "filter": "1. 코어\\12. 전투력",
+  "desc": "배율 요소 하나의 결과",
+  "types": [
+   "CombatFactorResult",
+   "CombatPowerResult",
+   "CombatPowerCalculator"
+  ]
+ },
+ {
+  "file": "Combat_Simulator_Manager.ixx",
+  "module": "LostArkMultiTool.Views.CombatSimulatorManager",
+  "imports": [
+   "LostArkMultiTool.Core.BackgroundTask",
+   "LostArkMultiTool.Core.CombatPowerCalculator",
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Core.Singleton",
+   "LostArkMultiTool.Core.ToolContext",
+   "LostArkMultiTool.Core.ToolManager",
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Models.CombatState",
+   "LostArkMultiTool.Services.CombatSimulatorStore",
+   "LostArkMultiTool.Views.CombatExtraEditor",
+   "LostArkMultiTool.Views.CombatSimulatorView"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPExceptions",
+   "LostArkMultiTool.Core.CombatFactorComponent",
+   "LostArkMultiTool.Core.LocalTime",
+   "LostArkMultiTool.Core.MarketAPI",
+   "LostArkMultiTool.Core.Notifier",
+   "LostArkMultiTool.Core.NumberFormat",
+   "LostArkMultiTool.Core.Platform",
+   "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Models.CombatCoefficientData",
+   "LostArkMultiTool.Models.RateLimitState"
+  ],
+  "lines": 88,
+  "cppLines": 813,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\9. 전투력 시뮬레이터 매니저",
+  "desc": "전투력 시뮬레이터 최상위 매니저 (캐릭터 무기고 조회 → 목표 재련 · 품질 · 보석 · 악세서리 · 팔찌 · 스톤/각인서 · 아바타 · 아크 그리드/패시브 · 완갑 → 예상 전투력)",
+  "types": [
+   "CombatSimulatorManager"
+  ]
+ },
+ {
+  "file": "Combat_Simulator_Store.ixx",
+  "module": "LostArkMultiTool.Services.CombatSimulatorStore",
+  "imports": [
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Services.JSONFileStore"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "lines": 50,
+  "cppLines": 322,
+  "hasCpp": true,
+  "filter": "3. 서비스\\15. 전투력",
+  "desc": "저장된 부위 목표 하나",
+  "types": [
+   "CombatGearTarget",
+   "CombatSimulatorSettings",
+   "CombatSimulatorStore"
+  ]
+ },
+ {
+  "file": "Combat_Simulator_View.ixx",
+  "module": "LostArkMultiTool.Views.CombatSimulatorView",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Platform",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.UI.Button",
+   "LostArkMultiTool.Views.UI.ComboBox",
+   "LostArkMultiTool.Views.UI.ControlHost",
+   "LostArkMultiTool.Views.UI.Grid",
+   "LostArkMultiTool.Views.UI.Label",
+   "LostArkMultiTool.Views.UI.TextBox"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.Theme",
+   "LostArkMultiTool.Views.UI.Control"
+  ],
+  "lines": 219,
+  "cppLines": 630,
+  "hasCpp": true,
+  "filter": "4. 뷰\\13. 전투력시뮬레이터",
+  "desc": "장비 표 열 (매니저가 고친 칸을 구분할 때 사용)",
+  "types": [
+   "CombatGearRow",
+   "CombatGemRow",
+   "CombatListRow",
+   "CombatResultText",
+   "CombatSimulatorView",
+   "Panel",
+   "ListCard"
+  ]
+ },
+ {
+  "file": "Combat_State.ixx",
+  "module": "LostArkMultiTool.Models.CombatState",
+  "imports": [
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Models.CombatExtraState"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Models.CombatCoefficientData"
+  ],
+  "lines": 58,
+  "cppLines": 170,
+  "hasCpp": true,
+  "filter": "2. 모델\\1. 데이터\\11. 전투력",
+  "desc": "부위 하나의 재련 상태 (분류 키가 비어 있으면 계수 표가 없는 장비 → 계산 · 편집 대상에서 빠짐)",
+  "types": [
+   "GearState",
+   "CombatState"
   ]
  },
  {
@@ -1666,12 +1954,13 @@ const MODULES = [
    "LostArkMultiTool.Models.AccessoryListing",
    "LostArkMultiTool.Models.AccessorySearchQuery",
    "LostArkMultiTool.Models.AuctionOption",
+   "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CharacterInfo",
    "LostArkMultiTool.Models.MarketItem",
    "LostArkMultiTool.Models.RateLimitState"
   ],
   "cppImports": [],
-  "lines": 43,
+  "lines": 47,
   "cppLines": 6,
   "hasCpp": true,
   "filter": "3. 서비스\\3. API",
@@ -2614,6 +2903,7 @@ const MODULES = [
    "LostArkMultiTool.Models.AccessoryListing",
    "LostArkMultiTool.Models.AccessorySearchQuery",
    "LostArkMultiTool.Models.AuctionOption",
+   "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CharacterInfo",
    "LostArkMultiTool.Models.MarketItem",
    "LostArkMultiTool.Models.RateLimitState",
@@ -2624,10 +2914,11 @@ const MODULES = [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Core.APPExceptions",
    "LostArkMultiTool.Core.LocalTime",
-   "LostArkMultiTool.Core.TextEncoding"
+   "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Services.ArmoryParser"
   ],
-  "lines": 58,
-  "cppLines": 635,
+  "lines": 60,
+  "cppLines": 671,
   "hasCpp": true,
   "filter": "3. 서비스\\3. API",
   "desc": "로스트아크 Open API 통신 (거래소 시세 · 거래소 목록 · 원정대 목록 · 경매장 보석 최저가)",
@@ -2688,7 +2979,7 @@ const TOOLS = [
   { name: '재련 시뮬레이터', status: '완료', note: '로아업 통합 재련 형식 · 일반 + 상급 + 계승 · 비용 최소 경로(기대값) · 아이템 레벨 / 부위별 단계 목표 · 재료 시세 · 귀속 설정',
     manager: 'RefineSimulatorManager', view: 'RefineSimulatorView', core: ['RefineSimulationService'], services: ['MarketRefineSimulationService', 'RefineCalculator'],
     models: ['RefineData', 'RefinePlan'] },
-  { name: '전투력 시뮬레이터', status: '계획', note: '1 조회 → 2 상대 계수 엔진(JSON) → 3 장비 → 4 아크패시브 등 → 5 로아랩 오차 검증',
+  { name: '전투력 시뮬레이터', status: '완료', note: 'v1.4.0 (젬 시세 검색기와 재련 시뮬레이터 사이): 캐릭터 이름 → Open API 무장(GetArmory: 프로필 · 장비 툴팁 · 보석) → 예상 전투력 = API 전투력 × 장비 √(주스탯×무기공격력) 비율 × 무기 품질 F(q)=0.846+0.154(q/100)² × 보석 레벨 표 (컴포넌트 전략 패턴, Combat_Power_Calculator) · 장비 스탯은 아이템 레벨(1590+5×일반+상급, 상급 30~39 ×1.02 · 40 ×1.05) 표, 에스더는 단계별 레벨 표 · 계수는 data/CombatCoefficients.json → tools/Export-CombatData.py → Combat_Coefficient_Data.cpp · 근거: 로펙 3캐릭터 크롤링 (방어구 오차 0.0003%, 무기 0.006~0.25%, 로아랩과 0.0x% 일치) · 확장: 악세 연마 · 악세 주스탯 · 팔찌 스탯/옵션 · 어빌리티 스톤 · 유물 각인서 · 아바타 · 아크그리드 코어/젬 · 아크패시브 · 완갑 (Combat_Extra_State/Component/Editor, 핢머니 로펙 단일 변경 1,579행 평균 오차 0.17%) · 로펙형 3×2 카드 UI · 보석은 11개 일괄 실측으로 보정 (6~10레벨) · API 필드는 실제 응답으로 확인' },
     manager: null, view: null, core: [], services: [], models: [] },
 ];
 const findByLabel = (layer, name) => MODULES.find(m => m.layer === layer && m.label === name);

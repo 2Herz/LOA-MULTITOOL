@@ -1,0 +1,150 @@
+export module LostArkMultiTool.Models.CombatExtraState;
+
+import std;
+
+export namespace LostArkMultiTool::Models
+{
+    // ===== 개수 =====
+    inline constexpr std::size_t ACCESSORY_SLOT_COUNT{ 5 };       // 목걸이 1 · 귀걸이 2 · 반지 2
+    inline constexpr std::size_t ACCESSORY_OPTION_COUNT{ 3 };     // 악세서리 연마 효과 줄 수
+    inline constexpr std::size_t BRACELET_STAT_COUNT{ 4 };        // 팔찌 스탯 줄 수
+    inline constexpr std::size_t BRACELET_OPTION_COUNT{ 4 };      // 팔찌 옵션 줄 수 (고정 옵션 포함)
+    inline constexpr std::size_t STONE_LINE_COUNT{ 2 };           // 스톤 각인 줄 수 (감소 각인 제외)
+    inline constexpr std::size_t BOOK_COUNT{ 5 };                 // 각인서(유물 각인) 수
+    inline constexpr std::size_t AVATAR_SLOT_COUNT{ 4 };          // 무기 · 머리 · 상의 · 하의
+    inline constexpr std::size_t ARK_CORE_COUNT{ 6 };             // 질서 해 · 달 · 별, 혼돈 해 · 달 · 별
+    inline constexpr std::size_t ARK_GEM_EFFECT_COUNT{ 3 };       // 공격력 · 추가 피해 · 보스 피해
+    inline constexpr std::size_t PASSIVE_TREE_COUNT{ 3 };         // 진화 · 깨달음 · 도약
+
+    // ===== 범위 =====
+    inline constexpr int MIN_VALUE{ 0 };
+    inline constexpr int MAX_BRACELET_STAT{ 999 };                // 팔찌 스탯 수치 상한
+    inline constexpr int MAX_ARK_CORE_POINTS{ 20 };               // 코어 의지력 포인트 합 상한
+    inline constexpr int MAX_ARK_GEM_LEVEL_SUM{ 200 };            // 젬 효과 레벨 합 상한
+    inline constexpr int MAX_PASSIVE_LEVEL{ 30 };                 // 아크 패시브 트리 레벨 상한
+    inline constexpr int MAX_PASSIVE_RANK{ 6 };                   // 아크 패시브 랭크 상한
+    inline constexpr int MAX_VAMBRACE_LEVEL{ 25 };                // 완갑 재련 상한
+    inline constexpr double MAX_ACCESSORY_MAIN_STAT{ 99999.0 };   // 악세서리 주스탯 상한
+
+    // ===== 문구 =====
+    inline constexpr std::string_view NONE_TEXT{ "없음" };        // 옵션이 비어 있음
+    inline constexpr std::string_view FULL_ENLIGHTENMENT{ "상급 + 일반3" };   // 깨달음 포인트 최대 구성 (= 배율 1)
+    inline constexpr std::array<std::string_view, ARK_GEM_EFFECT_COUNT> ARK_GEM_EFFECT_NAMES{ "공격력", "추가 피해", "보스 피해" };
+
+    // 아바타 등급
+    enum class AvatarGrade
+    {
+        AVATAR_NONE,         // 없음
+        AVATAR_EPIC,         // 영웅
+        AVATAR_LEGENDARY     // 전설
+    };
+
+    // 아크 그리드 코어 등급
+    enum class ArkCoreGrade
+    {
+        CORE_EPIC,           // 영웅
+        CORE_LEGENDARY,      // 전설
+        CORE_RELIC,          // 유물
+        CORE_ANCIENT         // 고대
+    };
+
+    // 악세서리 한 개 (연마 효과 문구 3개 + 기본 효과 주스탯)
+    struct AccessoryState
+    {
+        std::array<std::string, ACCESSORY_OPTION_COUNT> m_options;   // 정확한 문구 ("적에게 주는 피해 +2.00%", 비었으면 없음)
+        double m_mainStat{};                                          // 힘 · 민첩 · 지능 (같은 값)
+        [[nodiscard]] bool operator==(const AccessoryState& other) const = default;
+    };
+
+    // 팔찌 스탯 한 줄
+    struct BraceletStat
+    {
+        std::string m_type;                  // "치명" · "특화" · "신속" · "힘" ... (비었으면 없음)
+        int m_value{};
+        [[nodiscard]] bool operator==(const BraceletStat& other) const = default;
+    };
+
+    // 스톤 각인 한 줄
+    struct StoneLine
+    {
+        std::string m_name;                  // 각인 이름 (비었으면 없음)
+        int m_level{};                       // 0 ~ 4
+        [[nodiscard]] bool operator==(const StoneLine& other) const = default;
+    };
+
+    // 각인서(유물 각인) 하나
+    struct BookState
+    {
+        std::string m_name;                  // 각인 이름 (비었으면 없음)
+        bool m_isLegendary{};                // 전설 등급 각인서 (유물보다 약간 낮음)
+        int m_level{};                       // 각인서 레벨 0 ~ 4
+        [[nodiscard]] bool operator==(const BookState& other) const = default;
+    };
+
+    // 아크 그리드 코어 하나
+    struct ArkCoreState
+    {
+        ArkCoreGrade m_grade{ ArkCoreGrade::CORE_RELIC };
+        int m_points{};                      // 의지력 포인트 합
+        [[nodiscard]] bool operator==(const ArkCoreState& other) const = default;
+    };
+
+    // 아크 패시브
+    struct ArkPassiveState
+    {
+        int m_rank{ MAX_PASSIVE_RANK };                                       // 랭크 0 ~ 6
+        std::string m_enlightenment{ FULL_ENLIGHTENMENT };                    // 깨달음 포인트 구성
+        std::array<int, PASSIVE_TREE_COUNT> m_levels{};                       // 진화 · 깨달음 · 도약 레벨
+        [[nodiscard]] bool operator==(const ArkPassiveState& other) const = default;
+    };
+
+    // 장비 재련 · 보석 · 무기 품질 말고 전투력에 영향을 주는 모든 시스템의 상태
+    // (현재 = API에서 읽은 값, 목표 = 사용자가 고친 값, 같은 모양)
+    struct ExtraState
+    {
+        std::array<AccessoryState, ACCESSORY_SLOT_COUNT> m_accessories;     // 목걸이, 귀걸이 1 · 2, 반지 1 · 2
+        std::array<BraceletStat, BRACELET_STAT_COUNT> m_braceletStats;
+        std::array<std::string, BRACELET_OPTION_COUNT> m_braceletOptions;   // 공백을 모두 지운 문구
+        std::array<StoneLine, STONE_LINE_COUNT> m_stone;
+        std::array<BookState, BOOK_COUNT> m_books;
+        std::array<AvatarGrade, AVATAR_SLOT_COUNT> m_avatars{};             // 무기 · 머리 · 상의 · 하의
+        std::array<ArkCoreState, ARK_CORE_COUNT> m_cores;
+        std::array<int, ARK_GEM_EFFECT_COUNT> m_arkGemLevels{};             // 효과별 젬 레벨 합 (공격력 · 추가 피해 · 보스 피해)
+        ArkPassiveState m_passive;
+        std::optional<int> m_vambraceLevel;                                  // 완갑 재련 (없으면 nullopt)
+        bool m_isEstherWeapon{};                                             // 에스더 무기 (완갑 · 무기 공격력 옵션 계수 선택용)
+        [[nodiscard]] bool operator==(const ExtraState& other) const = default;
+    };
+
+    // ===== 글자 도우미 (툴팁 · 표시 · 표 키 공용) =====
+    // 연속 공백을 하나로 줄이고 양 끝 공백을 지운 글자
+    [[nodiscard]] std::string NormalizeSpaces(std::string_view text);
+
+    // 모든 공백을 지운 글자 (팔찌 옵션 표의 키)
+    [[nodiscard]] std::string RemoveSpaces(std::string_view text);
+
+    // 옵션이 비어 있는지 ("" 또는 "없음")
+    [[nodiscard]] bool IsNone(std::string_view text) noexcept;
+
+    // ===== 규칙 =====
+    namespace CombatExtra
+    {
+        // 목표가 올려 주는 주스탯 합 (악세서리 주스탯 + 팔찌 힘/민첩/지능), 장비 재련의 S에 더해짐
+        [[nodiscard]] double GetMainStatGain(const ExtraState& current, const ExtraState& target);
+
+        // 완갑 재련이 바꾸는 값 (현재 → 목표 단계의 차이)
+        struct VambraceGain
+        {
+            double m_weaponAttack{};         // 무기 공격력 차이 → 장비 재련의 W에 더해짐
+            double m_mainStat{};             // 주스탯 차이 → 장비 재련의 S에 더해짐
+            double m_baseAttack{};           // 기본 공격력 고정값 차이 → 완갑 배율 (A + ΔB) / A
+            double m_gradeFactor{ 1.0 };     // 유물 → 고대 등급을 올릴 때 한 번 곱함 (내리면 역수)
+        };
+
+        // 완갑 재련 단계 차이 (현재나 목표 완갑이 없으면 모두 0 · 배율 1)
+        [[nodiscard]] VambraceGain GetVambraceGain(const ExtraState& current, const ExtraState& target);
+
+        // 입력 범위 안으로 맞춤 (스톤 · 각인서 · 코어 · 패시브 · 완갑 수치)
+        [[nodiscard]] ExtraState Clamp(const ExtraState& state);
+    }
+}

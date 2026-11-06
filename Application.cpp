@@ -21,6 +21,7 @@ import LostArkMultiTool.Views.AccessoryFinderManager;
 import LostArkMultiTool.Views.APIKeyDialog;
 import LostArkMultiTool.Views.ArkGemFinderManager;
 import LostArkMultiTool.Views.CalculatorManager;
+import LostArkMultiTool.Views.CombatSimulatorManager;
 import LostArkMultiTool.Views.DX11Renderer;
 import LostArkMultiTool.Views.EngravingFinderManager;
 import LostArkMultiTool.Views.GemFinderManager;
@@ -40,6 +41,13 @@ namespace LostArkMultiTool::Views
     namespace
     {
         constexpr std::wstring_view WINDOW_TITLE{ L"로스트아크 멀티툴" };
+
+        // 원격 점검 상태를 따를지 (작업 중에는 점검을 켜 두므로 Debug 빌드는 무시하고 바로 테스트, Release 배포판은 항상 따름)
+#ifdef _DEBUG
+        constexpr bool IS_MAINTENANCE_LOCK_ENABLED{ false };
+#else
+        constexpr bool IS_MAINTENANCE_LOCK_ENABLED{ true };
+#endif
         constexpr int WINDOW_WIDTH{ 1920 };    // 처음 창 안쪽 크기 (DIP)
         constexpr int WINDOW_HEIGHT{ 1080 };
 
@@ -154,7 +162,7 @@ namespace LostArkMultiTool::Views
     }
 
     Application::Application()
-        : m_tools{ CalculatorManager::GetInstance(), GemFinderManager::GetInstance(), TrackerManager::GetInstance(), EngravingFinderManager::GetInstance(), AccessoryFinderManager::GetInstance(), RefineBookFinderManager::GetInstance(), ArkGemFinderManager::GetInstance(), RefineSimulatorManager::GetInstance() }
+        : m_tools{ CalculatorManager::GetInstance(), GemFinderManager::GetInstance(), TrackerManager::GetInstance(), EngravingFinderManager::GetInstance(), AccessoryFinderManager::GetInstance(), RefineBookFinderManager::GetInstance(), ArkGemFinderManager::GetInstance(), CombatSimulatorManager::GetInstance(), RefineSimulatorManager::GetInstance() }
     {
         // 창을 만드는 도중에도 WM_SIZE가 OnResize로 들어오므로, 모든 unique_ptr가 비어 있는 상태로 만들어진 뒤에 생성
         m_window = std::make_unique<MainWindow>(BuildWindowTitle(), WINDOW_WIDTH, WINDOW_HEIGHT, *this);
@@ -343,7 +351,8 @@ namespace LostArkMultiTool::Views
             m_serverCheckDialog = nullptr;
         }
 
-        if (config.has_value() && config->IsMaintenance())
+        // Debug 빌드는 점검 중이어도 잠그지 않음 (작업 중 테스트용, IS_MAINTENANCE_LOCK_ENABLED 참고)
+        if (IS_MAINTENANCE_LOCK_ENABLED && config.has_value() && config->IsMaintenance())
         {
             LockForMaintenance(config->GetMaintenanceMessage());
             return;

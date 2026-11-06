@@ -7,15 +7,15 @@ import LostArkMultiTool.Models.RefineData;
 // 타입 정의만 있어서 .cpp가 필요 없음
 export namespace LostArkMultiTool::Models
 {
-    // 장비 부위 (표 순서 = 로아업 통합 재련 순서)
+    // 장비 부위 (표 순서 = 머리 → 어깨 → 상의 → 하의 → 장갑 → 무기)
     enum class RefineSlot : std::size_t
     {
-        SLOT_WEAPON,
         SLOT_HELMET,
         SLOT_SHOULDER,
         SLOT_CHEST,
         SLOT_PANTS,
         SLOT_GLOVES,
+        SLOT_WEAPON,
         SLOT_COUNT
     };
 

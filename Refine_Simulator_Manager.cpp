@@ -38,7 +38,7 @@ namespace LostArkMultiTool::Views
         constexpr std::array<std::wstring_view, 2> TARGET_MODE_ITEMS{ L"아이템 레벨", L"부위별 단계" };
         constexpr std::size_t TARGET_MODE_ITEM_LEVEL_INDEX{ 0 };
         constexpr std::size_t TARGET_MODE_STAGE_INDEX{ 1 };
-        constexpr std::array<std::wstring_view, Models::REFINE_SLOT_COUNT> SLOT_NAMES{ L"무기", L"투구", L"어깨", L"상의", L"하의", L"장갑" };
+        constexpr std::array<std::wstring_view, Models::REFINE_SLOT_COUNT> SLOT_NAMES{ L"투구", L"어깨", L"상의", L"하의", L"장갑", L"무기" };
         constexpr std::size_t ARMOR_SLOT_COUNT{ Models::REFINE_SLOT_COUNT - 1 };   // 무기를 뺀 방어구 부위 수
 
         // ===== 입력 범위 =====

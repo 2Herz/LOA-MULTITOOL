@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# 로아랩 크롤러 (tools/Crawl-LoaLabSimulator.py): 결과 CSV · 브라우저 프로필(보안 확인 쿠키)
+loalab_results/
+loalab_browser_profile/
+lopec_results/
+lopec_browser_profile/
