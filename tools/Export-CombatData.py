@@ -281,8 +281,12 @@ def build_extra(data):
     for name, first_step, array_name in grade_rows:
         consts.append(f'{INDENT * 3}VambraceGrade{{ {cpp_string(name)}, {first_step}, {array_name} }},   // 등급 이름 · 첫 단계 · 단계 표')
     consts.append(f'{INDENT * 2}}} }};   // VAMBRACE_GRADES 끝')
-    consts.append(f'{INDENT * 2}constexpr int VAMBRACE_ANCIENT_FIRST_STEP{{ {vambrace["AncientFirstStep"]} }};   // 고대 등급이 필요한 첫 재련 단계')
-    consts.append(f'{INDENT * 2}constexpr double VAMBRACE_GRADE_UP_FACTOR{{ {format_number(vambrace["GradeUpFactor"])} }};   // 유물 → 고대로 올릴 때 한 번 곱함 (한 측정점)')
+    bonuses = vambrace['GradeBonus']
+    consts.append(f'{INDENT * 2}// 완갑 한계 해방 추가 효과 (등급 이름, 확정 첫 단계, 기본 공격력 비율)')
+    consts.append(f'{INDENT * 2}constexpr std::array<VambraceGradeBonus, {len(bonuses)}> VAMBRACE_GRADE_BONUSES{{ {{   // 완갑 등급 {len(bonuses)}개')
+    for name, first_step, rate in bonuses:
+        consts.append(f'{INDENT * 3}VambraceGradeBonus{{ {cpp_string(name)}, {first_step}, {format_number(float(rate))} }},   // 등급 이름 · 확정 첫 단계 · 추가 효과 기본 공격력 비율')
+    consts.append(f'{INDENT * 2}}} }};   // VAMBRACE_GRADE_BONUSES 끝')
     consts.append(f'{INDENT * 2}constexpr double BASE_ATTACK_CALIBRATION{{ {format_number(vambrace["BaseAttackCalibration"])} }};   // 기본 공격력 A 추정식 보정 (한 측정점)')
     attack = data['AttackModel']
     consts.append(f'{INDENT * 2}// ===== S0 · W0 보정 ({attack["CalibrationNote"]}) =====')
@@ -314,8 +318,7 @@ def build_extra(data):
         ('std::span<const double> GetPassiveRankRatios() noexcept', 'PASSIVE_RANK_RATIOS', '아크 패시브 랭크별 배율'),
         ('const PassiveSlopes& GetPassiveSlopes() noexcept', 'PASSIVE_SLOPES', '아크 패시브 레벨 감소 기울기'),
         ('std::span<const VambraceGrade> GetVambraceGrades() noexcept', 'VAMBRACE_GRADES', '완갑 등급별 재련 단계 표'),
-        ('int GetVambraceAncientFirstStep() noexcept', 'VAMBRACE_ANCIENT_FIRST_STEP', '고대 등급이 필요한 첫 완갑 재련 단계'),
-        ('double GetVambraceGradeUpFactor() noexcept', 'VAMBRACE_GRADE_UP_FACTOR', '유물 → 고대 등급 상승 배율'),
+        ('std::span<const VambraceGradeBonus> GetVambraceGradeBonuses() noexcept', 'VAMBRACE_GRADE_BONUSES', '완갑 등급별 한계 해방 추가 효과 표'),
         ('double GetBaseAttackCalibration() noexcept', 'BASE_ATTACK_CALIBRATION', '기본 공격력 추정식 보정'),
         ('double GetMainStatCalibration() noexcept', 'S0_CALIBRATION', '주스탯 합 S0 보정'),
     ]

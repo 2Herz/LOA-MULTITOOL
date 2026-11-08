@@ -1,0 +1,1653 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1793909913.4898126,
+    "seen": 1794002445.6220713,
+    "ast_hash": "9405581278af81e2aec5dbc543139995",
+    "semantic_hash": "9405581278af81e2aec5dbc543139995"
+  },
+  "API_Key_Dialog.cpp": {
+    "mtime": 1793882585.2938414,
+    "seen": 1794002445.6220782,
+    "ast_hash": "4627318d7017756ac3e2c783153d44aa",
+    "semantic_hash": "4627318d7017756ac3e2c783153d44aa"
+  },
+  "API_Key_Store.cpp": {
+    "mtime": 1793806711.6013415,
+    "seen": 1794002445.6220813,
+    "ast_hash": "c3a1e3627a9faef3455e0df08bf8a31e",
+    "semantic_hash": "c3a1e3627a9faef3455e0df08bf8a31e"
+  },
+  "APP_Constants.cpp": {
+    "mtime": 1793916366.072013,
+    "seen": 1794002445.6220827,
+    "ast_hash": "ad2afc0f53b0e5bb135d322ee936bd01",
+    "semantic_hash": "ad2afc0f53b0e5bb135d322ee936bd01"
+  },
+  "APP_Exceptions.cpp": {
+    "mtime": 1793880638.266433,
+    "seen": 1794002445.6220844,
+    "ast_hash": "fa5bddcf9818507942a8248dd456a533",
+    "semantic_hash": "fa5bddcf9818507942a8248dd456a533"
+  },
+  "Accessory_Finder_Manager.cpp": {
+    "mtime": 1793940501.2073293,
+    "seen": 1794002445.6220856,
+    "ast_hash": "d43f5df29d5d4eae14f24212f47b6977",
+    "semantic_hash": "d43f5df29d5d4eae14f24212f47b6977"
+  },
+  "Accessory_Finder_View.cpp": {
+    "mtime": 1793940483.6303947,
+    "seen": 1794002445.6220872,
+    "ast_hash": "25bc7ff3bc8f35da4bc86e097ce3a7a6",
+    "semantic_hash": "25bc7ff3bc8f35da4bc86e097ce3a7a6"
+  },
+  "Accessory_Search_Service.cpp": {
+    "mtime": 1794144620.352754,
+    "seen": 1794146512.2733586,
+    "ast_hash": "505a61e58c20d17cc0f51871d1b73b29",
+    "semantic_hash": ""
+  },
+  "Application.cpp": {
+    "mtime": 1794144376.7220912,
+    "seen": 1794144548.2187955,
+    "ast_hash": "2ad095e83cff0752364833d106055a8a",
+    "semantic_hash": ""
+  },
+  "Ark_Gem_Finder_Manager.cpp": {
+    "mtime": 1794144620.362285,
+    "seen": 1794146512.2734098,
+    "ast_hash": "1f137cec3755b3e7bea7be065fbc20ad",
+    "semantic_hash": ""
+  },
+  "Ark_Gem_Finder_View.cpp": {
+    "mtime": 1794144620.367994,
+    "seen": 1794146512.273425,
+    "ast_hash": "c8754715911c31742ef52c2a9c135800",
+    "semantic_hash": ""
+  },
+  "Ark_Gem_Price_Service.cpp": {
+    "mtime": 1794144620.3845766,
+    "seen": 1794146512.2734392,
+    "ast_hash": "999f20a3289cba1a6a540d6fdf49226e",
+    "semantic_hash": ""
+  },
+  "Asset_Calculator.cpp": {
+    "mtime": 1793804008.093862,
+    "seen": 1794002445.622095,
+    "ast_hash": "196a5515daa24b15a4b34bde691e5439",
+    "semantic_hash": "196a5515daa24b15a4b34bde691e5439"
+  },
+  "Asset_Calculator_Service.cpp": {
+    "mtime": 1793916534.5001295,
+    "seen": 1794002445.6220963,
+    "ast_hash": "64e74d9c5f2186cbcf167c5ed7fc29e7",
+    "semantic_hash": "64e74d9c5f2186cbcf167c5ed7fc29e7"
+  },
+  "Auction_Accessory_Search_Service.cpp": {
+    "mtime": 1794144620.3935955,
+    "seen": 1794146512.2735016,
+    "ast_hash": "fe6b9b7aa2828bcf0471e2cb85e2a79b",
+    "semantic_hash": ""
+  },
+  "Auction_Gem_Price_Service.cpp": {
+    "mtime": 1793916483.7565484,
+    "seen": 1794002445.6220984,
+    "ast_hash": "8187492356ff7c2ae25abda825892e38",
+    "semantic_hash": "8187492356ff7c2ae25abda825892e38"
+  },
+  "Bound_Gem_Data.cpp": {
+    "mtime": 1794144620.4097795,
+    "seen": 1794146512.2735388,
+    "ast_hash": "0f391082a4f204cbc246e5b2b314defc",
+    "semantic_hash": ""
+  },
+  "Bound_Gem_Repository.cpp": {
+    "mtime": 1794144620.4170594,
+    "seen": 1794146512.2735536,
+    "ast_hash": "6d8692541892f575fd740a8768be1553",
+    "semantic_hash": ""
+  },
+  "Bound_Gem_Roster_Data.cpp": {
+    "mtime": 1794144620.4317799,
+    "seen": 1794146512.2745554,
+    "ast_hash": "db511778a928d4982d9c5f3c98117d8a",
+    "semantic_hash": ""
+  },
+  "Button.cpp": {
+    "mtime": 1793829674.0113664,
+    "seen": 1794002445.6221027,
+    "ast_hash": "0767785b9e18af5ff1243f3c6eaf0edc",
+    "semantic_hash": "0767785b9e18af5ff1243f3c6eaf0edc"
+  },
+  "Calculator_Manager.cpp": {
+    "mtime": 1793926096.0966632,
+    "seen": 1794002445.6221042,
+    "ast_hash": "2113b8d6d0524b7c147180e557d0f787",
+    "semantic_hash": "2113b8d6d0524b7c147180e557d0f787"
+  },
+  "Calculator_View.cpp": {
+    "mtime": 1793926094.0591917,
+    "seen": 1794002445.6221054,
+    "ast_hash": "61a10d11139983938ee452fe7a4d59e8",
+    "semantic_hash": "61a10d11139983938ee452fe7a4d59e8"
+  },
+  "Character.cpp": {
+    "mtime": 1793804546.9083574,
+    "seen": 1794002445.6221063,
+    "ast_hash": "44a91a7cff859a7d6bde767db083e154",
+    "semantic_hash": "44a91a7cff859a7d6bde767db083e154"
+  },
+  "Character_Info.cpp": {
+    "mtime": 1793916511.8590357,
+    "seen": 1794002445.6221075,
+    "ast_hash": "3d5e3c4264f3392985c535f4b78e0bd6",
+    "semantic_hash": "3d5e3c4264f3392985c535f4b78e0bd6"
+  },
+  "Check_Box.cpp": {
+    "mtime": 1793829970.0298479,
+    "seen": 1794002445.6221085,
+    "ast_hash": "b777601e62ee81ea75adbbc8a119aa04",
+    "semantic_hash": "b777601e62ee81ea75adbbc8a119aa04"
+  },
+  "Combo_Box.cpp": {
+    "mtime": 1793940434.6434765,
+    "seen": 1794002445.6221097,
+    "ast_hash": "eedf300a74695baf0d2cdb54d969f874",
+    "semantic_hash": "eedf300a74695baf0d2cdb54d969f874"
+  },
+  "Control.cpp": {
+    "mtime": 1793829613.706082,
+    "seen": 1794002445.6221106,
+    "ast_hash": "0091c669c96d2e72046c9004f0fa2baa",
+    "semantic_hash": "0091c669c96d2e72046c9004f0fa2baa"
+  },
+  "Control_Host.cpp": {
+    "mtime": 1793829651.6543472,
+    "seen": 1794002445.622112,
+    "ast_hash": "170df4f6cf7def36f690829b6a951702",
+    "semantic_hash": "170df4f6cf7def36f690829b6a951702"
+  },
+  "DPAPI_Key_Store.cpp": {
+    "mtime": 1793807307.7835684,
+    "seen": 1794002445.622113,
+    "ast_hash": "776d908645290c13bf58f4812c6e3dc0",
+    "semantic_hash": "776d908645290c13bf58f4812c6e3dc0"
+  },
+  "DX11_Renderer.cpp": {
+    "mtime": 1793829514.3878462,
+    "seen": 1794002445.622114,
+    "ast_hash": "d4e25c90cecd52da1cd49439b7816e62",
+    "semantic_hash": "d4e25c90cecd52da1cd49439b7816e62"
+  },
+  "Data_Repository.cpp": {
+    "mtime": 1793804546.8639758,
+    "seen": 1794002445.6221151,
+    "ast_hash": "400df9a83e3fcc28a64c2967f063326b",
+    "semantic_hash": "400df9a83e3fcc28a64c2967f063326b"
+  },
+  "Date_Range_Dialog.cpp": {
+    "mtime": 1794144620.4406972,
+    "seen": 1794146512.2749684,
+    "ast_hash": "f5e014fad3d90887e0ed58150998d38b",
+    "semantic_hash": ""
+  },
+  "Dialog.cpp": {
+    "mtime": 1793819542.215402,
+    "seen": 1794002445.622117,
+    "ast_hash": "d64e2f8318ea29428fd7a99d78ca2844",
+    "semantic_hash": "d64e2f8318ea29428fd7a99d78ca2844"
+  },
+  "Engraving_Finder_Manager.cpp": {
+    "mtime": 1794144620.4453974,
+    "seen": 1794146512.274992,
+    "ast_hash": "a89f8dcf5c28e1c0b86b4309a1860445",
+    "semantic_hash": ""
+  },
+  "Engraving_Finder_View.cpp": {
+    "mtime": 1794144620.456499,
+    "seen": 1794146512.2750063,
+    "ast_hash": "368eb837bc06b992860cc35ded7f7a17",
+    "semantic_hash": ""
+  },
+  "Engraving_Price_Service.cpp": {
+    "mtime": 1794144620.4618793,
+    "seen": 1794146512.2750204,
+    "ast_hash": "d1c053c2ece4476243ec2915f9c743b0",
+    "semantic_hash": ""
+  },
+  "Engraving_Quote.cpp": {
+    "mtime": 1794144620.4678595,
+    "seen": 1794146512.2750354,
+    "ast_hash": "d71dab2242d0a9f5ccfd502fb8d5fcc1",
+    "semantic_hash": ""
+  },
+  "Gem_Catalog.cpp": {
+    "mtime": 1793883682.5361757,
+    "seen": 1794002445.6221225,
+    "ast_hash": "a9a51a19ecc215195fbf8b01f6026bbc",
+    "semantic_hash": "a9a51a19ecc215195fbf8b01f6026bbc"
+  },
+  "Gem_Data.cpp": {
+    "mtime": 1793882373.1371498,
+    "seen": 1794002445.6221235,
+    "ast_hash": "456a2a83d0c40c5b7619c32ad09e5c5f",
+    "semantic_hash": "456a2a83d0c40c5b7619c32ad09e5c5f"
+  },
+  "Gem_Data_Repository.cpp": {
+    "mtime": 1793880772.218283,
+    "seen": 1794002445.622125,
+    "ast_hash": "557053208784a8c7971288e7b86dce40",
+    "semantic_hash": "557053208784a8c7971288e7b86dce40"
+  },
+  "Gem_Finder_Manager.cpp": {
+    "mtime": 1793916642.0360534,
+    "seen": 1794002445.6221259,
+    "ast_hash": "198b41f1cec27f75db27751b694d6413",
+    "semantic_hash": "198b41f1cec27f75db27751b694d6413"
+  },
+  "Gem_Finder_View.cpp": {
+    "mtime": 1793885510.4075878,
+    "seen": 1794002445.6221268,
+    "ast_hash": "1450839cab7384d95af2c12401d31ed7",
+    "semantic_hash": "1450839cab7384d95af2c12401d31ed7"
+  },
+  "Gem_Price_Service.cpp": {
+    "mtime": 1793880902.3927007,
+    "seen": 1794002445.6221285,
+    "ast_hash": "ef2dbd534c6d65aa4fc66f5b76cb8989",
+    "semantic_hash": "ef2dbd534c6d65aa4fc66f5b76cb8989"
+  },
+  "Gem_Quote.cpp": {
+    "mtime": 1793882313.3695471,
+    "seen": 1794002445.6221297,
+    "ast_hash": "11b47ab39aeb1d66c0c688dd7692d04f",
+    "semantic_hash": "11b47ab39aeb1d66c0c688dd7692d04f"
+  },
+  "Gist_Server_Config_Checker.cpp": {
+    "mtime": 1793807797.2948718,
+    "seen": 1794002445.6221306,
+    "ast_hash": "dd683262829cc4cbac1d8bb46ee02387",
+    "semantic_hash": "dd683262829cc4cbac1d8bb46ee02387"
+  },
+  "Grid.cpp": {
+    "mtime": 1793942641.138813,
+    "seen": 1794002445.6221318,
+    "ast_hash": "53d086c3ee232582af7e7bec1e73d5b1",
+    "semantic_hash": "53d086c3ee232582af7e7bec1e73d5b1"
+  },
+  "Growth_Calculation_Service.cpp": {
+    "mtime": 1794144620.4782965,
+    "seen": 1794146512.2751873,
+    "ast_hash": "9ef4b1b55cd9e78a8cee1d088ed67d45",
+    "semantic_hash": ""
+  },
+  "Growth_Calculator.cpp": {
+    "mtime": 1794144620.4873562,
+    "seen": 1794146512.2752023,
+    "ast_hash": "cbc866f2b3ed5910bec3df0b52aee70a",
+    "semantic_hash": ""
+  },
+  "Growth_Data.cpp": {
+    "mtime": 1794144620.492918,
+    "seen": 1794146512.2752168,
+    "ast_hash": "60ff7b7ef6bd0f99dd2d37debba30784",
+    "semantic_hash": ""
+  },
+  "Growth_Data_Repository.cpp": {
+    "mtime": 1794144620.501566,
+    "seen": 1794146512.2752316,
+    "ast_hash": "d6a6d98ca6319537597083db49c22833",
+    "semantic_hash": ""
+  },
+  "Interval_Timer.cpp": {
+    "mtime": 1793828982.113008,
+    "seen": 1794002445.622137,
+    "ast_hash": "4f40a75701e6f9c7fef3060dbbbb22f0",
+    "semantic_hash": "4f40a75701e6f9c7fef3060dbbbb22f0"
+  },
+  "Item_Data.cpp": {
+    "mtime": 1793916427.6823635,
+    "seen": 1794002445.6221383,
+    "ast_hash": "75b6bd55216bdf62f127718571a0b5ad",
+    "semantic_hash": "75b6bd55216bdf62f127718571a0b5ad"
+  },
+  "JSON_Bound_Gem_Repository.cpp": {
+    "mtime": 1794144620.5113685,
+    "seen": 1794146512.2752852,
+    "ast_hash": "cc53956e7c0b76a9342ac2ea94e951c1",
+    "semantic_hash": ""
+  },
+  "JSON_Data_Repository.cpp": {
+    "mtime": 1793916464.4276981,
+    "seen": 1794002445.6221404,
+    "ast_hash": "afcc9f5fdb988c884c348533ab4e3f64",
+    "semantic_hash": "afcc9f5fdb988c884c348533ab4e3f64"
+  },
+  "JSON_File_Store.cpp": {
+    "mtime": 1794144620.517727,
+    "seen": 1794146512.2753198,
+    "ast_hash": "ffa7545c7675e2bec39a8ca48619c417",
+    "semantic_hash": ""
+  },
+  "JSON_Gem_Data_Repository.cpp": {
+    "mtime": 1793916464.7163022,
+    "seen": 1794002445.6221428,
+    "ast_hash": "2e82797d98cd12a8536b38cd9d7e6d2e",
+    "semantic_hash": "2e82797d98cd12a8536b38cd9d7e6d2e"
+  },
+  "JSON_Growth_Data_Repository.cpp": {
+    "mtime": 1794144620.5291748,
+    "seen": 1794146512.2753546,
+    "ast_hash": "0c50b609865c8a3f9fd178967d50face",
+    "semantic_hash": ""
+  },
+  "JSON_Value.cpp": {
+    "mtime": 1793883968.588586,
+    "seen": 1794002445.6221447,
+    "ast_hash": "b165de783a69f29b9e5369726fe71b80",
+    "semantic_hash": "b165de783a69f29b9e5369726fe71b80"
+  },
+  "Label.cpp": {
+    "mtime": 1793818875.328689,
+    "seen": 1794002445.622146,
+    "ast_hash": "cbfc9db838fab01ba1f55f0241bbb000",
+    "semantic_hash": "cbfc9db838fab01ba1f55f0241bbb000"
+  },
+  "Line_Chart.cpp": {
+    "mtime": 1793940220.4838958,
+    "seen": 1794002445.6221468,
+    "ast_hash": "7b4dff05f00864c7a7a83a148b6d8667",
+    "semantic_hash": "7b4dff05f00864c7a7a83a148b6d8667"
+  },
+  "Local_Time.cpp": {
+    "mtime": 1793942508.2395403,
+    "seen": 1794002445.622148,
+    "ast_hash": "7817e506686f0ca185dd737ca7e78445",
+    "semantic_hash": "7817e506686f0ca185dd737ca7e78445"
+  },
+  "Main_Window.cpp": {
+    "mtime": 1794154869.5051029,
+    "seen": 1794174986.4317667,
+    "ast_hash": "843fbcea16857b5f9f2fc952cc9d75bd",
+    "semantic_hash": "843fbcea16857b5f9f2fc952cc9d75bd"
+  },
+  "Market_API.cpp": {
+    "mtime": 1793804219.0973058,
+    "seen": 1794002445.6221502,
+    "ast_hash": "35ac63f1eaaef19ff3eeeb87c829675b",
+    "semantic_hash": "35ac63f1eaaef19ff3eeeb87c829675b"
+  },
+  "Market_Ark_Gem_Price_Service.cpp": {
+    "mtime": 1794144620.5367517,
+    "seen": 1794146512.275468,
+    "ast_hash": "845a57043e481405120f08fe8c0db9a6",
+    "semantic_hash": ""
+  },
+  "Market_Engraving_Price_Service.cpp": {
+    "mtime": 1794144620.5433216,
+    "seen": 1794146512.2754827,
+    "ast_hash": "9f4b17c53353d4f12a7e2b3b09ae94d0",
+    "semantic_hash": ""
+  },
+  "Market_Refine_Book_Price_Service.cpp": {
+    "mtime": 1794144620.5585718,
+    "seen": 1794146512.2755053,
+    "ast_hash": "dd03a81f54b7aab742049f61d85411eb",
+    "semantic_hash": ""
+  },
+  "Market_Refine_Simulation_Service.cpp": {
+    "mtime": 1794146710.4043038,
+    "seen": 1794146971.019,
+    "ast_hash": "e50597a3f2eaae6b43e890e80157a175",
+    "semantic_hash": ""
+  },
+  "Message_Dialog.cpp": {
+    "mtime": 1793819596.459749,
+    "seen": 1794002445.6221557,
+    "ast_hash": "a0254309e34faf564de155e175188461",
+    "semantic_hash": "a0254309e34faf564de155e175188461"
+  },
+  "Notifier.cpp": {
+    "mtime": 1793817236.7681043,
+    "seen": 1794002445.6221569,
+    "ast_hash": "fd0b8dc4508a9888359964391add92a0",
+    "semantic_hash": "fd0b8dc4508a9888359964391add92a0"
+  },
+  "Number_Format.cpp": {
+    "mtime": 1793829025.1434543,
+    "seen": 1794002445.6221578,
+    "ast_hash": "b885a83b9d998f31d5086d638b256ce3",
+    "semantic_hash": "b885a83b9d998f31d5086d638b256ce3"
+  },
+  "Overlay_Notifier.cpp": {
+    "mtime": 1793943109.186969,
+    "seen": 1794002445.6221611,
+    "ast_hash": "9acc08abba1d73cb5c80fd6989ceb82a",
+    "semantic_hash": "9acc08abba1d73cb5c80fd6989ceb82a"
+  },
+  "Placeholder_View.cpp": {
+    "mtime": 1793818164.9051929,
+    "seen": 1794002445.6221623,
+    "ast_hash": "614cc6936f34e74b7fbd70b4a88bb20c",
+    "semantic_hash": "614cc6936f34e74b7fbd70b4a88bb20c"
+  },
+  "Platform.cpp": {
+    "mtime": 1793817184.2126608,
+    "seen": 1794002445.6221635,
+    "ast_hash": "a1d670c5be773b90fe92d2f08302a3b9",
+    "semantic_hash": "a1d670c5be773b90fe92d2f08302a3b9"
+  },
+  "Price_Alarm.cpp": {
+    "mtime": 1793882126.7794702,
+    "seen": 1794002445.6221645,
+    "ast_hash": "19b363b182b4445b92200d21a7608599",
+    "semantic_hash": "19b363b182b4445b92200d21a7608599"
+  },
+  "Price_Data.cpp": {
+    "mtime": 1793804299.421269,
+    "seen": 1794002445.6221654,
+    "ast_hash": "96a6e13eb2941c61e4140804478bd253",
+    "semantic_hash": "96a6e13eb2941c61e4140804478bd253"
+  },
+  "Progress_Bar.cpp": {
+    "mtime": 1793829823.3526483,
+    "seen": 1794002445.6221666,
+    "ast_hash": "e73fab484061cb685993982c81a7d8a3",
+    "semantic_hash": "e73fab484061cb685993982c81a7d8a3"
+  },
+  "Rate_Limit_State.cpp": {
+    "mtime": 1793882241.419359,
+    "seen": 1794002445.6221678,
+    "ast_hash": "21903c8009ea506566bd051ab99cd1ad",
+    "semantic_hash": "21903c8009ea506566bd051ab99cd1ad"
+  },
+  "Refine_Book_Finder_Manager.cpp": {
+    "mtime": 1794144620.5668595,
+    "seen": 1794146512.2757301,
+    "ast_hash": "1c4c65d47c62873b5d290b36ecbecd0d",
+    "semantic_hash": ""
+  },
+  "Refine_Book_Finder_View.cpp": {
+    "mtime": 1793925612.480806,
+    "seen": 1794002445.62217,
+    "ast_hash": "2c929f32e52c9bd700c91912c4d0c426",
+    "semantic_hash": "2c929f32e52c9bd700c91912c4d0c426"
+  },
+  "Refine_Book_Price_Service.cpp": {
+    "mtime": 1794144620.584426,
+    "seen": 1794146512.2757616,
+    "ast_hash": "6a505a2792bf07d8ffea234354347b2d",
+    "semantic_hash": ""
+  },
+  "Refine_Calculator.cpp": {
+    "mtime": 1793973933.4064894,
+    "seen": 1794002445.622172,
+    "ast_hash": "41ef1654d16863c13b8b4d6db63c7ed0",
+    "semantic_hash": "41ef1654d16863c13b8b4d6db63c7ed0"
+  },
+  "Refine_Data.cpp": {
+    "mtime": 1793972898.5858078,
+    "seen": 1794002445.622173,
+    "ast_hash": "9498c4d0204d06c8533c86430d3eb369",
+    "semantic_hash": "9498c4d0204d06c8533c86430d3eb369"
+  },
+  "Refine_Simulation_Service.cpp": {
+    "mtime": 1793973687.638229,
+    "seen": 1794002445.6221745,
+    "ast_hash": "975ea209b70d62be53ef6e860d57970a",
+    "semantic_hash": "975ea209b70d62be53ef6e860d57970a"
+  },
+  "Refine_Simulator_Manager.cpp": {
+    "mtime": 1794146829.4966807,
+    "seen": 1794146971.0191736,
+    "ast_hash": "ebf3b8b9711986d00ae4935d2e6f0c42",
+    "semantic_hash": ""
+  },
+  "Refine_Simulator_View.cpp": {
+    "mtime": 1794147025.2033792,
+    "seen": 1794174986.4320514,
+    "ast_hash": "93968a9904291903aace98a3978ee324",
+    "semantic_hash": ""
+  },
+  "Refresh_Scheduler.cpp": {
+    "mtime": 1793884418.384564,
+    "seen": 1794002445.6221783,
+    "ast_hash": "c1ee0d970cda1d0cee197f5a019beb4b",
+    "semantic_hash": "c1ee0d970cda1d0cee197f5a019beb4b"
+  },
+  "Refresh_Settings.cpp": {
+    "mtime": 1793883607.3271623,
+    "seen": 1794002445.6221793,
+    "ast_hash": "66f8ba2bd0838af20864927e0a2b13c6",
+    "semantic_hash": "66f8ba2bd0838af20864927e0a2b13c6"
+  },
+  "Renderer.cpp": {
+    "mtime": 1793817298.347415,
+    "seen": 1794002445.6221807,
+    "ast_hash": "d25765f088583c91c8b83dd9f4737c1d",
+    "semantic_hash": "d25765f088583c91c8b83dd9f4737c1d"
+  },
+  "Roster_Change_Service.cpp": {
+    "mtime": 1794144620.5973113,
+    "seen": 1794146512.2759283,
+    "ast_hash": "f25f52f6b33b7bedfc4f5fb5731cd045",
+    "semantic_hash": ""
+  },
+  "Roster_Service.cpp": {
+    "mtime": 1794144620.6035676,
+    "seen": 1794146512.2759454,
+    "ast_hash": "57cb8fe509fc4766530931a178e9135d",
+    "semantic_hash": ""
+  },
+  "Season.cpp": {
+    "mtime": 1794144620.618886,
+    "seen": 1794146512.2759597,
+    "ast_hash": "3133adaebb612efb82c58e8240ac8838",
+    "semantic_hash": ""
+  },
+  "Server_Check_Dialog.cpp": {
+    "mtime": 1793830746.681993,
+    "seen": 1794002445.622185,
+    "ast_hash": "1e62c0f1b931e87523f1dbf668d9e57f",
+    "semantic_hash": "1e62c0f1b931e87523f1dbf668d9e57f"
+  },
+  "Server_Config.cpp": {
+    "mtime": 1793804324.4784093,
+    "seen": 1794002445.622186,
+    "ast_hash": "d9bcf8453bb5276c1a91d8500ae0b2b1",
+    "semantic_hash": "d9bcf8453bb5276c1a91d8500ae0b2b1"
+  },
+  "Server_Config_Checker.cpp": {
+    "mtime": 1793826185.099237,
+    "seen": 1794002445.622187,
+    "ast_hash": "1d5d04d097992daf06b4d491ed80a9b0",
+    "semantic_hash": "1d5d04d097992daf06b4d491ed80a9b0"
+  },
+  "Text_Box.cpp": {
+    "mtime": 1793829713.012557,
+    "seen": 1794002445.622188,
+    "ast_hash": "1b1a186af4e45a69ca33bb3e1ebe72dd",
+    "semantic_hash": "1b1a186af4e45a69ca33bb3e1ebe72dd"
+  },
+  "Text_Encoding.cpp": {
+    "mtime": 1793810421.97998,
+    "seen": 1794002445.622189,
+    "ast_hash": "983041aab62816b5f7ad62ffc8d558fa",
+    "semantic_hash": "983041aab62816b5f7ad62ffc8d558fa"
+  },
+  "Toast_Host.cpp": {
+    "mtime": 1793819646.596545,
+    "seen": 1794002445.62219,
+    "ast_hash": "e4065c70ae42005962d729f6e63447dd",
+    "semantic_hash": "e4065c70ae42005962d729f6e63447dd"
+  },
+  "Tool_Manager.cpp": {
+    "mtime": 1793880717.9979248,
+    "seen": 1794002445.6221912,
+    "ast_hash": "74cf81befa208098f5bc6bb92b572cd6",
+    "semantic_hash": "74cf81befa208098f5bc6bb92b572cd6"
+  },
+  "Tracker_Manager.cpp": {
+    "mtime": 1793946422.2168975,
+    "seen": 1794002445.6221924,
+    "ast_hash": "b2356d373dbcc01b2a75755b4183d0c2",
+    "semantic_hash": "b2356d373dbcc01b2a75755b4183d0c2"
+  },
+  "Tracker_View.cpp": {
+    "mtime": 1793946422.2148783,
+    "seen": 1794002445.6221933,
+    "ast_hash": "d3863befa6e1f9a2034c9c33446f72d2",
+    "semantic_hash": "d3863befa6e1f9a2034c9c33446f72d2"
+  },
+  "User_Data.cpp": {
+    "mtime": 1793804630.4323258,
+    "seen": 1794002445.6221945,
+    "ast_hash": "16f4e0ffe88e5977cae48ac2d19483f6",
+    "semantic_hash": "16f4e0ffe88e5977cae48ac2d19483f6"
+  },
+  "Weekly_Record.cpp": {
+    "mtime": 1794144620.6284256,
+    "seen": 1794146512.2762115,
+    "ast_hash": "87198f59613c6dd9929f17670b799994",
+    "semantic_hash": ""
+  },
+  "WinHTTP_Client.cpp": {
+    "mtime": 1793883787.7650132,
+    "seen": 1794002445.6221964,
+    "ast_hash": "3f61dc7752024d48a6d12f6e3bedd4f4",
+    "semantic_hash": "3f61dc7752024d48a6d12f6e3bedd4f4"
+  },
+  "WinHTTP_Market_API.cpp": {
+    "mtime": 1794144585.3976967,
+    "seen": 1794146512.2762458,
+    "ast_hash": "54771b47ebc609545eeebe65b0c5e8ee",
+    "semantic_hash": ""
+  },
+  "main.cpp": {
+    "mtime": 1793976525.1787117,
+    "seen": 1794002445.6221988,
+    "ast_hash": "d617aa66d91e1c0065025af39a5e04e6",
+    "semantic_hash": "d617aa66d91e1c0065025af39a5e04e6"
+  },
+  "tools/Crawl-LopecSimulator.py": {
+    "mtime": 1794095180.6575918,
+    "seen": 1794112193.6707911,
+    "ast_hash": "fbc636189be753c9224214700f2755f9",
+    "semantic_hash": "fbc636189be753c9224214700f2755f9"
+  },
+  "tools/Export-CombatData.py": {
+    "mtime": 1794144336.2080765,
+    "seen": 1794144548.2197778,
+    "ast_hash": "f169a1810428158ef499f766d81055e8",
+    "semantic_hash": ""
+  },
+  "tools/Set-RemoteSwitch.ps1": {
+    "mtime": 1793829101.2619345,
+    "seen": 1794002445.6222022,
+    "ast_hash": "6430e0eb5cd4a723eeaac0c6204abe89",
+    "semantic_hash": "6430e0eb5cd4a723eeaac0c6204abe89"
+  },
+  "\ub85c\uc2a4\ud2b8\uc544\ud06c \uba40\ud2f0\ud234.slnx": {
+    "mtime": 1793915237.1803093,
+    "seen": 1794002445.622203,
+    "ast_hash": "3f0ef05426f8012213355e7bc02dfe98",
+    "semantic_hash": "3f0ef05426f8012213355e7bc02dfe98"
+  },
+  "README.md": {
+    "mtime": 1794143826.3236394,
+    "seen": 1794144548.2197952,
+    "ast_hash": "a5cce43b7f4e29d2132640222af733c1",
+    "semantic_hash": ""
+  },
+  "Visual.html": {
+    "mtime": 1794177007.1634524,
+    "seen": 1794177038.327088,
+    "ast_hash": "348bebac61c987fd8821b6e3b250e0d6",
+    "semantic_hash": ""
+  },
+  "\ud328\uce58\ub178\ud2b8.md": {
+    "mtime": 1794148119.3491297,
+    "seen": 1794174986.4323628,
+    "ast_hash": "ed3e67fd37585c48a0b5c31a7d0f6f9f",
+    "semantic_hash": ""
+  },
+  "API_Key_Dialog.ixx": {
+    "mtime": 1793819764.0627418,
+    "seen": 1794003452.2807586,
+    "ast_hash": "9d619fbdd242cfa2436ec8ff8b375deb",
+    "semantic_hash": "9d619fbdd242cfa2436ec8ff8b375deb",
+    "language": "language=.cpp"
+  },
+  "API_Key_Store.ixx": {
+    "mtime": 1793807156.4726653,
+    "seen": 1794003452.2809029,
+    "ast_hash": "e0b0d92179db0cd8f220e4f0e84e84a6",
+    "semantic_hash": "e0b0d92179db0cd8f220e4f0e84e84a6",
+    "language": "language=.cpp"
+  },
+  "APP_Constants.ixx": {
+    "mtime": 1794147025.2048705,
+    "seen": 1794174986.4297912,
+    "ast_hash": "2ae137020bb0b04d09b19dbbbc83eb1f",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "APP_Exceptions.ixx": {
+    "mtime": 1793880629.8656087,
+    "seen": 1794003452.2812207,
+    "ast_hash": "28c43eff805db9b15c953358ceced0e6",
+    "semantic_hash": "28c43eff805db9b15c953358ceced0e6",
+    "language": "language=.cpp"
+  },
+  "Accessory_Finder_Manager.ixx": {
+    "mtime": 1793923536.515534,
+    "seen": 1794003452.2813861,
+    "ast_hash": "115254242dbe9605417853e48436677b",
+    "semantic_hash": "115254242dbe9605417853e48436677b",
+    "language": "language=.cpp"
+  },
+  "Accessory_Finder_View.ixx": {
+    "mtime": 1793940483.3795564,
+    "seen": 1794003452.2815487,
+    "ast_hash": "0b1d92dd91464cd7234a3a1ec2f17c3a",
+    "semantic_hash": "0b1d92dd91464cd7234a3a1ec2f17c3a",
+    "language": "language=.cpp"
+  },
+  "Accessory_Listing.ixx": {
+    "mtime": 1794144620.3430543,
+    "seen": 1794146512.273343,
+    "ast_hash": "d27b1efdbffc7c6b16ce9218cc143448",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Accessory_Search_Query.ixx": {
+    "mtime": 1794144620.3486578,
+    "seen": 1794146512.2733514,
+    "ast_hash": "23707d8b9928df565edd877aa3e16ba5",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Accessory_Search_Service.ixx": {
+    "mtime": 1794144620.3592854,
+    "seen": 1794146512.273365,
+    "ast_hash": "1c6a85e15f7faa7e7d2823ebfb191bee",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Application.ixx": {
+    "mtime": 1794065450.6238995,
+    "seen": 1794065944.039012,
+    "ast_hash": "921617f90c5dad82271ac09e60db943a",
+    "semantic_hash": "921617f90c5dad82271ac09e60db943a",
+    "language": "language=.cpp"
+  },
+  "Ark_Gem_Finder_Manager.ixx": {
+    "mtime": 1794144620.3657925,
+    "seen": 1794146512.2734177,
+    "ast_hash": "f1b0703de14b83e308cf5d6148e1cc53",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Ark_Gem_Finder_View.ixx": {
+    "mtime": 1794144620.376898,
+    "seen": 1794146512.2734327,
+    "ast_hash": "a74f3364d3b36d0a0adf1feeda95a9eb",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Ark_Gem_Price_Service.ixx": {
+    "mtime": 1794144620.386082,
+    "seen": 1794146512.2734463,
+    "ast_hash": "de239e78c815730c1876d80744767514",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Ark_Gem_Quote.ixx": {
+    "mtime": 1794144620.3915784,
+    "seen": 1794146512.2734528,
+    "ast_hash": "ab6316034461231b2aad6b856e47ccbf",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Asset_Calculator.ixx": {
+    "mtime": 1793916533.9775124,
+    "seen": 1794003452.2825098,
+    "ast_hash": "dea31701d2f9e0b64b98b5b030ecceb9",
+    "semantic_hash": "dea31701d2f9e0b64b98b5b030ecceb9",
+    "language": "language=.cpp"
+  },
+  "Asset_Calculator_Service.ixx": {
+    "mtime": 1793916534.277789,
+    "seen": 1794003452.2826438,
+    "ast_hash": "964d9bd542e0f1a83e98300853bca2fb",
+    "semantic_hash": "964d9bd542e0f1a83e98300853bca2fb",
+    "language": "language=.cpp"
+  },
+  "Auction_Accessory_Search_Service.ixx": {
+    "mtime": 1794144620.3991163,
+    "seen": 1794146512.2735076,
+    "ast_hash": "a41752f03b9d81ad8c660498b17a4504",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Auction_Gem_Price_Service.ixx": {
+    "mtime": 1793884254.2986927,
+    "seen": 1794003452.2829022,
+    "ast_hash": "d34331c12feee9d27d976af08e106d4e",
+    "semantic_hash": "d34331c12feee9d27d976af08e106d4e",
+    "language": "language=.cpp"
+  },
+  "Auction_Option.ixx": {
+    "mtime": 1794144620.4067764,
+    "seen": 1794146512.2735257,
+    "ast_hash": "4efc5c1ac754daa14c219a5caba5f346",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Background_Task.ixx": {
+    "mtime": 1793831621.4731119,
+    "seen": 1794003452.2829108,
+    "ast_hash": "9fb9f2fc4f52bcc33d6dfef5046f358c",
+    "semantic_hash": "9fb9f2fc4f52bcc33d6dfef5046f358c",
+    "language": "language=.cpp"
+  },
+  "Bound_Gem_Data.ixx": {
+    "mtime": 1794144620.4131944,
+    "seen": 1794146512.273546,
+    "ast_hash": "b242797143e3a9e24bd6a1a7bad71dfa",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Bound_Gem_Repository.ixx": {
+    "mtime": 1794144620.4200618,
+    "seen": 1794146512.274443,
+    "ast_hash": "6f9e81d7b100c5d8469724d61be2ea2c",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Bound_Gem_Roster_Data.ixx": {
+    "mtime": 1794144620.4366312,
+    "seen": 1794146512.2745838,
+    "ast_hash": "e158ce597c1896da4148bcf3c17e9a65",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Button.ixx": {
+    "mtime": 1793829661.313042,
+    "seen": 1794003452.2834966,
+    "ast_hash": "ea85b036abad60431781ab22700e02ea",
+    "semantic_hash": "ea85b036abad60431781ab22700e02ea",
+    "language": "language=.cpp"
+  },
+  "Calculator_Manager.ixx": {
+    "mtime": 1793926094.832974,
+    "seen": 1794003452.2836328,
+    "ast_hash": "c9268df09b9da949caa9e610c4ecf75b",
+    "semantic_hash": "c9268df09b9da949caa9e610c4ecf75b",
+    "language": "language=.cpp"
+  },
+  "Calculator_View.ixx": {
+    "mtime": 1793926092.574425,
+    "seen": 1794003452.2837796,
+    "ast_hash": "07b94b9875453ad3e4ab18a6c2e19c6b",
+    "semantic_hash": "07b94b9875453ad3e4ab18a6c2e19c6b",
+    "language": "language=.cpp"
+  },
+  "Character.ixx": {
+    "mtime": 1793804241.0336041,
+    "seen": 1794003452.283972,
+    "ast_hash": "83912c167c9b0d4dddbfc289a28856af",
+    "semantic_hash": "83912c167c9b0d4dddbfc289a28856af",
+    "language": "language=.cpp"
+  },
+  "Character_Info.ixx": {
+    "mtime": 1793916511.5176084,
+    "seen": 1794003452.284111,
+    "ast_hash": "88d2c85c2aa3aa84f8e8739131c0ca7d",
+    "semantic_hash": "88d2c85c2aa3aa84f8e8739131c0ca7d",
+    "language": "language=.cpp"
+  },
+  "Check_Box.ixx": {
+    "mtime": 1793831465.9857602,
+    "seen": 1794003452.2842426,
+    "ast_hash": "40cd3980bfc545cb23b50ccbcd86d5cc",
+    "semantic_hash": "40cd3980bfc545cb23b50ccbcd86d5cc",
+    "language": "language=.cpp"
+  },
+  "Combo_Box.ixx": {
+    "mtime": 1793940434.017444,
+    "seen": 1794003452.2843719,
+    "ast_hash": "d73221dbf1afda4d4fa3bbbc576a14c2",
+    "semantic_hash": "d73221dbf1afda4d4fa3bbbc576a14c2",
+    "language": "language=.cpp"
+  },
+  "Control.ixx": {
+    "mtime": 1793829599.28647,
+    "seen": 1794003452.2844985,
+    "ast_hash": "a1553eb81370ec1f85f78b9be94e4a0d",
+    "semantic_hash": "a1553eb81370ec1f85f78b9be94e4a0d",
+    "language": "language=.cpp"
+  },
+  "Control_Host.ixx": {
+    "mtime": 1793818903.4986832,
+    "seen": 1794003452.2846346,
+    "ast_hash": "099d4f2ef553cb4ed39fbcc4b3a27c7f",
+    "semantic_hash": "099d4f2ef553cb4ed39fbcc4b3a27c7f",
+    "language": "language=.cpp"
+  },
+  "DPAPI_Key_Store.ixx": {
+    "mtime": 1793807290.1345677,
+    "seen": 1794003452.2847674,
+    "ast_hash": "7641a6ae051eba782034828434d62d09",
+    "semantic_hash": "7641a6ae051eba782034828434d62d09",
+    "language": "language=.cpp"
+  },
+  "DX11_Renderer.ixx": {
+    "mtime": 1793829536.4928117,
+    "seen": 1794003452.2848916,
+    "ast_hash": "169317f2ffc27cb6a206bf617a9cfa95",
+    "semantic_hash": "169317f2ffc27cb6a206bf617a9cfa95",
+    "language": "language=.cpp"
+  },
+  "Data_Repository.ixx": {
+    "mtime": 1793804502.184158,
+    "seen": 1794003452.2850163,
+    "ast_hash": "04d924cc2b453ab071cb204cdb2edda2",
+    "semantic_hash": "04d924cc2b453ab071cb204cdb2edda2",
+    "language": "language=.cpp"
+  },
+  "Date_Range_Dialog.ixx": {
+    "mtime": 1794144620.4418612,
+    "seen": 1794146512.2749755,
+    "ast_hash": "3fcfd95e224926059512c22aa1a8b4bd",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Dialog.ixx": {
+    "mtime": 1793819531.9912477,
+    "seen": 1794003452.2856777,
+    "ast_hash": "92bc86aa3957422c8cee144a350aabf5",
+    "semantic_hash": "92bc86aa3957422c8cee144a350aabf5",
+    "language": "language=.cpp"
+  },
+  "Engraving_Finder_Manager.ixx": {
+    "mtime": 1794144620.451672,
+    "seen": 1794146512.2749987,
+    "ast_hash": "f7fa9079780102caec533b432de7ddfa",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Engraving_Finder_View.ixx": {
+    "mtime": 1794144620.4597886,
+    "seen": 1794146512.2750132,
+    "ast_hash": "805e1f890cf33d0e7deb68d6a48185b5",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Engraving_Price_Service.ixx": {
+    "mtime": 1794144620.465408,
+    "seen": 1794146512.2750268,
+    "ast_hash": "ddfa3e3aa73dbf8a650a938e037da547",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Engraving_Quote.ixx": {
+    "mtime": 1794144620.4717577,
+    "seen": 1794146512.275043,
+    "ast_hash": "0181bb41e76e5b743bf5e29777a42e49",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Gem_Catalog.ixx": {
+    "mtime": 1793881691.6197162,
+    "seen": 1794003452.2871394,
+    "ast_hash": "9e9544064e822691fb1899a96f830184",
+    "semantic_hash": "9e9544064e822691fb1899a96f830184",
+    "language": "language=.cpp"
+  },
+  "Gem_Data.ixx": {
+    "mtime": 1793882363.7983556,
+    "seen": 1794003452.287312,
+    "ast_hash": "a0ec3e4098926f216f36a4a1e02546f2",
+    "semantic_hash": "a0ec3e4098926f216f36a4a1e02546f2",
+    "language": "language=.cpp"
+  },
+  "Gem_Data_Repository.ixx": {
+    "mtime": 1793880761.2157712,
+    "seen": 1794003452.2874823,
+    "ast_hash": "e8bd734c4ee9047d36cf7743dc5a6e1d",
+    "semantic_hash": "e8bd734c4ee9047d36cf7743dc5a6e1d",
+    "language": "language=.cpp"
+  },
+  "Gem_Finder_Manager.ixx": {
+    "mtime": 1793885579.569295,
+    "seen": 1794003452.2876413,
+    "ast_hash": "3daf61bc576e19a337d30078f0e1b42b",
+    "semantic_hash": "3daf61bc576e19a337d30078f0e1b42b",
+    "language": "language=.cpp"
+  },
+  "Gem_Finder_View.ixx": {
+    "mtime": 1793885376.010672,
+    "seen": 1794003452.2878075,
+    "ast_hash": "20b425b336a70ce87bd69fa2ad09f0e3",
+    "semantic_hash": "20b425b336a70ce87bd69fa2ad09f0e3",
+    "language": "language=.cpp"
+  },
+  "Gem_Price_Service.ixx": {
+    "mtime": 1793881008.0657778,
+    "seen": 1794003452.2879624,
+    "ast_hash": "d31604f33876b153256388c510deb367",
+    "semantic_hash": "d31604f33876b153256388c510deb367",
+    "language": "language=.cpp"
+  },
+  "Gem_Quote.ixx": {
+    "mtime": 1793882157.8390203,
+    "seen": 1794003452.2881162,
+    "ast_hash": "c9f113fcfba1e5645c4e85bdaeb561aa",
+    "semantic_hash": "c9f113fcfba1e5645c4e85bdaeb561aa",
+    "language": "language=.cpp"
+  },
+  "Gist_Server_Config_Checker.ixx": {
+    "mtime": 1793807385.0749156,
+    "seen": 1794003452.288253,
+    "ast_hash": "a4673408edac91d1ae65b39ab990758d",
+    "semantic_hash": "a4673408edac91d1ae65b39ab990758d",
+    "language": "language=.cpp"
+  },
+  "Grid.ixx": {
+    "mtime": 1793942640.8530707,
+    "seen": 1794003452.2883904,
+    "ast_hash": "94853245c475365574616d5dbf6f4138",
+    "semantic_hash": "94853245c475365574616d5dbf6f4138",
+    "language": "language=.cpp"
+  },
+  "Growth_Calculation_Service.ixx": {
+    "mtime": 1794144620.4853134,
+    "seen": 1794146512.275195,
+    "ast_hash": "5c4a04b007887bf55b82b85ae4e03389",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Growth_Calculator.ixx": {
+    "mtime": 1794144620.49087,
+    "seen": 1794146512.275209,
+    "ast_hash": "aaa5ab2a3ad87af97f263acf385073bc",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Growth_Data.ixx": {
+    "mtime": 1794144620.4939184,
+    "seen": 1794146512.2752237,
+    "ast_hash": "f0119de2846d4ead83f67e9417901303",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Growth_Data_Repository.ixx": {
+    "mtime": 1794144620.5073137,
+    "seen": 1794146512.2752385,
+    "ast_hash": "7974caa4824b2bdef7cf49f88100344a",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Input.ixx": {
+    "mtime": 1793828800.9100513,
+    "seen": 1794003452.2889357,
+    "ast_hash": "2eeda4f53683b1eee1b61d88f7392d70",
+    "semantic_hash": "2eeda4f53683b1eee1b61d88f7392d70",
+    "language": "language=.cpp"
+  },
+  "Interval_Timer.ixx": {
+    "mtime": 1793832588.8686528,
+    "seen": 1794003452.2890766,
+    "ast_hash": "98e84ca2b545a795f936ebfa72471a3f",
+    "semantic_hash": "98e84ca2b545a795f936ebfa72471a3f",
+    "language": "language=.cpp"
+  },
+  "Item_Data.ixx": {
+    "mtime": 1793916427.460222,
+    "seen": 1794003452.289212,
+    "ast_hash": "32c19b82f3cb28d51c2c2f1eed5655b2",
+    "semantic_hash": "32c19b82f3cb28d51c2c2f1eed5655b2",
+    "language": "language=.cpp"
+  },
+  "JSON_Bound_Gem_Repository.ixx": {
+    "mtime": 1794144620.5155654,
+    "seen": 1794146512.2752926,
+    "ast_hash": "14d29279861f5e8404ec4ecf5235dd40",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "JSON_Data_Repository.ixx": {
+    "mtime": 1793804792.376721,
+    "seen": 1794003452.2895083,
+    "ast_hash": "4edaa7006a734c3333e9c8c41dba502d",
+    "semantic_hash": "4edaa7006a734c3333e9c8c41dba502d",
+    "language": "language=.cpp"
+  },
+  "JSON_File_Store.ixx": {
+    "mtime": 1794144620.5222065,
+    "seen": 1794146512.2753282,
+    "ast_hash": "be32aef535bad2a2d860ea2f2f82ca8e",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "JSON_Gem_Data_Repository.ixx": {
+    "mtime": 1793884026.3046267,
+    "seen": 1794003452.2897747,
+    "ast_hash": "969f75ad3232bc2b2413be4e103d1478",
+    "semantic_hash": "969f75ad3232bc2b2413be4e103d1478",
+    "language": "language=.cpp"
+  },
+  "JSON_Growth_Data_Repository.ixx": {
+    "mtime": 1794144620.5331743,
+    "seen": 1794146512.2753637,
+    "ast_hash": "39a146f32610e9e96742ad5a1f14a7a5",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "JSON_Value.ixx": {
+    "mtime": 1793883945.513642,
+    "seen": 1794003452.2900503,
+    "ast_hash": "856d46d2cf79ce0797969e15e001aa8e",
+    "semantic_hash": "856d46d2cf79ce0797969e15e001aa8e",
+    "language": "language=.cpp"
+  },
+  "Label.ixx": {
+    "mtime": 1793819100.4841843,
+    "seen": 1794003452.2901812,
+    "ast_hash": "8ec6f5b8db5e87f61144d2d4c0ad6a0c",
+    "semantic_hash": "8ec6f5b8db5e87f61144d2d4c0ad6a0c",
+    "language": "language=.cpp"
+  },
+  "Line_Chart.ixx": {
+    "mtime": 1793917120.334387,
+    "seen": 1794003452.2903113,
+    "ast_hash": "fc099b8c70c1011c533afbda12b65390",
+    "semantic_hash": "fc099b8c70c1011c533afbda12b65390",
+    "language": "language=.cpp"
+  },
+  "Local_Time.ixx": {
+    "mtime": 1793942507.9305487,
+    "seen": 1794003452.2904365,
+    "ast_hash": "452e679679d51a13adfc28a64014dcf7",
+    "semantic_hash": "452e679679d51a13adfc28a64014dcf7",
+    "language": "language=.cpp"
+  },
+  "Main_Window.ixx": {
+    "mtime": 1793829252.6453297,
+    "seen": 1794003452.290566,
+    "ast_hash": "b296ad51693401c88f81e2cbdb3f1a65",
+    "semantic_hash": "b296ad51693401c88f81e2cbdb3f1a65",
+    "language": "language=.cpp"
+  },
+  "Market_API.ixx": {
+    "mtime": 1794065133.8714247,
+    "seen": 1794065944.082506,
+    "ast_hash": "a83abff0f2c81f3795b53a624737a1b0",
+    "semantic_hash": "a83abff0f2c81f3795b53a624737a1b0",
+    "language": "language=.cpp"
+  },
+  "Market_Ark_Gem_Price_Service.ixx": {
+    "mtime": 1794144620.54009,
+    "seen": 1794146512.2754748,
+    "ast_hash": "94a88a13618839e3ebc2064f84b4fa9a",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Market_Engraving_Price_Service.ixx": {
+    "mtime": 1794144620.5485694,
+    "seen": 1794146512.2754896,
+    "ast_hash": "b89ec3f9094ebe24743ff09e99767178",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Market_Item.ixx": {
+    "mtime": 1794144620.553913,
+    "seen": 1794146512.2754972,
+    "ast_hash": "5167f36cbf702994118802bb5230e4ba",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Market_Refine_Book_Price_Service.ixx": {
+    "mtime": 1794144620.5609646,
+    "seen": 1794146512.2755141,
+    "ast_hash": "1f8a06463fb0e48d4058afad5bad8c98",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Market_Refine_Simulation_Service.ixx": {
+    "mtime": 1794146697.5393884,
+    "seen": 1794146971.0190058,
+    "ast_hash": "dbfafc0d411c0e7506a51bceefcd4410",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Message_Dialog.ixx": {
+    "mtime": 1793819580.209771,
+    "seen": 1794003452.2913485,
+    "ast_hash": "ee950d98d6f26b8f4c47d37d54cb4f63",
+    "semantic_hash": "ee950d98d6f26b8f4c47d37d54cb4f63",
+    "language": "language=.cpp"
+  },
+  "Notifier.ixx": {
+    "mtime": 1793943108.5257554,
+    "seen": 1794003452.291508,
+    "ast_hash": "44a3cc4ebd429a0da8497558fd74e855",
+    "semantic_hash": "44a3cc4ebd429a0da8497558fd74e855",
+    "language": "language=.cpp"
+  },
+  "Number_Format.ixx": {
+    "mtime": 1793829018.447722,
+    "seen": 1794003452.2916343,
+    "ast_hash": "d0ba2428c710c2f4a6503efaa714a6c9",
+    "semantic_hash": "d0ba2428c710c2f4a6503efaa714a6c9",
+    "language": "language=.cpp"
+  },
+  "Overlay_Notifier.ixx": {
+    "mtime": 1793943108.7253408,
+    "seen": 1794003452.291762,
+    "ast_hash": "ac1bae429f36dd037e47a2f4542c700c",
+    "semantic_hash": "ac1bae429f36dd037e47a2f4542c700c",
+    "language": "language=.cpp"
+  },
+  "Placeholder_View.ixx": {
+    "mtime": 1793882779.3469133,
+    "seen": 1794003452.2918868,
+    "ast_hash": "6f361961c4a1e4356430a240a999553a",
+    "semantic_hash": "6f361961c4a1e4356430a240a999553a",
+    "language": "language=.cpp"
+  },
+  "Platform.ixx": {
+    "mtime": 1793828830.3314338,
+    "seen": 1794003452.292012,
+    "ast_hash": "0251b8c9017e7f7d5fb9ca13b4ff4d8c",
+    "semantic_hash": "0251b8c9017e7f7d5fb9ca13b4ff4d8c",
+    "language": "language=.cpp"
+  },
+  "Price_Alarm.ixx": {
+    "mtime": 1793882124.2317622,
+    "seen": 1794003452.2921417,
+    "ast_hash": "768d9b02f63d5db17990bd99257bada9",
+    "semantic_hash": "768d9b02f63d5db17990bd99257bada9",
+    "language": "language=.cpp"
+  },
+  "Price_Data.ixx": {
+    "mtime": 1793804294.4795096,
+    "seen": 1794003452.292271,
+    "ast_hash": "771c4aa8a9bfdedd9473e0242486f05b",
+    "semantic_hash": "771c4aa8a9bfdedd9473e0242486f05b",
+    "language": "language=.cpp"
+  },
+  "Progress_Bar.ixx": {
+    "mtime": 1793829802.7045555,
+    "seen": 1794003452.292392,
+    "ast_hash": "8d70fbe31a88b1c2b4a53f7ddf328b04",
+    "semantic_hash": "8d70fbe31a88b1c2b4a53f7ddf328b04",
+    "language": "language=.cpp"
+  },
+  "Rate_Limit_State.ixx": {
+    "mtime": 1793882233.1700342,
+    "seen": 1794003452.292523,
+    "ast_hash": "47a911eb540c1bddf7d7c6075d9751b6",
+    "semantic_hash": "47a911eb540c1bddf7d7c6075d9751b6",
+    "language": "language=.cpp"
+  },
+  "Refine_Book_Finder_Manager.ixx": {
+    "mtime": 1794144620.5693529,
+    "seen": 1794146512.2757375,
+    "ast_hash": "e6c51f62bcf7dba3f6804ed09a3801bb",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Refine_Book_Finder_View.ixx": {
+    "mtime": 1794144620.5784264,
+    "seen": 1794146512.2757535,
+    "ast_hash": "d401499af9ea51769d8c5e39dfe8cc5a",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Refine_Book_Price_Service.ixx": {
+    "mtime": 1794144620.5894196,
+    "seen": 1794146512.2757688,
+    "ast_hash": "9031a427bada4fdcf9be1ee4edc71eca",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Refine_Book_Quote.ixx": {
+    "mtime": 1794144620.5924911,
+    "seen": 1794146512.2757773,
+    "ast_hash": "6275a5361b842e607a843e7341ecdb37",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Refine_Calculator.ixx": {
+    "mtime": 1793973687.638229,
+    "seen": 1794003452.2930424,
+    "ast_hash": "13fb9d83667b0c27602a04828fa803d1",
+    "semantic_hash": "13fb9d83667b0c27602a04828fa803d1",
+    "language": "language=.cpp"
+  },
+  "Refine_Data.ixx": {
+    "mtime": 1793973687.633509,
+    "seen": 1794003452.2931888,
+    "ast_hash": "249c0c6383c9b01c140af77e76e4a4d3",
+    "semantic_hash": "249c0c6383c9b01c140af77e76e4a4d3",
+    "language": "language=.cpp"
+  },
+  "Refine_Plan.ixx": {
+    "mtime": 1793976574.6826859,
+    "seen": 1794003452.2931929,
+    "ast_hash": "e873e56186d5b2ca38940574c9eee8a5",
+    "semantic_hash": "e873e56186d5b2ca38940574c9eee8a5",
+    "language": "language=.cpp"
+  },
+  "Refine_Simulation_Service.ixx": {
+    "mtime": 1794146697.538102,
+    "seen": 1794146971.0191672,
+    "ast_hash": "3776d2c6f2600ff00ccf958bdda00c38",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Refine_Simulator_Manager.ixx": {
+    "mtime": 1794146829.4946215,
+    "seen": 1794146971.0191789,
+    "ast_hash": "4bafe02b08249f59a56bdaa987e8d93e",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Refine_Simulator_View.ixx": {
+    "mtime": 1794147025.2058828,
+    "seen": 1794174986.4320571,
+    "ast_hash": "4c9921c0f7bb316d1532363465312606",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Refresh_Scheduler.ixx": {
+    "mtime": 1793884381.1609788,
+    "seen": 1794003452.2943552,
+    "ast_hash": "63fc0f9933b1d70e74be0247e9ea85de",
+    "semantic_hash": "63fc0f9933b1d70e74be0247e9ea85de",
+    "language": "language=.cpp"
+  },
+  "Refresh_Settings.ixx": {
+    "mtime": 1793882276.416155,
+    "seen": 1794003452.2945604,
+    "ast_hash": "7d09ba425e566639962da2df5fb22e91",
+    "semantic_hash": "7d09ba425e566639962da2df5fb22e91",
+    "language": "language=.cpp"
+  },
+  "Renderer.ixx": {
+    "mtime": 1793828847.8114214,
+    "seen": 1794003452.294752,
+    "ast_hash": "8af16d2d3035b2f9b3d1cb83a17a92f3",
+    "semantic_hash": "8af16d2d3035b2f9b3d1cb83a17a92f3",
+    "language": "language=.cpp"
+  },
+  "Roster_Change_Service.ixx": {
+    "mtime": 1794144620.5997136,
+    "seen": 1794146512.2759354,
+    "ast_hash": "29ae71e2e072c695189e2c0ed0d737c2",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Roster_Service.ixx": {
+    "mtime": 1794144620.6110792,
+    "seen": 1794146512.275954,
+    "ast_hash": "a3968e33da87cf510682fb3e00010dce",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Season.ixx": {
+    "mtime": 1794144620.6253967,
+    "seen": 1794146512.275967,
+    "ast_hash": "ea5c446a8357c2b146da5c0d624abb33",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Server_Check_Dialog.ixx": {
+    "mtime": 1793830719.7945948,
+    "seen": 1794003452.2954507,
+    "ast_hash": "880486bf751c004cb47c9931709b8f87",
+    "semantic_hash": "880486bf751c004cb47c9931709b8f87",
+    "language": "language=.cpp"
+  },
+  "Server_Config.ixx": {
+    "mtime": 1793804314.2125409,
+    "seen": 1794003452.2955904,
+    "ast_hash": "8ebd92a7eab47785aced4fad1fe02144",
+    "semantic_hash": "8ebd92a7eab47785aced4fad1fe02144",
+    "language": "language=.cpp"
+  },
+  "Server_Config_Checker.ixx": {
+    "mtime": 1793806755.6060266,
+    "seen": 1794003452.2957299,
+    "ast_hash": "04ec4ad5e255a8a0d00e271101e7b25b",
+    "semantic_hash": "04ec4ad5e255a8a0d00e271101e7b25b",
+    "language": "language=.cpp"
+  },
+  "Singleton.ixx": {
+    "mtime": 1793810357.1182144,
+    "seen": 1794003452.295735,
+    "ast_hash": "da9697f3103af4856ddf71aa19812310",
+    "semantic_hash": "da9697f3103af4856ddf71aa19812310",
+    "language": "language=.cpp"
+  },
+  "Text_Box.ixx": {
+    "mtime": 1793829689.6245065,
+    "seen": 1794003452.2958808,
+    "ast_hash": "180351cca1c1e9f7b19766cbb961188c",
+    "semantic_hash": "180351cca1c1e9f7b19766cbb961188c",
+    "language": "language=.cpp"
+  },
+  "Text_Encoding.ixx": {
+    "mtime": 1793810398.4957805,
+    "seen": 1794003452.2960095,
+    "ast_hash": "c97a173331362ca3caa48af87223e053",
+    "semantic_hash": "c97a173331362ca3caa48af87223e053",
+    "language": "language=.cpp"
+  },
+  "Theme.ixx": {
+    "mtime": 1793940443.921031,
+    "seen": 1794003452.296014,
+    "ast_hash": "060ba325d75b951414a614497485d885",
+    "semantic_hash": "060ba325d75b951414a614497485d885",
+    "language": "language=.cpp"
+  },
+  "Toast_Host.ixx": {
+    "mtime": 1793819636.0133073,
+    "seen": 1794003452.296161,
+    "ast_hash": "7a733553c9a3e5a15114fa7f0c0aefac",
+    "semantic_hash": "7a733553c9a3e5a15114fa7f0c0aefac",
+    "language": "language=.cpp"
+  },
+  "Tool_Context.ixx": {
+    "mtime": 1793887687.7373784,
+    "seen": 1794003452.2961655,
+    "ast_hash": "e1d02d9dd67ba578ba43b144e2e80cd6",
+    "semantic_hash": "e1d02d9dd67ba578ba43b144e2e80cd6",
+    "language": "language=.cpp"
+  },
+  "Tool_Manager.ixx": {
+    "mtime": 1793880705.0623102,
+    "seen": 1794003452.2962928,
+    "ast_hash": "f481792cd459843e62b568a8fb49006b",
+    "semantic_hash": "f481792cd459843e62b568a8fb49006b",
+    "language": "language=.cpp"
+  },
+  "Tracker_Manager.ixx": {
+    "mtime": 1793946422.2158968,
+    "seen": 1794003452.2964272,
+    "ast_hash": "036429e53a05966b41fa330a053f8739",
+    "semantic_hash": "036429e53a05966b41fa330a053f8739",
+    "language": "language=.cpp"
+  },
+  "Tracker_View.ixx": {
+    "mtime": 1793946422.213004,
+    "seen": 1794003452.2965646,
+    "ast_hash": "b857427240bfa5dc73dc76ef75665183",
+    "semantic_hash": "b857427240bfa5dc73dc76ef75665183",
+    "language": "language=.cpp"
+  },
+  "User_Data.ixx": {
+    "mtime": 1793804646.307869,
+    "seen": 1794003452.2966945,
+    "ast_hash": "1a0ca813d149179cdf715dda6f158630",
+    "semantic_hash": "1a0ca813d149179cdf715dda6f158630",
+    "language": "language=.cpp"
+  },
+  "Weekly_Record.ixx": {
+    "mtime": 1794144620.640594,
+    "seen": 1794146512.2762194,
+    "ast_hash": "0b07e99abea4b06d1568618d94f293c8",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "WinHTTP_Client.ixx": {
+    "mtime": 1793883773.059288,
+    "seen": 1794003452.296949,
+    "ast_hash": "0a468b79057f12316cabe05bd7a5df86",
+    "semantic_hash": "0a468b79057f12316cabe05bd7a5df86",
+    "language": "language=.cpp"
+  },
+  "WinHTTP_Market_API.ixx": {
+    "mtime": 1794065133.9083903,
+    "seen": 1794065944.1316886,
+    "ast_hash": "b0262a8fdea4501a90575828e48456af",
+    "semantic_hash": "b0262a8fdea4501a90575828e48456af",
+    "language": "language=.cpp"
+  },
+  "tools/Graphify-ModuleEdges.py": {
+    "mtime": 1794003678.1242738,
+    "seen": 1794003833.070213,
+    "ast_hash": "fe6b008775e0ca1e8efb1c4e4d76097a",
+    "semantic_hash": "fe6b008775e0ca1e8efb1c4e4d76097a"
+  },
+  "Armory_Parser.cpp": {
+    "mtime": 1794144585.3398376,
+    "seen": 1794146512.2734618,
+    "ast_hash": "6fa838def326f2ddfd05921f164394d1",
+    "semantic_hash": ""
+  },
+  "Armory_Parser.ixx": {
+    "mtime": 1794144585.409886,
+    "seen": 1794146512.2734685,
+    "ast_hash": "24f9f6a2ee4ed7e7de8acfafca4f2289",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Character_Armory.cpp": {
+    "mtime": 1794144585.345513,
+    "seen": 1794146512.274706,
+    "ast_hash": "babe7f11d8ee04fea2277c96480b9506",
+    "semantic_hash": ""
+  },
+  "Character_Armory.ixx": {
+    "mtime": 1794144585.416754,
+    "seen": 1794146512.2747145,
+    "ast_hash": "bf64269c75f50a5bd59fa5a01392a4a4",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Coefficient_Data.cpp": {
+    "mtime": 1794144344.1072955,
+    "seen": 1794144548.218974,
+    "ast_hash": "e55db788891a53a7908f2887e54dc4ec",
+    "semantic_hash": ""
+  },
+  "Combat_Coefficient_Data.ixx": {
+    "mtime": 1794144216.9777493,
+    "seen": 1794144548.2189782,
+    "ast_hash": "dd3dbf1ff312e4a5e277cfd857a3f7a8",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Factor_Component.cpp": {
+    "mtime": 1794144585.3521643,
+    "seen": 1794146512.2748125,
+    "ast_hash": "c7f3bdfbcd06bed9216c2e3295eac318",
+    "semantic_hash": ""
+  },
+  "Combat_Factor_Component.ixx": {
+    "mtime": 1794144585.4252849,
+    "seen": 1794146512.2748227,
+    "ast_hash": "4ac7dde864653d54692a836f7e3ffe16",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Power_Calculator.cpp": {
+    "mtime": 1794144585.353165,
+    "seen": 1794146512.2748291,
+    "ast_hash": "0a193baecf34109f6dbc96a31f9b707e",
+    "semantic_hash": ""
+  },
+  "Combat_Power_Calculator.ixx": {
+    "mtime": 1794144585.4263108,
+    "seen": 1794146512.2748353,
+    "ast_hash": "16660c9cdd868e5b7b37994e4a1b22bc",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Simulator_Manager.cpp": {
+    "mtime": 1794144585.3541648,
+    "seen": 1794146512.274842,
+    "ast_hash": "781fd7871cc8cd63f446cb5a416e80c3",
+    "semantic_hash": ""
+  },
+  "Combat_Simulator_Manager.ixx": {
+    "mtime": 1794144585.4273217,
+    "seen": 1794146512.274848,
+    "ast_hash": "2945c16659c53a0d727f0996255e6780",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Simulator_Store.cpp": {
+    "mtime": 1794144585.355673,
+    "seen": 1794146512.2748542,
+    "ast_hash": "de5deb3084850bf4eda86f5cac97818c",
+    "semantic_hash": ""
+  },
+  "Combat_Simulator_Store.ixx": {
+    "mtime": 1794144585.4273217,
+    "seen": 1794146512.2748597,
+    "ast_hash": "e5045ce0251fd63603e575e52caea7f2",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Simulator_View.cpp": {
+    "mtime": 1794144585.3567028,
+    "seen": 1794146512.2748666,
+    "ast_hash": "742b674ad3ffc61a36992194fbdc1b07",
+    "semantic_hash": ""
+  },
+  "Combat_Simulator_View.ixx": {
+    "mtime": 1794144585.4283648,
+    "seen": 1794146512.2748733,
+    "ast_hash": "dc8cb7660f9735d563f5111c5b552343",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_State.cpp": {
+    "mtime": 1794143864.9192889,
+    "seen": 1794144548.2190459,
+    "ast_hash": "a6080e3d9cda73e4d0d4a1bc8500e835",
+    "semantic_hash": ""
+  },
+  "Combat_State.ixx": {
+    "mtime": 1794144585.432616,
+    "seen": 1794146512.2748868,
+    "ast_hash": "fbbc208ddede6069e850436a16fdca4c",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "data/CombatCoefficients.json": {
+    "mtime": 1794112038.1914062,
+    "seen": 1794112193.6701312,
+    "ast_hash": "a7637df21a96eb3c648592f2f3ab3bd1",
+    "semantic_hash": "a7637df21a96eb3c648592f2f3ab3bd1"
+  },
+  "Combat_Extra_Component.cpp": {
+    "mtime": 1794144585.3486383,
+    "seen": 1794146512.2747672,
+    "ast_hash": "ec01a520af28bec0e6a22f460d4b6fba",
+    "semantic_hash": ""
+  },
+  "Combat_Extra_Component.ixx": {
+    "mtime": 1794144585.4187787,
+    "seen": 1794146512.2747736,
+    "ast_hash": "6bb1cba261e3f3f8ef9de8e5ef329667",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Extra_Editor.cpp": {
+    "mtime": 1794144585.3501449,
+    "seen": 1794146512.2747817,
+    "ast_hash": "164124115cdbed8b55c24b01182016ac",
+    "semantic_hash": ""
+  },
+  "Combat_Extra_Editor.ixx": {
+    "mtime": 1794144585.4207778,
+    "seen": 1794146512.274789,
+    "ast_hash": "7402af8f40ea40a6f6b322a5321e1061",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Combat_Extra_State.cpp": {
+    "mtime": 1794144585.3511648,
+    "seen": 1794146512.2747972,
+    "ast_hash": "819f5b58b8c84a8b21744168de7f2f12",
+    "semantic_hash": ""
+  },
+  "Combat_Extra_State.ixx": {
+    "mtime": 1794144585.4227803,
+    "seen": 1794146512.2748053,
+    "ast_hash": "6d1397204656209888a9f315f3c21d23",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "\uc694\uc57d.pdf": {
+    "mtime": 1794146382.134267,
+    "seen": 1794146512.2763543,
+    "ast_hash": "43785c16f4d631f8116637a21dfca855",
+    "semantic_hash": ""
+  }
+}

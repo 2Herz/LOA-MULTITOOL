@@ -10,7 +10,6 @@ namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
         namespace Data = CombatCoefficientData;  // 계수 데이터 네임스페이스 별칭
 
         constexpr char SPACE_CHARACTER{ ' ' };  // 공백 글자 상수
-        constexpr double NO_GRADE_FACTOR{ 1.0 };   // 등급이 바뀌지 않음
         constexpr std::string_view WHITESPACE_CHARACTERS{ " \t\r\n" };  // 공백으로 취급하는 글자들
 
         [[nodiscard]] bool IsSpace(char character) noexcept  // 공백 글자 여부 판별
@@ -31,6 +30,17 @@ namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
             const int clamped{ std::clamp(level, MIN_VALUE, MAX_VAMBRACE_LEVEL) };  // 단계를 0 ~ 최대 완갑 단계로 제한
             const Data::VambraceStep* step{ Data::FindVambraceStep(clamped) };  // 표에서 단계 찾기
             return step != nullptr ? *step : EMPTY_STEP;  // 찾았으면 그 단계, 아니면 빈 단계 반환
+        }
+
+        // 완갑 재련 단계의 한계 해방 추가 효과 기본 공격력 비율 (등급 표 기준, 해방 경계 10 · 15 · 20단계는 해방 전 등급)
+        [[nodiscard]] double GetVambraceGradeRate(int level) noexcept  // 완갑 등급 추가 효과 비율 조회
+        {
+            double rate{};  // 해당 등급의 추가 효과 비율 (표가 비면 0)
+            for (const Data::VambraceGradeBonus& bonus : Data::GetVambraceGradeBonuses())  // 낮은 등급부터 차례로 확인
+            {
+                if (level >= bonus.m_firstStep) rate = bonus.m_rate;  // 그 등급의 첫 단계 이상이면 그 등급 비율로 갱신
+            }
+            return rate;  // 마지막으로 해당한 등급의 비율 반환
         }
     }
 
@@ -107,12 +117,9 @@ namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
             gain.m_mainStat = to.m_mainStat - from.m_mainStat;  // 주스탯 차이
             gain.m_baseAttack = to.m_baseAttack - from.m_baseAttack;  // 기본 공격력 차이
 
-            // 유물 → 고대 등급이 필요해지면 한 번 곱함 (고대에서 내려오면 역수)
-            const int ancientStep{ Data::GetVambraceAncientFirstStep() };  // 고대 등급이 시작되는 단계
-            const bool isFromAncient{ *current.m_vambraceLevel >= ancientStep };  // 현재가 고대 등급인지
-            const bool isToAncient{ *target.m_vambraceLevel >= ancientStep };  // 목표가 고대 등급인지
-            if (isToAncient && !isFromAncient) gain.m_gradeFactor = Data::GetVambraceGradeUpFactor();  // 유물 → 고대면 등급 배율을 한 번 곱함
-            else if (!isToAncient && isFromAncient) gain.m_gradeFactor = NO_GRADE_FACTOR / Data::GetVambraceGradeUpFactor();  // 고대 → 유물이면 역수를 곱함
+            // 한계 해방 추가 효과 (현재는 API 툴팁 값을 우선, 목표 단계가 같으면 현재 등급 그대로)
+            gain.m_gradeRateFrom = current.m_vambraceGradeRate.value_or(GetVambraceGradeRate(*current.m_vambraceLevel));  // 현재 추가 효과 비율
+            gain.m_gradeRateTo = *target.m_vambraceLevel == *current.m_vambraceLevel ? gain.m_gradeRateFrom : GetVambraceGradeRate(*target.m_vambraceLevel);  // 목표 추가 효과 비율
             return gain;  // 변화량 반환
         }
 

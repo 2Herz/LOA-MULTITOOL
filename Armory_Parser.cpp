@@ -212,6 +212,10 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         constexpr std::string_view ACCESSORY_TYPE_RING{ "반지" };  // 반지 종류 이름
         constexpr std::string_view STONE_TYPE{ "어빌리티 스톤" };  // 어빌리티 스톤 종류 이름
         constexpr std::string_view VAMBRACE_TYPE{ "완갑" };  // 완갑 종류 이름
+        constexpr std::string_view VAMBRACE_EXTRA_HEADER{ "추가 효과" };      // 완갑 한계 해방 추가 효과 상자 제목
+        constexpr std::string_view VAMBRACE_BASE_ATTACK_TEXT{ "기본 공격력" };   // 추가 효과 줄 "기본 공격력 +2.00%"
+        constexpr char PLUS_CHARACTER{ '+' };                                  // 수치 앞 덧셈 기호
+        constexpr char PERCENT_CHARACTER{ '%' };                               // 수치 뒤 퍼센트 기호
         constexpr std::string_view POLISH_HEADER{ "연마 효과" };              // 악세서리 옵션 상자 제목
         constexpr std::string_view BRACELET_HEADER{ "팔찌 효과" };            // 팔찌 스탯 · 옵션 상자 제목
         constexpr std::string_view BRACELET_LOCKED_MARK{ "bracelet_locked" };       // 고정 줄 (스탯 · 고정 옵션)
@@ -458,6 +462,18 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             if (item.m_type == VAMBRACE_TYPE)  // 완갑이면
             {
                 extra.m_vambraceLevel = item.m_enhancement;  // 완갑 재련 단계 기록
+
+                // 한계 해방 추가 효과 "추가 효과 … 기본 공격력 +2.00%" (없으면 등급 표로 추정하도록 비워 둠)
+                const std::string text{ ReadTooltipText(tooltip) };  // 태그를 지운 툴팁 글자
+                const std::size_t header{ text.find(VAMBRACE_EXTRA_HEADER) };  // 추가 효과 상자 위치
+                if (header == std::string::npos) return;  // 추가 효과가 없으면 처리 끝
+                const std::size_t label{ text.find(VAMBRACE_BASE_ATTACK_TEXT, header) };  // 추가 효과 안의 기본 공격력 줄 위치
+                if (label == std::string::npos) return;  // 기본 공격력 줄이 없으면 처리 끝
+                const std::size_t plus{ text.find(PLUS_CHARACTER, label) };  // 수치 앞 덧셈 기호 위치
+                const std::size_t percent{ plus == std::string::npos ? std::string::npos : text.find(PERCENT_CHARACTER, plus) };  // 수치 뒤 퍼센트 기호 위치
+                if (percent == std::string::npos) return;  // 퍼센트 수치가 아니면 처리 끝
+                const std::optional<double> rate{ ParseDecimal(std::string_view{ text }.substr(plus + 1, percent - plus - 1)) };  // 퍼센트 수치 읽기
+                if (rate.has_value()) extra.m_vambraceGradeRate = *rate / PERCENT_DIVISOR;  // 퍼센트를 비율로 바꿔 기록
                 return;  // 처리 끝
             }
 

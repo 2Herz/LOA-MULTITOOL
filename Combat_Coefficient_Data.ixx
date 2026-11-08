@@ -190,8 +190,16 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
 
     [[nodiscard]] std::span<const VambraceGrade> GetVambraceGrades() noexcept;  // 완갑 등급 표 조회
     [[nodiscard]] const VambraceStep* FindVambraceStep(int step) noexcept;               // 재련 단계(0 ~ 25) → 능력치, 범위 밖이면 nullptr
-    [[nodiscard]] int GetVambraceAncientFirstStep() noexcept;                            // 고대 등급이 필요한 첫 재련 단계
-    [[nodiscard]] double GetVambraceGradeUpFactor() noexcept;                            // 유물 → 고대로 올릴 때 한 번 곱하는 배율 (한 측정점, 근사)
+
+    // 완갑 한계 해방 등급 하나의 추가 효과 (기본 공격력 %)
+    struct VambraceGradeBonus
+    {
+        std::string_view m_name;  // 완갑 등급 이름
+        int m_firstStep{};        // 이 등급이 확정되는 첫 재련 단계 (해방 경계 단계는 해방 전 등급)
+        double m_rate{};          // 추가 효과 기본 공격력 비율 (0.02 = 2%)
+    };
+
+    [[nodiscard]] std::span<const VambraceGradeBonus> GetVambraceGradeBonuses() noexcept;   // 완갑 등급별 한계 해방 추가 효과 표 (낮은 등급부터)
     [[nodiscard]] double GetBaseAttackCalibration() noexcept;                            // 기본 공격력 A = sqrt(S0 × W0 / 6) × (1 + 보석 %) × 이 값 (한 측정점)
 
     // ===== S0 · W0 보정 (로아랩 실측 28행 기준, 핢머니 2026-11-08) =====

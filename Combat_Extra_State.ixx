@@ -113,6 +113,7 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
         std::array<int, ARK_GEM_EFFECT_COUNT> m_arkGemLevels{};             // 효과별 젬 레벨 합 (공격력 · 추가 피해 · 보스 피해)
         ArkPassiveState m_passive;  // 아크 패시브 상태
         std::optional<int> m_vambraceLevel;                                  // 완갑 재련 (없으면 nullopt)
+        std::optional<double> m_vambraceGradeRate;                           // 완갑 한계 해방 추가 효과 기본 공격력 (0.02 = 2%, API에서 읽음, 모르면 등급 표로 추정)
         bool m_isEstherWeapon{};                                             // 에스더 무기 (완갑 · 무기 공격력 옵션 계수 선택용)
         [[nodiscard]] bool operator==(const ExtraState& other) const = default;  // 모든 멤버가 같으면 같은 상태 (기본 비교 연산)
     };
@@ -139,7 +140,8 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
             double m_weaponAttack{};         // 무기 공격력 차이 → 장비 재련의 W에 더해짐
             double m_mainStat{};             // 주스탯 차이 → 장비 재련의 S에 더해짐
             double m_baseAttack{};           // 기본 공격력 고정값 차이 → 완갑 배율 (A + ΔB) / A
-            double m_gradeFactor{ 1.0 };     // 유물 → 고대 등급을 올릴 때 한 번 곱함 (내리면 역수)
+            double m_gradeRateFrom{};        // 현재 완갑 한계 해방 추가 효과 기본 공격력 비율 (보석 기본 공격력 %와 합산)
+            double m_gradeRateTo{};          // 목표 완갑 한계 해방 추가 효과 기본 공격력 비율
         };
 
         // 완갑 재련 단계 차이 (현재나 목표 완갑이 없으면 모두 0 · 배율 1)

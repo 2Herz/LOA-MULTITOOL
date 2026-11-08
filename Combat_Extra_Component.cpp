@@ -253,15 +253,20 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
     {
         const Models::CombatExtra::VambraceGain gain{ Models::CombatExtra::GetVambraceGain(current.m_extra, target.m_extra) };  // 완갑 재련 변화량
 
-        // 기본 공격력 A = sqrt(S0 × W0 / 6) × (1 + 보석 기본 공격력 %) × 보정 → 배율 (A + ΔB) / A (S0 · W0를 모르면 ΔB는 계산하지 않음)
+        // 기본 공격력 % 합 = 보석 기본 공격력 % + 완갑 한계 해방 추가 효과 % (같은 칸에서 더해짐)
+        const double currentRate{ NO_CHANGE_FACTOR + current.m_gemBaseAttackRate + gain.m_gradeRateFrom };  // 현재 기본 공격력 배수 (1 + 보석 % + 완갑 등급 %)
+        const double targetRate{ NO_CHANGE_FACTOR + current.m_gemBaseAttackRate + gain.m_gradeRateTo };  // 목표 기본 공격력 배수
+        const double gradeFactor{ currentRate > 0.0 ? targetRate / currentRate : NO_CHANGE_FACTOR };  // 한계 해방 등급 배율
+
+        // 기본 공격력 A = sqrt(S0 × W0 / 6) × (1 + 보석 % + 완갑 등급 %) × 보정 → 배율 (A + ΔB) / A (S0 · W0를 모르면 ΔB는 계산하지 않음)
         const double weaponBase{ GetWeaponBase(current) };  // 무기 공격력 기준값
         double baseAttackFactor{ NO_CHANGE_FACTOR };  // 기본 공격력 배율 초기값
         if (current.m_totalMainStat > 0.0 && weaponBase > 0.0)  // 주스탯과 무기 기준값을 알 때만 계산
         {
-            const double baseAttack{ std::sqrt(current.m_totalMainStat * weaponBase / ATTACK_DIVISOR) * (1.0 + current.m_gemBaseAttackRate) * Data::GetBaseAttackCalibration() };  // 현재 기본 공격력 A 추정
+            const double baseAttack{ std::sqrt(current.m_totalMainStat * weaponBase / ATTACK_DIVISOR) * currentRate * Data::GetBaseAttackCalibration() };  // 현재 기본 공격력 A 추정
             if (baseAttack > 0.0) baseAttackFactor = std::max(baseAttack + gain.m_baseAttack, 0.0) / baseAttack;  // (A + ΔB) ÷ A 로 배율 계산
         }
-        return baseAttackFactor * gain.m_gradeFactor;  // 기본 공격력 배율 × 등급 배율 반환
+        return baseAttackFactor * gradeFactor;  // 기본 공격력 배율 × 한계 해방 등급 배율 반환
     }
 
     // ===================== 팔찌 =====================

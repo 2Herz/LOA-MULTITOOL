@@ -1174,9 +1174,14 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
             VambraceGrade{ "유물", 16, VAMBRACE_STEPS_2 },   // 등급 이름 · 첫 단계 · 단계 표
             VambraceGrade{ "고대", 21, VAMBRACE_STEPS_3 },   // 등급 이름 · 첫 단계 · 단계 표
         } };   // VAMBRACE_GRADES 끝
-        constexpr int VAMBRACE_ANCIENT_FIRST_STEP{ 21 };   // 고대 등급이 필요한 첫 재련 단계
-        constexpr double VAMBRACE_GRADE_UP_FACTOR{ 0.99995 };   // 유물 → 고대로 올릴 때 한 번 곱함 (한 측정점)
-        constexpr double BASE_ATTACK_CALIBRATION{ 1.024019 };   // 기본 공격력 A 추정식 보정 (한 측정점)
+        // 완갑 한계 해방 추가 효과 (등급 이름, 확정 첫 단계, 기본 공격력 비율)
+        constexpr std::array<VambraceGradeBonus, 4> VAMBRACE_GRADE_BONUSES{ {   // 완갑 등급 4개
+            VambraceGradeBonus{ "영웅", 0, 0.0 },   // 등급 이름 · 확정 첫 단계 · 추가 효과 기본 공격력 비율
+            VambraceGradeBonus{ "전설", 11, 0.01 },   // 등급 이름 · 확정 첫 단계 · 추가 효과 기본 공격력 비율
+            VambraceGradeBonus{ "유물", 16, 0.02 },   // 등급 이름 · 확정 첫 단계 · 추가 효과 기본 공격력 비율
+            VambraceGradeBonus{ "고대", 21, 0.03 },   // 등급 이름 · 확정 첫 단계 · 추가 효과 기본 공격력 비율
+        } };   // VAMBRACE_GRADE_BONUSES 끝
+        constexpr double BASE_ATTACK_CALIBRATION{ 1.00516 };   // 기본 공격력 A 추정식 보정 (한 측정점)
         // ===== S0 · W0 보정 (로아랩 실측 28행 기준, 핢머니 2026-11-08) =====
         constexpr double S0_CALIBRATION{ 1.0145 };   // 주스탯 합 S0 보정
         constexpr double W0_CALIBRATION{ 1.0016 };   // 무기 공격력 W0 보정
@@ -1381,16 +1386,10 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         return VAMBRACE_GRADES;   // 완갑 등급별 재련 단계 표 반환
     }
 
-    // 고대 등급이 필요한 첫 완갑 재련 단계
-    int GetVambraceAncientFirstStep() noexcept
+    // 완갑 등급별 한계 해방 추가 효과 표
+    std::span<const VambraceGradeBonus> GetVambraceGradeBonuses() noexcept
     {
-        return VAMBRACE_ANCIENT_FIRST_STEP;   // 고대 등급이 필요한 첫 완갑 재련 단계 반환
-    }
-
-    // 유물 → 고대 등급 상승 배율
-    double GetVambraceGradeUpFactor() noexcept
-    {
-        return VAMBRACE_GRADE_UP_FACTOR;   // 유물 → 고대 등급 상승 배율 반환
+        return VAMBRACE_GRADE_BONUSES;   // 완갑 등급별 한계 해방 추가 효과 표 반환
     }
 
     // 기본 공격력 추정식 보정
