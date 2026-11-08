@@ -45,6 +45,9 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view AUTO_REFRESH_FORMAT{ L"{}분마다 자동 갱신" };
         constexpr std::wstring_view INITIAL_STATUS_TEXT{ L"아직 조회하지 않았어요." };
         constexpr std::wstring_view START_PRESET_TEXT{ L"시작 프리셋" };
+        constexpr std::wstring_view NAME_PLACEHOLDER{ L"캐릭터 이름" };   // 이름 입력 칸 안내 글자
+        constexpr std::wstring_view LOOKUP_TEXT{ L"조회" };   // 조회 버튼 글자
+        constexpr std::wstring_view LOOKUP_BUSY_TEXT{ L"조회 중..." };   // 조회 중 버튼 글자
         constexpr std::wstring_view TARGET_MODE_TEXT{ L"목표 기준" };
         constexpr std::wstring_view TARGET_LEVEL_TEXT{ L"목표 아이템 레벨" };
         constexpr std::wstring_view TARGET_LEVEL_PLACEHOLDER{ L"1750" };
@@ -52,6 +55,7 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view MATERIAL_PANEL_TITLE{ L"재료 가격 / 귀속 설정 (거래 칸을 누르면 귀속 → 비용에서 빠짐)" };
         constexpr std::wstring_view ROUTE_PANEL_TITLE{ L"재련 경로" };
         constexpr std::size_t TARGET_LEVEL_MAX_LENGTH{ 4 };
+        constexpr std::size_t NAME_MAX_LENGTH{ 20 };   // 캐릭터 이름 최대 글자 수 (전투력 시뮬레이터와 같음)
 
         // ===== 배치 (DIP) =====
         constexpr float PAGE_PADDING{ 16.0f };
@@ -62,6 +66,8 @@ namespace LostArkMultiTool::Views
         constexpr float AUTO_REFRESH_WIDTH{ 150.0f };
         constexpr float START_PRESET_LABEL_WIDTH{ 72.0f };
         constexpr float START_PRESET_BOX_WIDTH{ 240.0f };
+        constexpr float NAME_BOX_WIDTH{ 150.0f };   // 캐릭터 이름 칸 너비
+        constexpr float LOOKUP_BUTTON_WIDTH{ 84.0f };   // 조회 버튼 너비 ("조회 중..."이 들어가는 크기)
         constexpr float TARGET_MODE_LABEL_WIDTH{ 58.0f };
         constexpr float TARGET_MODE_BOX_WIDTH{ 120.0f };
         constexpr float TARGET_LEVEL_LABEL_WIDTH{ 104.0f };
@@ -129,6 +135,8 @@ namespace LostArkMultiTool::Views
         , m_statusLabel{ m_host.Emplace<UI::Label>(std::wstring{ INITIAL_STATUS_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
         , m_startPresetLabel{ m_host.Emplace<UI::Label>(std::wstring{ START_PRESET_TEXT }, SETTING_LABEL_STYLE, Theme::TEXT_COLOR) }
         , m_startPresetBox{ m_host.Emplace<UI::ComboBox>() }
+        , m_nameBox{ m_host.Emplace<UI::TextBox>(platform, std::wstring{ NAME_PLACEHOLDER }) }   // 이름 입력 칸 생성
+        , m_lookupButton{ m_host.Emplace<UI::Button>(std::wstring{ LOOKUP_TEXT }, UI::ButtonStyle::BUTTON_PRIMARY, nullptr) }   // 조회 버튼 생성
         , m_targetModeLabel{ m_host.Emplace<UI::Label>(std::wstring{ TARGET_MODE_TEXT }, SETTING_LABEL_STYLE, Theme::TEXT_COLOR) }
         , m_targetModeBox{ m_host.Emplace<UI::ComboBox>() }
         , m_targetLevelLabel{ m_host.Emplace<UI::Label>(std::wstring{ TARGET_LEVEL_TEXT }, SETTING_LABEL_STYLE, Theme::TEXT_COLOR) }
@@ -158,6 +166,11 @@ namespace LostArkMultiTool::Views
             const std::optional<std::size_t> index{ m_targetModeBox.GetSelectedIndex() };
             if (const auto onTargetModeSelected{ m_onTargetModeSelected }; index.has_value() && onTargetModeSelected) onTargetModeSelected(*index);
         });
+
+        // 캐릭터 조회: 이름 칸에서 Enter 또는 [조회] 버튼
+        m_nameBox.SetMaxLength(NAME_MAX_LENGTH);   // 이름 최대 글자 수 제한
+        m_nameBox.SetOnSubmit([this] { RequestLookup(); });   // 이름 칸에서 Enter를 누르면 조회 요청
+        m_lookupButton.SetOnClick([this] { RequestLookup(); });   // 조회 버튼을 누르면 조회 요청
 
         // 목표 아이템 레벨: 숫자만, 입력할 때마다 알림 (범위 확인은 매니저가)
         m_targetLevelBox.SetIMEAllowed(false);
@@ -210,6 +223,11 @@ namespace LostArkMultiTool::Views
     void RefineSimulatorView::SetOnStartPresetSelected(std::function<void(std::size_t presetIndex)> onStartPresetSelected)
     {
         m_onStartPresetSelected = std::move(onStartPresetSelected);
+    }
+
+    void RefineSimulatorView::SetOnLookup(std::function<void(const std::wstring& characterName)> onLookup)
+    {
+        m_onLookup = std::move(onLookup);   // 조회 알림 연결
     }
 
     void RefineSimulatorView::SetOnTargetModeSelected(std::function<void(std::size_t modeIndex)> onTargetModeSelected)
@@ -270,6 +288,17 @@ namespace LostArkMultiTool::Views
     void RefineSimulatorView::SetStartPresetIndex(std::optional<std::size_t> index)
     {
         m_startPresetBox.SetSelectedIndex(index);
+    }
+
+    void RefineSimulatorView::SetCharacterName(std::wstring name)
+    {
+        m_nameBox.SetText(std::move(name));   // 이름 입력 칸에 글자 반영
+    }
+
+    void RefineSimulatorView::SetLookupBusy(bool isBusy)
+    {
+        m_lookupButton.SetEnabled(!isBusy);   // 조회 중에는 버튼 비활성
+        m_lookupButton.SetText(std::wstring{ isBusy ? LOOKUP_BUSY_TEXT : LOOKUP_TEXT });   // 조회 중이면 "조회 중..." 글자로 바꿈
     }
 
     void RefineSimulatorView::SetTargetModeItems(std::vector<std::wstring> items)
@@ -453,7 +482,9 @@ namespace LostArkMultiTool::Views
         x = setupInner.m_left;
         const float settingTop{ setupInner.m_top };
         placeRow(x, settingTop, m_startPresetLabel, START_PRESET_LABEL_WIDTH, LABEL_GAP);
-        placeRow(x, settingTop, m_startPresetBox, START_PRESET_BOX_WIDTH, SECTION_GAP);
+        placeRow(x, settingTop, m_startPresetBox, START_PRESET_BOX_WIDTH, LABEL_GAP);   // 프리셋 바로 옆에 이름 칸 · 조회 버튼
+        placeRow(x, settingTop, m_nameBox, NAME_BOX_WIDTH, LABEL_GAP);   // 캐릭터 이름 칸 배치
+        placeRow(x, settingTop, m_lookupButton, LOOKUP_BUTTON_WIDTH, SECTION_GAP);   // 조회 버튼 배치
         placeRow(x, settingTop, m_targetModeLabel, TARGET_MODE_LABEL_WIDTH, LABEL_GAP);
         placeRow(x, settingTop, m_targetModeBox, TARGET_MODE_BOX_WIDTH, SECTION_GAP);
         placeRow(x, settingTop, m_targetLevelLabel, TARGET_LEVEL_LABEL_WIDTH, LABEL_GAP);
@@ -473,6 +504,12 @@ namespace LostArkMultiTool::Views
         m_totalLabel.SetBounds(Core::RectF{ routeInner.m_left, routeInner.m_top, routeInner.m_right, routeInner.m_top + Theme::CONTROL_HEIGHT });
         const float routeTop{ routeInner.m_top + Theme::CONTROL_HEIGHT + GROUP_GAP };
         m_routeGrid.SetBounds(Core::RectF{ routeInner.m_left, routeTop, routeInner.m_right, std::max(routeTop, routeInner.m_bottom) });
+    }
+
+    void RefineSimulatorView::RequestLookup()
+    {
+        m_nameBox.CommitComposition();   // 조합 중인 한글 마지막 글자까지 포함
+        if (const auto onLookup{ m_onLookup }) onLookup(m_nameBox.GetText());   // 등록된 콜백이 있으면 이름을 알림
     }
 
     Core::RectF RefineSimulatorView::LayoutPanel(Panel& panel, const Core::RectF& bounds) const

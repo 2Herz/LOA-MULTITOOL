@@ -15,6 +15,8 @@ import LostArkMultiTool.Core.RefineSimulationService;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Core.ToolContext;
+import LostArkMultiTool.Models.CharacterArmory;
+import LostArkMultiTool.Models.CombatState;
 import LostArkMultiTool.Models.RateLimitState;
 import LostArkMultiTool.Models.RefineData;
 import LostArkMultiTool.Models.RefinePlan;
@@ -113,6 +115,65 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view SAVE_ERROR_TITLE{ L"저장 오류" };
         constexpr std::wstring_view SAVE_ERROR_TEXT{ L"재련 시뮬레이터 설정을 저장하지 못했어요.\n" };
         constexpr std::wstring_view UNKNOWN_ERROR_TEXT{ L"(알 수 없는 오류)" };
+
+        // ===== 캐릭터 조회 =====
+        constexpr std::wstring_view TRIM_CHARACTERS{ L" \t\r\n" };   // 이름 양 끝에서 지울 글자
+        constexpr std::wstring_view EMPTY_NAME_TEXT{ L"캐릭터 이름을 입력해 주세요." };   // 이름 입력 요청 안내
+        constexpr std::wstring_view LOOKUP_RATE_SHORTAGE_FORMAT{ L"남은 호출이 부족해서 이번 조회는 건너뛰었어요.\n{} 이후 다시 시도해 주세요." };   // 호출 한도 부족 안내
+        constexpr std::wstring_view LOOKING_UP_FORMAT{ L"'{}' 조회 중..." };   // 조회 중 상태 줄
+        constexpr std::wstring_view LOOKUP_DONE_FORMAT{ L"'{}' 장비를 불러왔어요 (아이템 레벨 {})" };   // 성공 상태 줄
+        constexpr std::wstring_view LOOKUP_SKIPPED_FORMAT{ L"{} · 건너뛴 부위: {}" };   // 일부 부위를 건너뛴 상태 줄
+        constexpr std::wstring_view LOOKUP_NONE_FORMAT{ L"'{}' 장비를 반영하지 못했어요 (아이템 레벨 {}) · 건너뛴 부위: {}" };   // 한 부위도 반영하지 못한 상태 줄
+        constexpr std::wstring_view SKIPPED_PART_FORMAT{ L"{}({})" };   // "무기(이유)" 형식
+        constexpr std::wstring_view SKIP_SEPARATOR{ L", " };   // 건너뛴 부위 사이 구분 글자
+        constexpr std::wstring_view SKIP_NO_GEAR_TEXT{ L"장비가 없어요" };   // 건너뛴 이유: 장비 없음
+        constexpr std::wstring_view SKIP_ESTHER_TEXT{ L"에스더 무기는 재련할 수 없어요" };   // 건너뛴 이유: 에스더 무기
+        constexpr std::wstring_view SKIP_UNSUPPORTED_TEXT{ L"에기르 · 세르카 장비가 아니에요" };   // 건너뛴 이유: 지원하지 않는 장비
+        constexpr std::string_view GRADE_ESTHER{ "에스더" };   // API 등급 이름 중 에스더
+        constexpr std::string_view SET_SERCA{ "전율" };        // 세르카 = 운명의 전율 (전투력 시뮬레이터 분류 키 앞부분과 같음)
+        constexpr std::string_view SET_AEGIR_FATE{ "결단" };   // 에기르 = 운명의 결단
+        constexpr std::string_view SET_AEGIR_HELLFIRE{ "업화" };   // 에기르 = 운명의 업화
+
+        // 재련 부위(투구 · 어깨 · 상의 · 하의 · 장갑 · 무기) → 무기고 장비 부위
+        constexpr std::array<Models::GearPart, Models::REFINE_SLOT_COUNT> SLOT_GEAR_PARTS{
+            Models::GearPart::PART_HELMET, Models::GearPart::PART_SHOULDER, Models::GearPart::PART_CHEST,
+            Models::GearPart::PART_PANTS, Models::GearPart::PART_GLOVES, Models::GearPart::PART_WEAPON };
+
+        // 무기고 장비 하나를 재련 상태로 읽은 결과 (읽을 수 없으면 m_state가 비고 이유가 채워짐)
+        struct GearReadResult
+        {
+            std::optional<EquipmentState> m_state;   // 읽은 시작 상태
+            std::wstring_view m_skipReason;          // 건너뛴 이유 (읽었으면 빈 글자)
+        };
+
+        // 이름 양 끝 공백 제거
+        [[nodiscard]] std::wstring_view TrimSpaces(std::wstring_view text) noexcept
+        {
+            const std::size_t first{ text.find_first_not_of(TRIM_CHARACTERS) };   // 첫 번째 공백 아닌 글자 위치
+            if (first == std::wstring_view::npos) return {};   // 전부 공백이면 빈 글자
+            const std::size_t last{ text.find_last_not_of(TRIM_CHARACTERS) };   // 마지막 공백 아닌 글자 위치
+            return text.substr(first, last - first + 1);   // 공백을 뺀 부분
+        }
+
+        // 장비 이름 · 등급 → 단계(전투력 시뮬레이터와 같은 분류 규칙) + 강화 · 상급 단계 (표 범위로 맞춤)
+        [[nodiscard]] GearReadResult ReadGearState(Models::GearPart part, const Models::GearItem& item)
+        {
+            if (item.m_grade == GRADE_ESTHER) return GearReadResult{ std::nullopt, SKIP_ESTHER_TEXT };   // 에스더 등급은 재련표에 없음
+            const std::string key{ Models::CombatGear::DetectTableKey(part, item.m_name, item.m_grade) };   // "업화_머리" · "전율_무기" ...
+            if (key.empty()) return GearReadResult{ std::nullopt, SKIP_UNSUPPORTED_TEXT };   // 분류할 수 없는 장비
+            if (Models::CombatGear::IsEsther(key)) return GearReadResult{ std::nullopt, SKIP_ESTHER_TEXT };   // 에스더 무기 (이름으로 판별)
+
+            EquipmentState state;   // 읽어서 채울 상태
+            if (key.starts_with(SET_SERCA)) state.m_tier = EquipmentTier::TIER_SERCA;   // 전율 = 세르카
+            else if (key.starts_with(SET_AEGIR_FATE) || key.starts_with(SET_AEGIR_HELLFIRE)) state.m_tier = EquipmentTier::TIER_AEGIR;   // 결단 · 업화 = 에기르
+            else return GearReadResult{ std::nullopt, SKIP_UNSUPPORTED_TEXT };   // 그 밖의 세트는 재련 시뮬레이터 대상이 아님
+
+            const bool isSerca{ state.m_tier == EquipmentTier::TIER_SERCA };   // 세르카 여부
+            const int minLevel{ isSerca ? Models::RefineData::MIN_SERCA_ENHANCEMENT : Models::RefineData::MIN_AEGIR_ENHANCEMENT };   // 단계별 일반 재련 최소
+            state.m_enhancement = std::clamp(item.m_enhancement, minLevel, Models::RefineData::MAX_ENHANCEMENT);   // 표 칸을 고칠 때와 같은 범위 맞춤
+            state.m_advancedEnhancement = isSerca ? 0 : std::clamp(item.m_advancedEnhancement, 0, Models::RefineData::MAX_ADVANCED_ENHANCEMENT);   // 상급 재련은 에기르만
+            return GearReadResult{ state, std::wstring_view{} };   // 읽기 성공
+        }
 
         // 예외 메시지(UTF-8) → 화면 문구 (변환할 수 없으면 기본 문구)
         [[nodiscard]] std::wstring ToWideMessage(const char* message)
@@ -318,6 +379,7 @@ namespace LostArkMultiTool::Views
             SetAutoRefresh(isEnabled);
         });
         m_view->SetOnStartPresetSelected([this](std::size_t index) { OnStartPresetSelected(index); });
+        m_view->SetOnLookup([this](const std::wstring& name) { RequestLookup(name); });   // [조회] · 이름 칸 Enter 연결
         m_view->SetOnTargetModeSelected([this](std::size_t index) { OnTargetModeSelected(index); });
         m_view->SetOnTargetItemLevelChanged([this](const std::wstring& text) { OnTargetItemLevelChanged(text); });
         m_view->SetOnSlotCellClicked([this](std::size_t row, RefineSlotColumn column) { OnSlotCellClicked(row, column); });
@@ -333,6 +395,7 @@ namespace LostArkMultiTool::Views
         for (const std::wstring_view item : TARGET_MODE_ITEMS) modeItems.emplace_back(item);
         m_view->SetTargetModeItems(std::move(modeItems));
 
+        m_view->SetCharacterName(m_service->GetCharacterName());   // 저장된 마지막 조회 이름 복원
         m_resultRequest = m_service->GetRequest();
         RefreshAll();
     }
@@ -343,6 +406,7 @@ namespace LostArkMultiTool::Views
         m_autoTimer.Stop();
         m_refreshTask.Wait();
         m_calculationTask.Wait();
+        m_armoryTask.Wait();   // 진행 중인 무기고 조회도 끝날 때까지 대기
 
         m_view.reset();
         m_service.reset();
@@ -369,6 +433,7 @@ namespace LostArkMultiTool::Views
         // 시세 조회 · 계산이 끝났으면 반영, 입력이 바뀌었으면 다시 계산, 자동 갱신 주기가 되면 조회
         if (m_refreshTask.IsReady()) FinishRefresh();
         if (m_calculationTask.IsReady()) FinishCalculation();
+        if (m_armoryTask.IsReady()) FinishLookup();   // 무기고 조회가 끝났으면 반영
         if (m_isCalculationDirty && !m_calculationTask.IsRunning()) StartCalculation();
         if (m_autoTimer.Poll()) RequestRefresh(true);
     }
@@ -421,6 +486,7 @@ namespace LostArkMultiTool::Views
         }
 
         m_isRunningAuto = isAuto;
+        m_lookupMessage.reset();   // 시세 갱신을 시작하면 이전 조회 안내는 지움
         m_view->SetRefreshEnabled(false);
         RefreshStatus();
 
@@ -584,8 +650,106 @@ namespace LostArkMultiTool::Views
     void RefineSimulatorManager::OnStartPresetSelected(std::size_t presetIndex)
     {
         if (presetIndex >= START_PRESETS.size()) return;
+        m_lookupMessage.reset();   // 프리셋을 고르면 조회 안내는 지움
         m_service->ApplyStartPreset(START_PRESETS[presetIndex]);
         MarkChanged(false);
+    }
+
+    // 캐릭터 조회 시작: 이름 확인 → 호출 한도 확인 → 백그라운드로 무기고 조회 (전투력 시뮬레이터와 같은 방식)
+    void RefineSimulatorManager::RequestLookup(const std::wstring& characterName)
+    {
+        const std::wstring_view trimmedName{ TrimSpaces(characterName) };   // 양 끝 공백을 뺀 이름
+        if (trimmedName.empty())   // 이름이 비어 있으면
+        {
+            m_context->m_notifier.ShowMessage(std::wstring{ NOTICE_TITLE }, std::wstring{ EMPTY_NAME_TEXT }, Core::NoticeKind::NOTICE_INFO, nullptr);   // 이름 입력 안내
+            return;   // 조회하지 않고 종료
+        }
+        if (m_armoryTask.IsRunning()) return;   // 이미 조회 중이면 겹치지 않게 건너뜀
+
+        // 남은 호출이 안전 여유분 이하면 건너뜀 (다른 툴과 키를 함께 쓰므로)
+        const std::int64_t now{ Core::LocalTime::GetUnixSeconds() };   // 현재 시각(초)
+        const Models::RateLimitState rate{ m_context->m_marketAPI.GetRateLimit() };   // API 호출 한도 상태
+        if (rate.IsExhausted(now))   // 남은 호출이 부족하면
+        {
+            m_context->m_notifier.ShowMessage(std::wstring{ NOTICE_TITLE },   // 부족 안내 (초기화 시각 포함)
+                std::format(LOOKUP_RATE_SHORTAGE_FORMAT, Core::LocalTime::FormatClock(rate.GetResetAtLocal().value_or(now))), Core::NoticeKind::NOTICE_INFO, nullptr);
+            return;   // 조회하지 않고 종료
+        }
+
+        m_lookupName = std::wstring{ trimmedName };   // 조회할 이름 기억 (결과 안내에 사용)
+        m_lookupMessage.reset();   // 이전 조회 안내 지움
+        m_service->SetCharacterName(m_lookupName);   // 마지막 조회 이름으로 기억
+        SaveData();   // 이름도 바로 저장
+        m_view->SetLookupBusy(true);   // 버튼을 "조회 중..."으로
+        RefreshStatus();   // 상태 줄에 조회 중 표시
+
+        Core::MarketAPI* marketAPI{ &m_context->m_marketAPI };   // 시장 API 포인터 (백그라운드에서 사용)
+        m_armoryTask.Start([marketAPI, name = Core::TextEncoding::WideToUTF8(m_lookupName)] { return marketAPI->GetArmory(name); });   // 백그라운드로 조회 (이름은 UTF-8)
+    }
+
+    // 조회가 끝남 → 장비 반영 · 오류 처리 (전투력 시뮬레이터와 같은 문구 · 방식)
+    void RefineSimulatorManager::FinishLookup()
+    {
+        m_view->SetLookupBusy(false);   // 조회 중 표시 해제
+        std::optional<std::string> keyError;   // API 키 오류 메시지 보관
+
+        try   // 조회 결과 적용 시도
+        {
+            ApplyArmory(m_armoryTask.TakeResult());   // 백그라운드에서 난 예외는 여기서 다시 던져짐
+        }
+        catch (const Core::APIKeyInvalidException& error)   // API 키 오류
+        {
+            keyError = error.what();   // 키 오류 메시지 보관
+            m_lookupMessage = ToWideMessage(error.what());   // 상태 줄에 표시할 오류
+        }
+        catch (const Core::APIRateLimitException& error)   // 호출 한도 초과
+        {
+            m_lookupMessage = ToWideMessage(error.what());   // 상태 줄에 표시할 오류
+            m_context->m_notifier.ShowMessage(std::wstring{ RATE_LIMIT_TITLE }, *m_lookupMessage, Core::NoticeKind::NOTICE_WARNING, nullptr);   // 경고 알림
+        }
+        catch (const Core::APIMaintenanceException& error)   // 서버 점검
+        {
+            m_lookupMessage = ToWideMessage(error.what());   // 상태 줄에 표시할 오류
+            m_context->m_notifier.ShowMessage(std::wstring{ MAINTENANCE_TITLE }, *m_lookupMessage, Core::NoticeKind::NOTICE_INFO, nullptr);   // 안내 알림
+        }
+        catch (const std::exception& error)   // 그 밖의 오류 (없는 캐릭터 · 통신 오류 등)
+        {
+            m_lookupMessage = ToWideMessage(error.what());   // 상태 줄에 표시할 오류
+            m_context->m_notifier.ShowMessage(std::wstring{ ERROR_TITLE }, *m_lookupMessage, Core::NoticeKind::NOTICE_ERROR, nullptr);   // 오류 알림
+        }
+
+        RefreshStatus();   // 상태 줄 갱신
+
+        if (keyError.has_value()) HandleAPIKeyError(*keyError);   // 조회가 끝난 뒤에 키 재입력 안내
+    }
+
+    // 무기고의 여섯 부위를 시작 상태로 반영 (읽을 수 없는 부위는 지금 값 유지 + 이유를 상태 줄에 안내)
+    void RefineSimulatorManager::ApplyArmory(const Models::CharacterArmory& armory)
+    {
+        std::wstring skippedText;   // "무기(이유), ..." 건너뛴 부위 안내
+        std::size_t appliedCount{};   // 반영한 부위 수
+
+        for (std::size_t slot{}; slot < Models::REFINE_SLOT_COUNT; ++slot)   // 여섯 부위를 차례로
+        {
+            const std::optional<Models::GearItem>& gear{ armory.m_gears.at(Models::ToGearIndex(SLOT_GEAR_PARTS[slot])) };   // 이 부위의 장비 (경계 검사)
+            const GearReadResult read{ gear.has_value() ? ReadGearState(SLOT_GEAR_PARTS[slot], *gear) : GearReadResult{ std::nullopt, SKIP_NO_GEAR_TEXT } };   // 장비 → 재련 상태
+            if (read.m_state.has_value())   // 읽었으면
+            {
+                m_service->SetStart(static_cast<Models::RefineSlot>(slot), *read.m_state);   // 표를 고칠 때와 같은 경로로 시작 상태 반영
+                ++appliedCount;   // 반영 수 증가
+                continue;   // 다음 부위
+            }
+
+            if (!skippedText.empty()) skippedText += SKIP_SEPARATOR;   // 앞에 건너뛴 부위가 있으면 구분
+            skippedText += std::format(SKIPPED_PART_FORMAT, GetSlotName(static_cast<Models::RefineSlot>(slot)), read.m_skipReason);   // "부위(이유)" 추가
+        }
+
+        const std::wstring level{ FormatLevel(armory.m_itemAvgLevel) };   // 아이템 레벨 글자
+        if (appliedCount == 0) m_lookupMessage = std::format(LOOKUP_NONE_FORMAT, m_lookupName, level, skippedText);   // 하나도 못 읽음
+        else if (skippedText.empty()) m_lookupMessage = std::format(LOOKUP_DONE_FORMAT, m_lookupName, level);   // 모두 반영
+        else m_lookupMessage = std::format(LOOKUP_SKIPPED_FORMAT, std::format(LOOKUP_DONE_FORMAT, m_lookupName, level), skippedText);   // 일부만 반영
+
+        if (appliedCount > 0) MarkChanged(false);   // 저장 + 다시 계산 + 표 · 프리셋 갱신 (프리셋과 다르면 "직접" 상태)
     }
 
     // 부위별 단계로 바꾸면 목표 칸을 지난 계산의 목표(없으면 시작 상태)로 채워서 시작
@@ -928,6 +1092,16 @@ namespace LostArkMultiTool::Views
         if (m_refreshTask.IsRunning())
         {
             m_view->SetStatusText(std::wstring{ REFRESHING_TEXT });
+            return;
+        }
+        if (m_armoryTask.IsRunning())   // 캐릭터 조회 중이면
+        {
+            m_view->SetStatusText(std::format(LOOKING_UP_FORMAT, m_lookupName));   // "'이름' 조회 중..."
+            return;
+        }
+        if (m_lookupMessage.has_value())   // 조회 결과 · 오류 안내가 있으면 먼저 보여 줌
+        {
+            m_view->SetStatusText(*m_lookupMessage);
             return;
         }
         if (!m_service->HasPrices())

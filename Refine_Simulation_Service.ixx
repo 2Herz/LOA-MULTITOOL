@@ -40,6 +40,10 @@ export namespace LostArkMultiTool::Core
         virtual void SetTargetItemLevel(int itemLevel) = 0;
         virtual void ApplyStartPreset(RefineStartPreset preset) = 0;   // 여섯 부위 시작 상태를 한 번에
 
+        // ===== 캐릭터 조회 =====
+        [[nodiscard]] virtual const std::wstring& GetCharacterName() const noexcept = 0;   // 마지막으로 조회한 캐릭터 이름 (없으면 빈 글자)
+        virtual void SetCharacterName(std::wstring name) = 0;                              // 조회한 캐릭터 이름 기억 (저장은 Save)
+
         // ===== 재료 가격 · 귀속 =====
         [[nodiscard]] virtual const Models::RefinePrices& GetPrices() const noexcept = 0;
         virtual void SetPrice(Models::RefineData::RefineMaterial material, double price) = 0;   // 직접 입력 (다음 시세 갱신 때 덮어씀)

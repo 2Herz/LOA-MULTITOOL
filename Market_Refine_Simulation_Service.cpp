@@ -6,6 +6,7 @@ import LostArkMultiTool.Core.APPExceptions;
 import LostArkMultiTool.Core.LocalTime;
 import LostArkMultiTool.Core.MarketAPI;
 import LostArkMultiTool.Core.RefineSimulationService;
+import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Models.RefineData;
 import LostArkMultiTool.Models.RefinePlan;
 import LostArkMultiTool.Services.JSONFileStore;
@@ -31,6 +32,7 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view KEY_PRICES{ "Prices" };
         constexpr std::string_view KEY_BOUND{ "Bound" };
         constexpr std::string_view KEY_LAST_UPDATED{ "LastUpdated" };
+        constexpr std::string_view KEY_CHARACTER_NAME{ "CharacterName" };   // 마지막으로 조회한 캐릭터 이름 (옛 저장 파일에는 없음)
         constexpr std::string_view MODE_ITEM_LEVEL{ "ItemLevel" };
         constexpr std::string_view MODE_STAGE{ "Stage" };
         constexpr std::string_view TIER_AEGIR_NAME{ "에기르" };
@@ -125,6 +127,7 @@ namespace LostArkMultiTool::Services
         std::optional<Models::RefinePrices> loadedPrices;
         bool hasPrices{};
         std::optional<std::int64_t> lastUpdated;
+        std::wstring characterName;   // 읽은 캐릭터 이름 (필드가 없으면 빈 글자)
 
         JSONLoadResult result{ m_fileStore.Load([&](const JSONValue& root)
         {
@@ -156,6 +159,9 @@ namespace LostArkMultiTool::Services
             const double updated{ root.FindMember(KEY_LAST_UPDATED).GetNumber() };
             if (updated > 0.0) lastUpdated = static_cast<std::int64_t>(updated);
 
+            const JSONValue& nameValue{ root.FindMember(KEY_CHARACTER_NAME) };   // 없으면 GetString이 빈 글자를 돌려줌
+            characterName = Core::TextEncoding::UTF8ToWide(nameValue.GetString());   // 저장은 UTF-8, 화면은 와이드 문자
+
             loadedRequest = request;
             loadedPrices = prices;
         }) };
@@ -167,6 +173,7 @@ namespace LostArkMultiTool::Services
         m_prices = *loadedPrices;
         m_hasPrices = hasPrices;
         m_lastUpdated = lastUpdated;
+        m_characterName = std::move(characterName);   // 변환이 끝까지 성공했을 때만 반영
     }
 
     const Models::RefineRequest& MarketRefineSimulationService::GetRequest() const noexcept
@@ -178,6 +185,16 @@ namespace LostArkMultiTool::Services
     {
         if (!Models::RefineData::IsValidState(state)) return;
         m_request.m_starts[ToSlotIndex(slot)] = state;
+    }
+
+    const std::wstring& MarketRefineSimulationService::GetCharacterName() const noexcept
+    {
+        return m_characterName;   // 마지막으로 조회한 캐릭터 이름
+    }
+
+    void MarketRefineSimulationService::SetCharacterName(std::wstring name)
+    {
+        m_characterName = std::move(name);   // 이름만 기억 (저장은 Save)
     }
 
     void MarketRefineSimulationService::SetTarget(Models::RefineSlot slot, const EquipmentState& state)
@@ -308,6 +325,11 @@ namespace LostArkMultiTool::Services
         {
             keys.emplace_back(KEY_LAST_UPDATED);
             values.push_back(JSONValue::CreateNumber(static_cast<double>(*m_lastUpdated)));
+        }
+        if (!m_characterName.empty())   // 이름이 있을 때만 저장 (없으면 필드 생략 = 옛 형식과 같음)
+        {
+            keys.emplace_back(KEY_CHARACTER_NAME);   // 캐릭터 이름 키
+            values.push_back(JSONValue::CreateString(Core::TextEncoding::WideToUTF8(m_characterName)));   // UTF-8로 저장
         }
 
         m_fileStore.Save(WriteJSONText(JSONValue::CreateObject(std::move(keys), std::move(values))));

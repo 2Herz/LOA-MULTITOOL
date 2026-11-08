@@ -100,6 +100,7 @@ export namespace LostArkMultiTool::Views
         void SetOnRefresh(std::function<void()> onRefresh);
         void SetOnAutoRefreshChanged(std::function<void(bool isEnabled)> onAutoRefreshChanged);
         void SetOnStartPresetSelected(std::function<void(std::size_t presetIndex)> onStartPresetSelected);
+        void SetOnLookup(std::function<void(const std::wstring& characterName)> onLookup);   // [조회] 버튼 · 이름 칸 Enter
         void SetOnTargetModeSelected(std::function<void(std::size_t modeIndex)> onTargetModeSelected);
         void SetOnTargetItemLevelChanged(std::function<void(const std::wstring& text)> onTargetItemLevelChanged);
         void SetOnSlotCellClicked(std::function<void(std::size_t row, RefineSlotColumn column)> onSlotCellClicked);
@@ -116,6 +117,8 @@ export namespace LostArkMultiTool::Views
         // ===== 시작 · 목표 설정 =====
         void SetStartPresetItems(std::vector<std::wstring> items);
         void SetStartPresetIndex(std::optional<std::size_t> index);   // 코드에서 바꿈 (알림 없음, nullopt = 직접 설정)
+        void SetCharacterName(std::wstring name);                      // 코드에서 바꿈 (저장된 마지막 조회 이름)
+        void SetLookupBusy(bool isBusy);                      // 조회 중이면 버튼을 "조회 중..."으로 잠금
         void SetTargetModeItems(std::vector<std::wstring> items);
         void SetTargetModeIndex(std::size_t index);
         void SetTargetItemLevelText(std::wstring text);                // 코드에서 바꿈 (알림 없음)
@@ -146,6 +149,7 @@ export namespace LostArkMultiTool::Views
         void Layout(const Core::RectF& contentArea);
         [[nodiscard]] Core::RectF LayoutPanel(Panel& panel, const Core::RectF& bounds) const;   // 테두리 · 제목 자리를 뺀 안쪽 영역
         void RenderPanels(Core::Renderer& renderer) const;
+        void RequestLookup();   // 이름 칸의 글자를 확정해서 조회 알림
 
         UI::ControlHost m_host;
 
@@ -155,6 +159,8 @@ export namespace LostArkMultiTool::Views
         UI::Label& m_statusLabel;
         UI::Label& m_startPresetLabel;
         UI::ComboBox& m_startPresetBox;
+        UI::TextBox& m_nameBox;          // 캐릭터 이름 입력 칸
+        UI::Button& m_lookupButton;      // [조회] 버튼
         UI::Label& m_targetModeLabel;
         UI::ComboBox& m_targetModeBox;
         UI::Label& m_targetLevelLabel;
@@ -175,6 +181,7 @@ export namespace LostArkMultiTool::Views
         std::function<void()> m_onRefresh;
         std::function<void(bool)> m_onAutoRefreshChanged;
         std::function<void(std::size_t)> m_onStartPresetSelected;
+        std::function<void(const std::wstring&)> m_onLookup;   // 캐릭터 조회 알림
         std::function<void(std::size_t)> m_onTargetModeSelected;
         std::function<void(const std::wstring&)> m_onTargetItemLevelChanged;
         std::function<void(std::size_t, RefineSlotColumn)> m_onSlotCellClicked;

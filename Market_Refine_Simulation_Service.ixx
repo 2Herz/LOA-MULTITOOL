@@ -13,7 +13,8 @@ export namespace LostArkMultiTool::Services
     // 형식: { "TargetMode": "ItemLevel" | "Stage", "TargetItemLevel": 1750,
     //         "Starts": [ { "Slot": "무기", "Tier": "세르카", "Enhancement": 11, "Advanced": 0 }, ... ],
     //         "Targets": [ ... ],
-    //         "Prices": { "아비도스 융화 재료": 192.0, ... }, "Bound": [ "골드", ... ], "LastUpdated": 1790000000 }
+    //         "Prices": { "아비도스 융화 재료": 192.0, ... }, "Bound": [ "골드", ... ], "LastUpdated": 1790000000,
+    //         "CharacterName": "캐릭터 이름" }   (CharacterName은 없어도 됨 = 빈 이름)
     class MarketRefineSimulationService final : public Core::RefineSimulationService
     {
     public:
@@ -25,6 +26,9 @@ export namespace LostArkMultiTool::Services
         void SetTargetMode(Models::RefineTargetMode mode) override;
         void SetTargetItemLevel(int itemLevel) override;
         void ApplyStartPreset(Core::RefineStartPreset preset) override;
+
+        [[nodiscard]] const std::wstring& GetCharacterName() const noexcept override;   // 마지막으로 조회한 캐릭터 이름
+        void SetCharacterName(std::wstring name) override;                              // 조회한 캐릭터 이름 기억
 
         [[nodiscard]] const Models::RefinePrices& GetPrices() const noexcept override;
         void SetPrice(Models::RefineData::RefineMaterial material, double price) override;
@@ -49,5 +53,6 @@ export namespace LostArkMultiTool::Services
         std::uint64_t m_priceRevision{};
         std::optional<std::int64_t> m_lastUpdated;
         std::optional<std::string> m_loadWarning;
+        std::wstring m_characterName;   // 마지막으로 조회한 캐릭터 이름 (저장 파일에 없으면 빈 글자)
     };
 }

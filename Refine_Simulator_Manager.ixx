@@ -9,6 +9,7 @@ import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.Singleton;
 import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Core.ToolManager;
+import LostArkMultiTool.Models.CharacterArmory;
 import LostArkMultiTool.Models.RefinePlan;
 import LostArkMultiTool.Views.RefineSimulatorView;
 
@@ -66,6 +67,9 @@ export namespace LostArkMultiTool::Views
 
         // ===== 사용자 입력 =====
         void OnStartPresetSelected(std::size_t presetIndex);
+        void RequestLookup(const std::wstring& characterName);   // 캐릭터 이름으로 무기고 조회 시작 (백그라운드)
+        void FinishLookup();                                      // 조회가 끝났을 때 (화면 스레드에서)
+        void ApplyArmory(const Models::CharacterArmory& armory);  // 무기고 장비 → 시작 상태 (표를 직접 고친 것과 같은 경로)
         void OnTargetModeSelected(std::size_t modeIndex);
         void OnTargetItemLevelChanged(const std::wstring& text);
         void OnSlotCellClicked(std::size_t row, RefineSlotColumn column);
@@ -90,6 +94,9 @@ export namespace LostArkMultiTool::Views
 
         Core::BackgroundTask<std::vector<Core::RefinePriceQuote>> m_refreshTask;
         Core::BackgroundTask<CalculationOutput> m_calculationTask;
+        Core::BackgroundTask<Models::CharacterArmory> m_armoryTask;   // 무기고 조회 (결과는 화면 스레드에서 받음)
+        std::wstring m_lookupName;                                    // 지금 조회 중인(또는 마지막으로 조회한) 캐릭터 이름
+        std::optional<std::wstring> m_lookupMessage;                  // 조회 결과 · 오류 안내 (상태 줄에 표시)
         Core::IntervalTimer m_autoTimer;                 // 자동 갱신 주기 (5분)
 
         std::shared_ptr<const Models::RefineCostCatalog> m_catalog;   // 마지막 비용표 (가격이 그대로면 다시 씀)
