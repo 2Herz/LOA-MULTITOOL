@@ -1,10 +1,10 @@
-export module LostArkMultiTool.Services.ArmoryParser;
+export module LostArkMultiTool.Services.ArmoryParser;  // 무기고 해석기 모듈 선언 (내보내기)
 
-import std;
-import LostArkMultiTool.Models.CharacterArmory;
-import LostArkMultiTool.Services.JSONValue;
+import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Models.CharacterArmory;  // 캐릭터 무기고 모델 모듈 가져오기
+import LostArkMultiTool.Services.JSONValue;  // JSON 값 모듈 가져오기
 
-export namespace LostArkMultiTool::Services
+export namespace LostArkMultiTool::Services  // 서비스 네임스페이스 내보내기 시작
 {
     // 무기고 응답 해석 (API /armories/characters/{이름}?filters=profiles+equipment+gems)
     // ArmoryProfile · ArmoryEquipment · ArmoryGem 만 읽음, 장비 툴팁(JSON 문자열)은 태그를 지운 글자에서 값을 찾음

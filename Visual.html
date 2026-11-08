@@ -569,7 +569,7 @@ const MODULES = [
    "LostArkMultiTool.Models.CombatExtraState"
   ],
   "lines": 17,
-  "cppLines": 666,
+  "cppLines": 702,
   "hasCpp": true,
   "filter": "3. 서비스\\15. 전투력",
   "desc": "무기고 응답 해석 (API /armories/characters/{이름}?filters=profiles+equipment+gems)",
@@ -862,7 +862,7 @@ const MODULES = [
    "LostArkMultiTool.Models.CombatExtraState"
   ],
   "cppImports": [],
-  "lines": 62,
+  "lines": 63,
   "cppLines": 44,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",
@@ -911,8 +911,8 @@ const MODULES = [
   "module": "LostArkMultiTool.Models.CombatCoefficientData",
   "imports": [],
   "cppImports": [],
-  "lines": 179,
-  "cppLines": 1285,
+  "lines": 201,
+  "cppLines": 1454,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",
   "desc": "전투력 시뮬레이터 계수 (lopec 측정 데이터를 분석한 data/CombatCoefficients.json)",
@@ -938,13 +938,14 @@ const MODULES = [
    "LostArkMultiTool.Models.CombatCoefficientData",
    "LostArkMultiTool.Models.CombatExtraState"
   ],
-  "lines": 68,
-  "cppLines": 363,
+  "lines": 76,
+  "cppLines": 388,
   "hasCpp": true,
   "filter": "1. 코어\\12. 전투력",
   "desc": "악세서리 연마 옵션: 슬롯마다 옵션 3줄의 ln을 합산 → 배율 = exp(목표 합 - 현재 합)",
   "types": [
    "AccessoryFactorComponent",
+   "VambraceFactorComponent",
    "BraceletFactorComponent",
    "EngravingFactorComponent",
    "AvatarFactorComponent",
@@ -982,8 +983,8 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Models.CombatCoefficientData"
   ],
-  "lines": 140,
-  "cppLines": 127,
+  "lines": 152,
+  "cppLines": 135,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",
   "desc": "===== 개수 =====",
@@ -1008,8 +1009,8 @@ const MODULES = [
    "LostArkMultiTool.Models.CombatCoefficientData",
    "LostArkMultiTool.Models.CombatExtraState"
   ],
-  "lines": 63,
-  "cppLines": 123,
+  "lines": 64,
+  "cppLines": 131,
   "hasCpp": true,
   "filter": "1. 코어\\12. 전투력",
   "desc": "전투력 배율 요소 종류 (화면의 배율 내역 순서)",
@@ -1032,14 +1033,13 @@ const MODULES = [
    "LostArkMultiTool.Models.CharacterArmory"
   ],
   "lines": 47,
-  "cppLines": 61,
+  "cppLines": 62,
   "hasCpp": true,
   "filter": "1. 코어\\12. 전투력",
   "desc": "배율 요소 하나의 결과",
   "types": [
    "CombatFactorResult",
-   "CombatPowerResult",
-   "CombatPowerCalculator"
+   "CombatPowerResult"
   ]
  },
  {
@@ -1073,7 +1073,7 @@ const MODULES = [
    "LostArkMultiTool.Models.RateLimitState"
   ],
   "lines": 88,
-  "cppLines": 813,
+  "cppLines": 820,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\9. 전투력 시뮬레이터 매니저",
   "desc": "전투력 시뮬레이터 최상위 매니저 (캐릭터 무기고 조회 → 목표 재련 · 품질 · 보석 · 악세서리 · 팔찌 · 스톤/각인서 · 아바타 · 아크 그리드/패시브 · 완갑 → 예상 전투력)",
@@ -1147,7 +1147,7 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Models.CombatCoefficientData"
   ],
-  "lines": 58,
+  "lines": 60,
   "cppLines": 170,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",

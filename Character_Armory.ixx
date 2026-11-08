@@ -1,23 +1,23 @@
-export module LostArkMultiTool.Models.CharacterArmory;
+export module LostArkMultiTool.Models.CharacterArmory;  // 캐릭터 무기고 모델 모듈 선언 (내보내기)
 
-import std;
-import LostArkMultiTool.Models.CombatExtraState;
+import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Models.CombatExtraState;  // 추가 장착 상태(ExtraState) 모듈 가져오기
 
-export namespace LostArkMultiTool::Models
+export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보내기 시작
 {
     // 전투력 시뮬레이터가 다루는 장비 부위 (표 행 순서 = 이 순서)
     enum class GearPart : std::size_t
     {
-        PART_WEAPON,
-        PART_HELMET,
-        PART_SHOULDER,
-        PART_CHEST,
-        PART_PANTS,
-        PART_GLOVES,
-        PART_COUNT
+        PART_WEAPON,  // 무기 부위
+        PART_HELMET,  // 투구 부위
+        PART_SHOULDER,  // 어깨 부위
+        PART_CHEST,  // 상의 부위
+        PART_PANTS,  // 하의 부위
+        PART_GLOVES,  // 장갑 부위
+        PART_COUNT  // 부위 개수 (배열 크기 계산용 끝 표식)
     };
 
-    inline constexpr std::size_t GEAR_PART_COUNT{ static_cast<std::size_t>(GearPart::PART_COUNT) };
+    inline constexpr std::size_t GEAR_PART_COUNT{ static_cast<std::size_t>(GearPart::PART_COUNT) };  // 부위 개수 상수 (열거형 끝 표식에서 계산)
 
     // 장비 하나 (API ArmoryEquipment 한 항목 + 툴팁에서 뽑은 값)
     struct GearItem
@@ -35,8 +35,8 @@ export namespace LostArkMultiTool::Models
     // 캐릭터 무기고 (API /armories/characters/{이름} → profiles + equipment + gems)
     struct CharacterArmory
     {
-        std::string m_characterName;
-        std::string m_className;
+        std::string m_characterName;  // 캐릭터 이름
+        std::string m_className;  // 직업 이름
         double m_itemAvgLevel{};                                     // "1,764.17" → 1764.17
         std::optional<double> m_combatPower;                         // API 전투력 (없으면 nullopt)
         std::array<std::optional<GearItem>, GEAR_PART_COUNT> m_gears; // 부위별 장비 (안 낀 부위는 nullopt)

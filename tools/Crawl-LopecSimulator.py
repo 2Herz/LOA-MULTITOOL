@@ -29,7 +29,7 @@ import random
 import sys
 import time
 import urllib.parse
-from datetime import date
+from datetime import date, datetime
 
 from playwright.sync_api import sync_playwright
 
@@ -66,7 +66,24 @@ ARMOR_PARTS = ["helmet", "shoulder", "armor", "pants", "gloves", "weapon"]   # �
 # ===== 무작위 조합 =====
 COMBO_GEAR_COUNT = 250          # 장비 조합 수
 COMBO_DEAL_COUNT = 250          # 악세 + 팔찌 + 스톤 조합 수
+OUTPUT_TIME_FORMAT = "%H%M%S"   # 결과 파일 이름 뒤에 붙이는 시각 (덮어쓰기 방지)
+COMBO_ACC_COUNT = 0            # 악세 전용 조합 수 (기본은 안 돌림, --acc-samples로 지정)
 COMBO_SEED = 20261107
+COMBO_DEAL_SEED_OFFSET = 1      # 딜 조합 난수 시드 = COMBO_SEED + 1 (예전 결과와 같은 조합)
+COMBO_ACC_SEED_OFFSET = 2       # 악세 전용 조합 난수 시드 = COMBO_SEED + 2
+COMBO_PROGRESS_INTERVAL = 25    # 진행 상황을 찍는 간격 (조합 수)
+
+# ===== 아크그리드 조합 (COMBO_GRID) =====
+COMBO_GRID_COUNT = 0            # 아크그리드 조합 수 (기본은 안 돌림, --grid-samples로 지정)
+COMBO_GRID_SEED_OFFSET = 3      # 아크그리드 조합 난수 시드 = COMBO_SEED + 3
+ARK_CORE_SLOT_COUNT = 6         # 코어 칸 수 (질서 해·달·별 + 혼돈 해·달·별)
+ARK_GEMS_PER_CORE = 4           # 코어 하나에 끼우는 젬 수
+ARK_GEM_OPTION_SLOTS = (1, 2)   # 젬 하나의 옵션 칸 번호 (option-1, option-2)
+ARK_GEM_DEAL_OPTIONS = ("공격력", "추가 피해", "보스 피해")   # 딜러 전투력에 들어가는 젬 옵션만 사용
+ARK_GEM_LEVELS = range(1, 6)    # 젬 옵션 레벨 Lv.1 ~ Lv.5
+ARK_GEM_POINTS = range(1, 6)    # 젬 하나의 포인트 1 ~ 5
+ARK_CORE_POINT_STEPS = (10, 14, 17, 18, 19, 20)   # 코어 효과가 바뀌는 포인트 (이 값들을 자주 뽑음)
+ARK_CORE_POINT_STEP_CHANCE = 0.5                  # 목표 포인트를 위 계단값에서 뽑을 확률 (나머지는 아무 값)
 COMBO_MIN_REFORGE = 10
 COMBO_MIN_QUALITY = 50
 ACCESSORY_PICKER_PARTS = ["necklace", "earing1", "earing2", "ring1", "ring2"]   # 연마 옵션 선택 창 id 앞부분
@@ -488,10 +505,14 @@ def run_combo_gear(page, name, writer, count):
     open_simulator(page, name)
 
 
-def run_combo_deal(page, name, writer, count):
-    """악세 + 팔찌 + 스톤 조합: 연마 옵션 · 주스탯 · 팔찌 효과 · 스톤 각인을 동시에 무작위 (끝나면 페이지를 새로 엶)"""
-    rng = random.Random(COMBO_SEED + 1)
-    lists = picker_option_lists(page, tuple(ACCESSORY_PICKER_PARTS) + (BRACELET_PICKER_PREFIX, STONE_PICKER_PREFIX))
+def run_combo_deal(page, name, writer, count, accessory_only=False):
+    """악세 + 팔찌 + 스톤 조합: 연마 옵션 · 주스탯 · 팔찌 효과 · 스톤 각인을 동시에 무작위 (끝나면 페이지를 새로 엶)
+    accessory_only=True → 악세(연마 옵션 · 주스탯)만 바꾸는 COMBO_ACC (팔찌 · 스톤은 기준 그대로)"""
+    rng = random.Random(COMBO_SEED + (COMBO_ACC_SEED_OFFSET if accessory_only else COMBO_DEAL_SEED_OFFSET))
+    combo_group = "COMBO_ACC" if accessory_only else "COMBO_DEAL"
+    combo_label = "악세 조합" if accessory_only else "딜 조합"
+    extra_prefixes = () if accessory_only else (BRACELET_PICKER_PREFIX, STONE_PICKER_PREFIX)
+    lists = picker_option_lists(page, tuple(ACCESSORY_PICKER_PARTS) + extra_prefixes)
     stats = [c for c in page.evaluate("() => window.__lp.controls()") if c["key"].startswith("acc-stat")]
     for number in range(1, count + 1):
         labels = []
@@ -513,17 +534,120 @@ def run_combo_deal(page, name, writer, count):
             page.evaluate("([k, v]) => window.__lp.setNumber(k, v)", [stat["key"], value])
             labels.append(f"{stat['key']}={value}")
         for key, options in lists.items():
-            if key.startswith((BRACELET_PICKER_PREFIX, STONE_PICKER_PREFIX)) and options:
+            # 팔찌 · 스톤 (악세 전용 조합이면 extra_prefixes가 비어서 건너뜀)
+            if extra_prefixes and key.startswith(extra_prefixes) and options:
                 choice = rng.choice(options)
                 if page.evaluate("([k, v]) => window.__lp.pick(k, v)", [key, choice["value"]]):
                     labels.append(f"{key}:{choice['value']}")
-        writer.row("COMBO_DEAL", "", f"딜 조합 #{number}", "현재", " | ".join(labels), stable_read(page), "")
-        if number % 25 == 0:
-            print(f"   COMBO_DEAL {number}/{count}")
+        writer.row(combo_group, "", f"{combo_label} #{number}", "현재", " | ".join(labels), stable_read(page), "")
+        if number % COMBO_PROGRESS_INTERVAL == 0:
+            print(f"   {combo_group} {number}/{count}")
     open_simulator(page, name)
 
 
-def crawl_character(page, name, only, gear_count, deal_count, list_only):
+def split_core_point(rng, target):
+    """코어 포인트 목표값을 젬 4개의 포인트(각 1 ~ 5)로 나눔 (반환: 포인트 목록)"""
+    low, high = min(ARK_GEM_POINTS), max(ARK_GEM_POINTS)
+    target = max(low * ARK_GEMS_PER_CORE, min(high * ARK_GEMS_PER_CORE, target))
+    points = [low] * ARK_GEMS_PER_CORE
+    remain = target - low * ARK_GEMS_PER_CORE
+    while remain > 0:
+        # 아직 최대가 아닌 젬 하나에 1씩 더함
+        index = rng.choice([i for i, p in enumerate(points) if p < high])
+        points[index] += 1
+        remain -= 1
+    return points
+
+
+def run_combo_grid(page, name, writer, count):
+    """아크그리드 조합: 코어 6칸의 등급 · 코어 종류 · 젬 4개(포인트 · 딜 옵션 2개 · 레벨)를 동시에 무작위
+    (코어 포인트 = 젬 포인트 합, 끝나면 페이지를 새로 엶)"""
+    rng = random.Random(COMBO_SEED + COMBO_GRID_SEED_OFFSET)
+    controls = {c["key"]: c for c in page.evaluate("() => window.__lp.controls()")}
+    point_low = min(ARK_GEM_POINTS) * ARK_GEMS_PER_CORE
+    point_high = max(ARK_GEM_POINTS) * ARK_GEMS_PER_CORE
+    for number in range(1, count + 1):
+        labels = []
+        for core in range(ARK_CORE_SLOT_COUNT):
+            grade_key, blade_key = f"ark-core-{core}", f"ark-blade-{core}"
+            # 1) 코어 등급 (등급을 먼저 바꿔야 아래 칸이 초기화돼도 다시 채워짐)
+            grade = rng.choice([value for value, _ in controls[grade_key]["options"]])
+            page.evaluate("([k, v]) => window.__lp.setSelect(k, v)", [grade_key, grade])
+            # 2) 코어 종류 (없음 제외: 질서 3종 · 혼돈 6종)
+            blades = [value for value, _ in controls[blade_key]["options"] if value != NONE_OPTION]
+            blade = rng.choice(blades)
+            page.evaluate("([k, v]) => window.__lp.setSelect(k, v)", [blade_key, blade])
+            # 3) 코어 포인트 목표 → 젬 4개 포인트로 나눔
+            if rng.random() < ARK_CORE_POINT_STEP_CHANCE:
+                target = rng.choice(ARK_CORE_POINT_STEPS)
+            else:
+                target = rng.randint(point_low, point_high)
+            points = split_core_point(rng, target)
+            gem_labels = []
+            for gem, point in enumerate(points):
+                prefix = f"ark-gem-{core}-{gem}"
+                page.evaluate("([k, v]) => window.__lp.setSelect(k, v)", [f"{prefix}-point", str(point)])
+                # 옵션 2칸은 서로 다른 딜 옵션
+                options = rng.sample(ARK_GEM_DEAL_OPTIONS, len(ARK_GEM_OPTION_SLOTS))
+                parts = [f"P{point}"]
+                for slot, option in zip(ARK_GEM_OPTION_SLOTS, options):
+                    level = rng.choice(ARK_GEM_LEVELS)
+                    page.evaluate("([k, v]) => window.__lp.setSelect(k, v)", [f"{prefix}-option-{slot}", option])
+                    page.evaluate("([k, v]) => window.__lp.setSelect(k, v)", [f"{prefix}-level-{slot}", str(level)])
+                    parts.append(f"{option}{level}")
+                gem_labels.append("/".join(parts))
+            labels.append(f"{core}:{grade}:{blade}:{sum(points)}P[{' '.join(gem_labels)}]")
+        writer.row("COMBO_GRID", "", f"아크그리드 조합 #{number}", "현재", " | ".join(labels), stable_read(page), "")
+        if number % COMBO_PROGRESS_INTERVAL == 0:
+            print(f"   COMBO_GRID {number}/{count}")
+    open_simulator(page, name)
+
+
+def random_value(page, control, rng):
+    """컨트롤 하나에 넣을 무작위 값 (반환: (값, 표시 이름) 또는 None)"""
+    kind = control["kind"]
+    if kind in ("select", "radio"):
+        options = control.get("options") or []
+        return rng.choice(options) if options else None
+    if kind == "number":
+        values = number_values(control)
+        if not values:
+            return None
+        value = rng.choice(values)
+        return value, str(value)
+    options = [o for o in page.evaluate("id => window.__lp.pickerOptions(id)", control["key"]) if not o["disabled"]]
+    if not options:
+        return None
+    choice = rng.choice(options)
+    return choice["value"], choice["value"]
+
+
+def run_combo_groups(page, name, writer, groups, count):
+    """범용 조합: 지정한 계통(AVATAR · ARK_PASSIVE · ENGRAVING · STONE · BRACELET · ARMORY …)의 컨트롤을
+    동시에 무작위로 바꿈 (단일 변경에서 건너뛰는 컨트롤은 제외, 끝나면 페이지를 새로 엶)"""
+    group_name = "COMBO_" + "+".join(sorted(groups))
+    # 계통 이름으로 시드를 정해서 같은 계통은 다시 돌려도 같은 조합
+    rng = random.Random(COMBO_SEED + sum(ord(ch) for ch in group_name))
+    controls = [c for c in page.evaluate("() => window.__lp.controls()")
+                if not is_skipped(c) and group_of(c["key"]) in groups]
+    print(f"   {group_name}: 컨트롤 {len(controls)}개 × 조합 {count}개")
+    for number in range(1, count + 1):
+        labels = []
+        for control in controls:
+            picked = random_value(page, control, rng)
+            if picked is None:
+                continue
+            value, text = picked
+            if apply(page, control, value):
+                labels.append(f"{control['key']}={text}")
+        writer.row(group_name, "", f"{group_name} #{number}", "현재", " | ".join(labels), stable_read(page), "")
+        if number % COMBO_PROGRESS_INTERVAL == 0:
+            print(f"   {group_name} {number}/{count}")
+    open_simulator(page, name)
+
+
+def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_count=COMBO_ACC_COUNT,
+                    grid_count=COMBO_GRID_COUNT, combo_groups=(), combo_count=0, skip_single=False):
     """캐릭터 하나 전체 (반환: CSV 경로 또는 None)"""
     print(f"\n===== {name} =====")
     try:
@@ -544,16 +668,29 @@ def crawl_character(page, name, only, gear_count, deal_count, list_only):
         return None
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    path = os.path.join(OUTPUT_DIR, f"로펙_{name}_{date.today().isoformat()}.csv")
+    # 같은 날 여러 번 돌려도 덮어쓰지 않게 시각(시분초)까지 붙임
+    stamp = datetime.now().strftime(OUTPUT_TIME_FORMAT)
+    path = os.path.join(OUTPUT_DIR, f"로펙_{name}_{date.today().isoformat()}_{stamp}.csv")
     writer = ResultWriter(path, name, baseline)
     try:
-        run_single(page, name, writer, baseline, only)
-        if not only or "ADVANCED" in only:
+        # 교차 검증 캐릭터처럼 조합만 필요하면 --skip-single로 단일 변경을 건너뜀
+        if not skip_single:
+            run_single(page, name, writer, baseline, only)
+        if not skip_single and (not only or "ADVANCED" in only):
             run_advanced(page, name, writer, baseline)
         if (not only or "COMBO_GEAR" in only) and gear_count:
             run_combo_gear(page, name, writer, gear_count)
         if (not only or "COMBO_DEAL" in only) and deal_count:
             run_combo_deal(page, name, writer, deal_count)
+        # 악세 전용 조합은 --acc-samples로 수를 줬고, --only가 없거나 COMBO_ACC를 포함할 때만
+        if (not only or "COMBO_ACC" in only) and acc_count:
+            run_combo_deal(page, name, writer, acc_count, accessory_only=True)
+        # 아크그리드 조합은 --grid-samples로 수를 줬고, --only가 없거나 COMBO_GRID를 포함할 때만
+        if (not only or "COMBO_GRID" in only) and grid_count:
+            run_combo_grid(page, name, writer, grid_count)
+        # 범용 조합 (--combo 계통 목록 + --combo-samples 개수)
+        if combo_groups and combo_count:
+            run_combo_groups(page, name, writer, set(combo_groups), combo_count)
     finally:
         writer.close()
     print(f"저장: {path} ({writer.m_count}줄)")
@@ -568,6 +705,12 @@ def run():
                                                    "ENGRAVING,AVATAR,ARK_CORE,ARK_GEM,ARK_PASSIVE,COMBO_GEAR,COMBO_DEAL")
     parser.add_argument("--gear-samples", type=int, default=COMBO_GEAR_COUNT, help="장비 무작위 조합 수")
     parser.add_argument("--deal-samples", type=int, default=COMBO_DEAL_COUNT, help="악세 + 팔찌 + 스톤 무작위 조합 수")
+    parser.add_argument("--acc-samples", type=int, default=COMBO_ACC_COUNT, help="악세 전용 무작위 조합 수 (COMBO_ACC)")
+    parser.add_argument("--grid-samples", type=int, default=COMBO_GRID_COUNT, help="아크그리드 무작위 조합 수 (COMBO_GRID)")
+    parser.add_argument("--combo", default="", help="범용 조합 계통 (쉼표로 여러 개, 예: AVATAR 또는 ENGRAVING,STONE)")
+    parser.add_argument("--combo-samples", type=int, default=0, help="범용 조합 수")
+    parser.add_argument("--skip-single", action="store_true", help="단일 변경 · 상급 재련을 건너뛰고 조합만")
+    parser.add_argument("--profile", default=PROFILE_DIR, help="브라우저 프로필 폴더 (동시에 여러 개 돌릴 때 서로 다르게)")
     parser.add_argument("--list", action="store_true", help="실험 수만 세고 끝냄")
     parser.add_argument("--first", type=int, default=0, help="캐릭터 목록 앞에서 N명만 (한글 입력 없이 시험할 때)")
     args = parser.parse_args()
@@ -581,12 +724,16 @@ def run():
         # 화면이 보이는 브라우저 (진행 상황을 눈으로 확인할 수 있게)
         # 창이 다른 창에 가려져도 페이지가 느려지지 않게 (백그라운드 타이머 · 렌더링 억제 끄기)
         context = playwright.chromium.launch_persistent_context(
-            PROFILE_DIR, headless=False, viewport={"width": 1440, "height": 960}, args=NO_THROTTLE_ARGS)
+            # 여러 크롤러를 동시에 돌릴 때는 --profile로 프로필 폴더를 따로 써야 함 (폴더 하나는 한 브라우저만 열 수 있음)
+            args.profile, headless=False, viewport={"width": 1440, "height": 960}, args=NO_THROTTLE_ARGS)
         page = context.pages[0] if context.pages else context.new_page()
         for index, name in enumerate(names):
             if index:
                 time.sleep(CHARACTER_INTERVAL)
-            path = crawl_character(page, name, only, args.gear_samples, args.deal_samples, args.list)
+            path = crawl_character(page, name, only, args.gear_samples, args.deal_samples, args.list, args.acc_samples,
+                                   args.grid_samples,
+                                   [g.strip().upper() for g in args.combo.split(",") if g.strip()],
+                                   args.combo_samples, args.skip_single)
             if path:
                 results.append(path)
         context.close()

@@ -1,134 +1,134 @@
-module LostArkMultiTool.Models.CombatExtraState;
+module LostArkMultiTool.Models.CombatExtraState;  // 추가 장착 상태 모듈 구현 파일
 
-import std;
-import LostArkMultiTool.Models.CombatCoefficientData;
+import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Models.CombatCoefficientData;  // 계수 데이터 모듈 가져오기
 
-namespace LostArkMultiTool::Models
+namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
 {
-    namespace
+    namespace  // 파일 내부 전용 상수 · 보조 함수 영역 시작
     {
-        namespace Data = CombatCoefficientData;
+        namespace Data = CombatCoefficientData;  // 계수 데이터 네임스페이스 별칭
 
-        constexpr char SPACE_CHARACTER{ ' ' };
+        constexpr char SPACE_CHARACTER{ ' ' };  // 공백 글자 상수
         constexpr double NO_GRADE_FACTOR{ 1.0 };   // 등급이 바뀌지 않음
-        constexpr std::string_view WHITESPACE_CHARACTERS{ " \t\r\n" };
+        constexpr std::string_view WHITESPACE_CHARACTERS{ " \t\r\n" };  // 공백으로 취급하는 글자들
 
-        [[nodiscard]] bool IsSpace(char character) noexcept
+        [[nodiscard]] bool IsSpace(char character) noexcept  // 공백 글자 여부 판별
         {
-            return WHITESPACE_CHARACTERS.contains(character);
+            return WHITESPACE_CHARACTERS.contains(character);  // 공백 목록에 글자가 포함되는지 검사
         }
 
         // 팔찌 스탯 줄의 종류가 목록에 있는지 ("힘" 등)
-        [[nodiscard]] bool IsIn(std::span<const std::string_view> list, std::string_view value) noexcept
+        [[nodiscard]] bool IsIn(std::span<const std::string_view> list, std::string_view value) noexcept  // 목록에 값이 들어 있는지 검사
         {
-            return std::ranges::find(list, value) != list.end();
+            return std::ranges::find(list, value) != list.end();  // 값을 찾으면 true
         }
 
         // 완갑 재련 단계의 능력치 (범위를 벗어나면 가장 가까운 끝 단계, 표가 없으면 0)
-        [[nodiscard]] const Data::VambraceStep& GetVambraceStats(int level) noexcept
+        [[nodiscard]] const Data::VambraceStep& GetVambraceStats(int level) noexcept  // 완갑 단계 능력치 조회
         {
-            static constexpr Data::VambraceStep EMPTY_STEP{};
-            const int clamped{ std::clamp(level, MIN_VALUE, MAX_VAMBRACE_LEVEL) };
-            const Data::VambraceStep* step{ Data::FindVambraceStep(clamped) };
-            return step != nullptr ? *step : EMPTY_STEP;
+            static constexpr Data::VambraceStep EMPTY_STEP{};  // 표가 없을 때 쓰는 빈 단계 (모두 0)
+            const int clamped{ std::clamp(level, MIN_VALUE, MAX_VAMBRACE_LEVEL) };  // 단계를 0 ~ 최대 완갑 단계로 제한
+            const Data::VambraceStep* step{ Data::FindVambraceStep(clamped) };  // 표에서 단계 찾기
+            return step != nullptr ? *step : EMPTY_STEP;  // 찾았으면 그 단계, 아니면 빈 단계 반환
         }
     }
 
-    std::string NormalizeSpaces(std::string_view text)
+    std::string NormalizeSpaces(std::string_view text)  // 연속 공백을 하나로 줄이고 양 끝 공백을 지움
     {
-        std::string result;
-        result.reserve(text.size());
-        bool isPendingSpace{};
-        for (const char character : text)
+        std::string result;  // 결과 문자열
+        result.reserve(text.size());  // 입력 길이만큼 메모리 미리 확보
+        bool isPendingSpace{};  // 공백이 대기 중인지 표시
+        for (const char character : text)  // 글자를 하나씩 순회
         {
-            if (IsSpace(character))
+            if (IsSpace(character))  // 공백이면
             {
                 isPendingSpace = !result.empty();   // 맨 앞 공백은 버림, 연속 공백은 하나로
-                continue;
-            }
+                continue;  // 공백 대기 상태 갱신
+            }  // 다음 글자로 넘어감
             if (isPendingSpace) result.push_back(SPACE_CHARACTER);
-            isPendingSpace = false;
-            result.push_back(character);
-        }
+            isPendingSpace = false;  // 대기 중인 공백이 있으면 하나만 추가
+            result.push_back(character);  // 공백 대기 해제
+        }  // 글자 추가
         return result;
-    }
+    }  // 정리한 글자 반환
 
     std::string RemoveSpaces(std::string_view text)
-    {
+    {  // 모든 공백을 지움
         std::string result;
-        result.reserve(text.size());
-        for (const char character : text)
-        {
+        result.reserve(text.size());  // 결과 문자열
+        for (const char character : text)  // 입력 길이만큼 메모리 미리 확보
+        {  // 글자를 하나씩 순회
             if (!IsSpace(character)) result.push_back(character);
-        }
+        }  // 공백이 아니면 추가
         return result;
-    }
+    }  // 공백을 모두 지운 글자 반환
 
     bool IsNone(std::string_view text) noexcept
-    {
+    {  // 옵션이 비어 있는지 판별
         return text.empty() || text == NONE_TEXT;
-    }
+    }  // 빈 글자이거나 "없음"이면 true
 
-    namespace CombatExtra
+    namespace CombatExtra  // 추가 시스템 규칙 네임스페이스 시작
     {
-        double GetMainStatGain(const ExtraState& current, const ExtraState& target)
+        double GetMainStatGain(const ExtraState& current, const ExtraState& target)  // 주스탯 증가량 계산
         {
-            double gain{};
+            double gain{};  // 증가량 합계
 
             // 악세서리 기본 효과 주스탯
-            for (std::size_t index{}; index < ACCESSORY_SLOT_COUNT; ++index)
+            for (std::size_t index{}; index < ACCESSORY_SLOT_COUNT; ++index)  // 악세서리 슬롯 순회
             {
-                gain += target.m_accessories[index].m_mainStat - current.m_accessories[index].m_mainStat;
+                gain += target.m_accessories[index].m_mainStat - current.m_accessories[index].m_mainStat;  // 목표 - 현재 주스탯 차이를 더함
             }
 
             // 팔찌 스탯 줄 중 힘 · 민첩 · 지능
-            const auto sumMainStat{ [](const ExtraState& state)
+            const auto sumMainStat{ [](const ExtraState& state)  // 상태의 팔찌 스탯 중 주스탯 합을 구하는 람다
             {
-                double sum{};
-                for (const BraceletStat& line : state.m_braceletStats)
+                double sum{};  // 주스탯 합계
+                for (const BraceletStat& line : state.m_braceletStats)  // 팔찌 스탯 줄 순회
                 {
-                    if (IsIn(Data::GetBraceletMainStatTypes(), line.m_type)) sum += line.m_value;
+                    if (IsIn(Data::GetBraceletMainStatTypes(), line.m_type)) sum += line.m_value;  // 힘 · 민첩 · 지능 종류이면 더함
                 }
-                return sum;
+                return sum;  // 합계 반환
             } };
-            gain += sumMainStat(target) - sumMainStat(current);
+            gain += sumMainStat(target) - sumMainStat(current);  // 목표와 현재의 팔찌 주스탯 차이를 더함
 
-            return gain;
+            return gain;  // 전체 증가량 반환
         }
 
-        VambraceGain GetVambraceGain(const ExtraState& current, const ExtraState& target)
+        VambraceGain GetVambraceGain(const ExtraState& current, const ExtraState& target)  // 완갑 재련 변화량 계산
         {
-            VambraceGain gain;
-            if (!current.m_vambraceLevel.has_value() || !target.m_vambraceLevel.has_value()) return gain;
+            VambraceGain gain;  // 변화량 (기본값은 변화 없음)
+            if (!current.m_vambraceLevel.has_value() || !target.m_vambraceLevel.has_value()) return gain;  // 현재나 목표 완갑이 없으면 변화 없음
 
-            const Data::VambraceStep& from{ GetVambraceStats(*current.m_vambraceLevel) };
-            const Data::VambraceStep& to{ GetVambraceStats(*target.m_vambraceLevel) };
-            gain.m_weaponAttack = to.m_weaponAttack - from.m_weaponAttack;
-            gain.m_mainStat = to.m_mainStat - from.m_mainStat;
-            gain.m_baseAttack = to.m_baseAttack - from.m_baseAttack;
+            const Data::VambraceStep& from{ GetVambraceStats(*current.m_vambraceLevel) };  // 현재 단계 능력치
+            const Data::VambraceStep& to{ GetVambraceStats(*target.m_vambraceLevel) };  // 목표 단계 능력치
+            gain.m_weaponAttack = to.m_weaponAttack - from.m_weaponAttack;  // 무기 공격력 차이
+            gain.m_mainStat = to.m_mainStat - from.m_mainStat;  // 주스탯 차이
+            gain.m_baseAttack = to.m_baseAttack - from.m_baseAttack;  // 기본 공격력 차이
 
             // 유물 → 고대 등급이 필요해지면 한 번 곱함 (고대에서 내려오면 역수)
-            const int ancientStep{ Data::GetVambraceAncientFirstStep() };
-            const bool isFromAncient{ *current.m_vambraceLevel >= ancientStep };
-            const bool isToAncient{ *target.m_vambraceLevel >= ancientStep };
-            if (isToAncient && !isFromAncient) gain.m_gradeFactor = Data::GetVambraceGradeUpFactor();
-            else if (!isToAncient && isFromAncient) gain.m_gradeFactor = NO_GRADE_FACTOR / Data::GetVambraceGradeUpFactor();
-            return gain;
+            const int ancientStep{ Data::GetVambraceAncientFirstStep() };  // 고대 등급이 시작되는 단계
+            const bool isFromAncient{ *current.m_vambraceLevel >= ancientStep };  // 현재가 고대 등급인지
+            const bool isToAncient{ *target.m_vambraceLevel >= ancientStep };  // 목표가 고대 등급인지
+            if (isToAncient && !isFromAncient) gain.m_gradeFactor = Data::GetVambraceGradeUpFactor();  // 유물 → 고대면 등급 배율을 한 번 곱함
+            else if (!isToAncient && isFromAncient) gain.m_gradeFactor = NO_GRADE_FACTOR / Data::GetVambraceGradeUpFactor();  // 고대 → 유물이면 역수를 곱함
+            return gain;  // 변화량 반환
         }
 
-        ExtraState Clamp(const ExtraState& state)
+        ExtraState Clamp(const ExtraState& state)  // 입력 범위 안으로 맞추기
         {
-            ExtraState clamped{ state };
-            for (AccessoryState& accessory : clamped.m_accessories) accessory.m_mainStat = std::clamp(accessory.m_mainStat, 0.0, MAX_ACCESSORY_MAIN_STAT);
-            for (BraceletStat& line : clamped.m_braceletStats) line.m_value = std::clamp(line.m_value, MIN_VALUE, MAX_BRACELET_STAT);
-            for (StoneLine& line : clamped.m_stone) line.m_level = std::clamp(line.m_level, MIN_VALUE, Data::STONE_MAX_LEVEL);
-            for (BookState& book : clamped.m_books) book.m_level = std::clamp(book.m_level, MIN_VALUE, Data::ENGRAVING_BOOK_MAX_LEVEL);
-            for (ArkCoreState& core : clamped.m_cores) core.m_points = std::clamp(core.m_points, MIN_VALUE, MAX_ARK_CORE_POINTS);
-            for (int& level : clamped.m_arkGemLevels) level = std::clamp(level, MIN_VALUE, MAX_ARK_GEM_LEVEL_SUM);
-            clamped.m_passive.m_rank = std::clamp(clamped.m_passive.m_rank, MIN_VALUE, MAX_PASSIVE_RANK);
-            for (int& level : clamped.m_passive.m_levels) level = std::clamp(level, MIN_VALUE, MAX_PASSIVE_LEVEL);
-            if (clamped.m_vambraceLevel.has_value()) clamped.m_vambraceLevel = std::clamp(*clamped.m_vambraceLevel, MIN_VALUE, MAX_VAMBRACE_LEVEL);
-            return clamped;
+            ExtraState clamped{ state };  // 복사본을 만들어 값을 보정
+            for (AccessoryState& accessory : clamped.m_accessories) accessory.m_mainStat = std::clamp(accessory.m_mainStat, 0.0, MAX_ACCESSORY_MAIN_STAT);  // 악세서리 주스탯 범위 제한
+            for (BraceletStat& line : clamped.m_braceletStats) line.m_value = std::clamp(line.m_value, MIN_VALUE, MAX_BRACELET_STAT);  // 팔찌 스탯 수치 범위 제한
+            for (StoneLine& line : clamped.m_stone) line.m_level = std::clamp(line.m_level, MIN_VALUE, Data::STONE_MAX_LEVEL);  // 스톤 레벨 범위 제한
+            for (BookState& book : clamped.m_books) book.m_level = std::clamp(book.m_level, MIN_VALUE, Data::ENGRAVING_BOOK_MAX_LEVEL);  // 각인서 레벨 범위 제한
+            for (ArkCoreState& core : clamped.m_cores) core.m_points = std::clamp(core.m_points, MIN_VALUE, MAX_ARK_CORE_POINTS);  // 코어 의지력 포인트 범위 제한
+            for (int& level : clamped.m_arkGemLevels) level = std::clamp(level, MIN_VALUE, MAX_ARK_GEM_LEVEL_SUM);  // 아크 젬 레벨 합 범위 제한
+            clamped.m_passive.m_rank = std::clamp(clamped.m_passive.m_rank, MIN_VALUE, MAX_PASSIVE_RANK);  // 아크 패시브 랭크 범위 제한
+            for (int& level : clamped.m_passive.m_levels) level = std::clamp(level, MIN_VALUE, MAX_PASSIVE_LEVEL);  // 아크 패시브 트리 레벨 범위 제한
+            if (clamped.m_vambraceLevel.has_value()) clamped.m_vambraceLevel = std::clamp(*clamped.m_vambraceLevel, MIN_VALUE, MAX_VAMBRACE_LEVEL);  // 완갑 재련 단계 범위 제한
+            return clamped;  // 보정한 상태 반환
         }
     }
 }

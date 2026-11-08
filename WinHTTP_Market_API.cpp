@@ -27,15 +27,15 @@ namespace LostArkMultiTool::Services
         constexpr std::wstring_view AUCTION_OPTIONS_PATH{ L"/auctions/options" };
         constexpr std::string_view SIBLINGS_PATH_PREFIX{ "/characters/" };
         constexpr std::string_view SIBLINGS_PATH_SUFFIX{ "/siblings" };
-        constexpr std::string_view ARMORY_PATH_PREFIX{ "/armories/characters/" };
-#ifdef _DEBUG
+        constexpr std::string_view ARMORY_PATH_PREFIX{ "/armories/characters/" };  // 무기고 API 경로 앞부분
+#ifdef _DEBUG  // Debug 빌드에서만 적용
         // Debug 빌드: 필터 없이 전체 묶음을 받아 원본 응답을 파일로 남김 (악세 · 각인 · 아크 패시브 · 아크 그리드 등 필드 이름 확인용)
-        constexpr std::string_view ARMORY_PATH_SUFFIX{ "" };
+        constexpr std::string_view ARMORY_PATH_SUFFIX{ "" };  // Debug 빌드의 무기고 요청 경로 뒷부분 (필터 없음)
         constexpr std::string_view ARMORY_DEBUG_DUMP_FILE_NAME{ "ArmoryDebugDump.json" };   // 사용자 데이터 폴더에 저장
-#else
+#else  // Release 빌드에서는
         // Release 빌드도 필터 없이 전체 묶음을 받음 (악세 · 팔찌 · 스톤 · 아바타 · 각인 · 아크 패시브 · 아크 그리드까지 필요하고, 필터 이름을 확인하지 못해서 전체 응답이 가장 안전함)
-        constexpr std::string_view ARMORY_PATH_SUFFIX{ "" };
-#endif
+        constexpr std::string_view ARMORY_PATH_SUFFIX{ "" };  // Release 빌드의 무기고 요청 경로 뒷부분 (필터 없음)
+#endif  // 빌드 구성 분기 끝
 
         // ===== HTTP 동사 · 헤더 =====
         constexpr std::wstring_view VERB_GET{ L"GET" };
@@ -436,28 +436,28 @@ namespace LostArkMultiTool::Services
         return roster;
     }
 
-    Models::CharacterArmory WinHTTPMarketAPI::GetArmory(std::string_view charName)
+    Models::CharacterArmory WinHTTPMarketAPI::GetArmory(std::string_view charName)  // 캐릭터 무기고 조회 (프로필 · 장비 · 보석 등 전체 응답을 해석)
     {
-        const std::string path{ std::string{ ARMORY_PATH_PREFIX } + EscapeDataString(charName) + std::string{ ARMORY_PATH_SUFFIX } };
+        const std::string path{ std::string{ ARMORY_PATH_PREFIX } + EscapeDataString(charName) + std::string{ ARMORY_PATH_SUFFIX } };  // 요청 경로 = 무기고 경로 + 이스케이프한 캐릭터 이름 + 뒷부분
 
-        const HTTPResponse response{ SendRequest(VERB_GET, Core::TextEncoding::UTF8ToWide(path), std::string{}) };
-        EnsureSuccess(response, "무기고");
+        const HTTPResponse response{ SendRequest(VERB_GET, Core::TextEncoding::UTF8ToWide(path), std::string{}) };  // GET 요청 전송
+        EnsureSuccess(response, "무기고");  // 응답 상태가 성공이 아니면 예외
 
-#ifdef _DEBUG
+#ifdef _DEBUG  // Debug 빌드에서만 적용
         // 원본 응답 저장 (실패해도 조회는 계속 → 예외를 삼킴, Debug 전용)
-        try
+        try  // 저장 시도
         {
-            std::ofstream dump{ Core::APPConstants::GetUserDataFilePath(ARMORY_DEBUG_DUMP_FILE_NAME), std::ios::binary | std::ios::trunc };
-            dump.write(response.m_body.data(), static_cast<std::streamsize>(response.m_body.size()));
+            std::ofstream dump{ Core::APPConstants::GetUserDataFilePath(ARMORY_DEBUG_DUMP_FILE_NAME), std::ios::binary | std::ios::trunc };  // 사용자 데이터 폴더의 덤프 파일을 새로 열기
+            dump.write(response.m_body.data(), static_cast<std::streamsize>(response.m_body.size()));  // 응답 본문을 그대로 기록
         }
-        catch (const std::exception&)
+        catch (const std::exception&)  // 저장 실패는 무시하고 조회를 계속
         {
         }
-#endif
+#endif  // Debug 빌드 전용 구간 끝
 
         // 없는 닉네임은 200 + null로 옴 → ParseArmory가 "캐릭터를 찾을 수 없어요" 예외
-        const JSONValue root{ response.m_body.empty() ? JSONValue{} : ParseResponseBody(response, INVALID_ARMORY_RESPONSE_MESSAGE) };
-        return ParseArmory(root);
+        const JSONValue root{ response.m_body.empty() ? JSONValue{} : ParseResponseBody(response, INVALID_ARMORY_RESPONSE_MESSAGE) };  // 빈 응답이면 빈 JSON 값, 아니면 JSON 해석
+        return ParseArmory(root);  // JSON 값을 무기고 모델로 해석해 반환
     }
 
     std::vector<Models::MarketItem> WinHTTPMarketAPI::SearchMarketItems(int categoryCode, std::string_view itemGrade, std::string_view itemName)

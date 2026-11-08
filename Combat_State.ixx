@@ -1,10 +1,10 @@
-export module LostArkMultiTool.Models.CombatState;
+export module LostArkMultiTool.Models.CombatState;  // 전투력 상태 모델 모듈 선언 (내보내기)
 
-import std;
-import LostArkMultiTool.Models.CharacterArmory;
-import LostArkMultiTool.Models.CombatExtraState;
+import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Models.CharacterArmory;  // 캐릭터 무기고 모델 모듈 가져오기
+import LostArkMultiTool.Models.CombatExtraState;  // 추가 장착 상태 모듈 가져오기
 
-export namespace LostArkMultiTool::Models
+export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보내기 시작
 {
     // 부위 하나의 재련 상태 (분류 키가 비어 있으면 계수 표가 없는 장비 → 계산 · 편집 대상에서 빠짐)
     struct GearState
@@ -13,17 +13,18 @@ export namespace LostArkMultiTool::Models
         int m_enhancement{};                 // 일반 재련 단계
         int m_advancedEnhancement{};         // 상급 재련 단계
 
-        [[nodiscard]] bool IsKnown() const noexcept;
-        [[nodiscard]] bool operator==(const GearState& other) const = default;
+        [[nodiscard]] bool IsKnown() const noexcept;  // 분류 키가 있어 계수 표가 존재하는지 확인
+        [[nodiscard]] bool operator==(const GearState& other) const = default;  // 모든 멤버가 같으면 같은 상태로 비교 (기본 비교 연산)
     };
 
     // 전투력 계산의 입력 한 벌 (현재 상태 · 목표 상태가 같은 모양)
     // m_totalMainStat · m_weaponAttack · m_itemLevel은 현재 상태에서만 의미 있음 (API에서 받은 기준값)
     struct CombatState
     {
-        std::array<GearState, GEAR_PART_COUNT> m_gears;
+        std::array<GearState, GEAR_PART_COUNT> m_gears;  // 부위별 재련 상태 (GearPart 순서)
         std::optional<int> m_weaponQuality;  // 무기 품질 (에스더 무기 · 모름 = nullopt)
         std::vector<int> m_gemLevels;        // 보석 레벨들 (0 = 보석 없음)
+        std::vector<std::string> m_gemKinds; // 보석 종류들 ("겁화" · "작열" · "멸화" · "홍염", m_gemLevels와 같은 순서, 모르면 빈 글자)
         double m_totalMainStat{};            // S0: 모든 장비 주스탯 합
         double m_weaponAttack{};             // 무기 툴팁 공격력 (W0 = 이 값 + 보정)
         double m_itemLevel{};                // API 평균 아이템 레벨

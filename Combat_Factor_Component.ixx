@@ -1,9 +1,9 @@
-export module LostArkMultiTool.Core.CombatFactorComponent;
+export module LostArkMultiTool.Core.CombatFactorComponent;  // 전투력 배율 요소 모듈 선언 (내보내기)
 
-import std;
-import LostArkMultiTool.Models.CombatState;
+import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Models.CombatState;  // 전투력 상태 모듈 가져오기
 
-export namespace LostArkMultiTool::Core
+export namespace LostArkMultiTool::Core  // 코어 네임스페이스 내보내기 시작
 {
     // 전투력 배율 요소 종류 (화면의 배율 내역 순서)
     enum class CombatFactorKind
@@ -26,12 +26,12 @@ export namespace LostArkMultiTool::Core
     class CombatFactorComponent
     {
     public:
-        virtual ~CombatFactorComponent();
+        virtual ~CombatFactorComponent();  // 가상 소멸자 (파생 클래스를 기반 포인터로 안전하게 해제)
 
-        [[nodiscard]] virtual CombatFactorKind GetKind() const noexcept = 0;
+        [[nodiscard]] virtual CombatFactorKind GetKind() const noexcept = 0;  // 요소 종류 조회 (순수 가상)
 
         // 목표 전투력 ÷ 현재 전투력 (계산할 수 없으면 1 = 영향 없음)
-        [[nodiscard]] virtual double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const = 0;
+        [[nodiscard]] virtual double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const = 0;  // 현재 → 목표 배율 계산 (순수 가상)
     };
 
     // 장비 재련: CP ∝ √(S × W)
@@ -41,23 +41,23 @@ export namespace LostArkMultiTool::Core
     class GearFactorComponent final : public CombatFactorComponent
     {
     public:
-        [[nodiscard]] CombatFactorKind GetKind() const noexcept override;
-        [[nodiscard]] double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const override;
+        [[nodiscard]] CombatFactorKind GetKind() const noexcept override;  // 요소 종류 조회 재정의
+        [[nodiscard]] double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const override;  // 배율 계산 재정의
     };
 
     // 무기 품질: F(q) = A + B × (q/100)² → 배율 = F(목표) / F(현재) (에스더 무기는 품질이 없어서 1)
     class WeaponQualityComponent final : public CombatFactorComponent
     {
     public:
-        [[nodiscard]] CombatFactorKind GetKind() const noexcept override;
-        [[nodiscard]] double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const override;
+        [[nodiscard]] CombatFactorKind GetKind() const noexcept override;  // 요소 종류 조회 재정의
+        [[nodiscard]] double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const override;  // 배율 계산 재정의
     };
 
     // 보석: 보석마다 F(목표 레벨) / F(현재 레벨)을 모두 곱함 (레벨 0 = 보석 없음)
     class GemFactorComponent final : public CombatFactorComponent
     {
     public:
-        [[nodiscard]] CombatFactorKind GetKind() const noexcept override;
-        [[nodiscard]] double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const override;
+        [[nodiscard]] CombatFactorKind GetKind() const noexcept override;  // 요소 종류 조회 재정의
+        [[nodiscard]] double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const override;  // 배율 계산 재정의
     };
 }
