@@ -93,7 +93,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view FACTOR_ARK_PASSIVE_TEXT{ L"아크 패시브" };  // 아크 패시브 배율 이름
         constexpr std::wstring_view NO_FACTOR_CHANGE_TEXT{ L"변화 없음" };  // 배율 변화 없음 글자
         constexpr std::wstring_view VAMBRACE_PART_TEXT{ L"완갑" };  // 장비 표 완갑 부위 이름
-        constexpr std::wstring_view VAMBRACE_ITEM_TEXT{ L"완갑 (재련)" };  // 장비 표 완갑 아이템 이름
+        constexpr std::wstring_view VAMBRACE_ITEM_FORMAT{ L"완갑 ({})" };  // 장비 표 완갑 아이템 이름 서식 (등급)
+        constexpr std::wstring_view VAMBRACE_ITEM_CHANGE_FORMAT{ L"완갑 ({} → {})" };  // 목표 등급이 다를 때 서식 (현재 → 목표)
 
         constexpr std::wstring_view NOTICE_TITLE{ L"알림" };  // 알림 제목
         constexpr std::wstring_view ERROR_TITLE{ L"오류" };  // 오류 제목
@@ -120,6 +121,16 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             {
                 return std::wstring{ UNKNOWN_ERROR_TEXT };  // 알 수 없는 오류 글자 반환
             }
+        }
+
+        // 상태의 완갑 등급 이름 (계수 표 이름, 완갑이 없거나 모르면 빈 글자)
+        [[nodiscard]] std::string_view GetVambraceGradeName(const Models::ExtraState& extra) noexcept  // 완갑 등급 이름 조회
+        {
+            if (!extra.m_vambraceLevel.has_value()) return {};  // 완갑이 없으면 빈 글자
+            const Models::VambraceGrade grade{ extra.m_vambraceGrade.value_or(Models::CombatExtra::GetVambraceGradeForLevel(*extra.m_vambraceLevel)) };  // 등급 (없으면 단계의 기본 등급)
+            const std::span<const Models::CombatCoefficientData::VambraceGradeBonus> bonuses{ Models::CombatCoefficientData::GetVambraceGradeBonuses() };  // 등급 표 (이름)
+            const std::size_t index{ static_cast<std::size_t>(grade) };  // 등급 번호
+            return index < bonuses.size() ? bonuses[index].m_name : std::string_view{};  // 범위 안이면 이름, 아니면 빈 글자
         }
 
         [[nodiscard]] std::wstring_view TrimSpaces(std::wstring_view text) noexcept  // 양 끝 공백 제거
@@ -452,6 +463,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 for (std::size_t core{}; core < Models::ARK_CORE_COUNT; ++core) saved.m_cores[core].m_name = current.m_extra.m_cores[core].m_name;   // 코어 이름은 저장하지 않음 (현재 기준)
                 if (!current.m_extra.m_vambraceLevel.has_value()) saved.m_vambraceLevel.reset();  // 현재 완갑이 없으면 목표도 없음
                 else if (!saved.m_vambraceLevel.has_value()) saved.m_vambraceLevel = current.m_extra.m_vambraceLevel;  // 저장 목표에 완갑이 없으면 현재 값으로 채움
+                if (!saved.m_vambraceGrade.has_value()) saved.m_vambraceGrade = current.m_extra.m_vambraceGrade;  // 저장 목표에 완갑 등급이 없으면 현재 등급으로 채움 (단계와 안 맞으면 Clamp가 맞춤)
+                saved.m_vambraceGradeRate = current.m_extra.m_vambraceGradeRate;  // 추가 효과 툴팁 값은 저장하지 않음 (현재 기준)
                 target.m_extra = Models::CombatExtra::Clamp(saved);  // 범위 보정 후 목표에 반영
             }
         }
@@ -562,9 +575,11 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         }
 
         m_target.m_extra.m_vambraceLevel = std::clamp(*value, Models::MIN_VALUE, MAX_VAMBRACE_TARGET);  // 완갑 목표 단계를 범위 안으로 보정해 기록
+        m_target.m_extra = Models::CombatExtra::Clamp(m_target.m_extra);  // 고른 등급과 맞지 않는 단계면 등급을 단계의 기본 등급으로 맞춤
         StoreTargets();  // 목표를 저장 설정에 기록
         SaveData();  // 파일에 저장
         RefreshGears();  // 장비 표 갱신
+        RefreshCards();  // 완갑 등급 행이 있는 카드도 갱신
         RefreshResult();  // 결과 갱신
     }
 
@@ -656,12 +671,16 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         vambrace.m_currentEnhancement = vambrace.m_currentAdvanced = vambrace.m_targetEnhancement = vambrace.m_targetAdvanced = std::wstring{ EMPTY_TEXT };  // 현재 · 목표 재련 칸 기본값은 빈 칸 글자
         if (m_current.m_extra.m_vambraceLevel.has_value() && m_target.m_extra.m_vambraceLevel.has_value())  // 현재와 목표에 완갑이 모두 있으면
         {
-            vambrace.m_itemName = std::wstring{ VAMBRACE_ITEM_TEXT };  // 아이템 이름 글자
-            vambrace.m_gradeName = std::string{ VAMBRACE_GRADE_NAME };  // 글자색용 등급 이름
+            const std::string_view currentGrade{ GetVambraceGradeName(m_current.m_extra) };  // 현재 완갑 등급 이름
+            const std::string_view targetGrade{ GetVambraceGradeName(m_target.m_extra) };  // 목표 완갑 등급 이름
+            vambrace.m_itemName = currentGrade == targetGrade  // 아이템 이름 글자 ("완갑 (유물)" 또는 "완갑 (유물 → 고대)")
+                ? std::format(VAMBRACE_ITEM_FORMAT, ToWideMessage(currentGrade))
+                : std::format(VAMBRACE_ITEM_CHANGE_FORMAT, ToWideMessage(currentGrade), ToWideMessage(targetGrade));
+            vambrace.m_gradeName = std::string{ currentGrade.empty() ? VAMBRACE_GRADE_NAME : currentGrade };  // 글자색용 등급 이름 (모르면 유물색)
             vambrace.m_currentEnhancement = FormatEnhancement(*m_current.m_extra.m_vambraceLevel);  // 현재 완갑 단계 글자
             vambrace.m_targetEnhancement = FormatEnhancement(*m_target.m_extra.m_vambraceLevel);  // 목표 완갑 단계 글자
             vambrace.m_isTargetEditable = true;  // 목표 편집 가능
-            vambrace.m_hasChange = *m_target.m_extra.m_vambraceLevel != *m_current.m_extra.m_vambraceLevel;  // 목표가 현재와 다르면 강조
+            vambrace.m_hasChange = *m_target.m_extra.m_vambraceLevel != *m_current.m_extra.m_vambraceLevel || currentGrade != targetGrade;  // 단계나 등급이 현재와 다르면 강조
         }
         m_view->ShowGears(rows);  // 장비 표 갱신
     }

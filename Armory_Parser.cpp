@@ -462,6 +462,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             if (item.m_type == VAMBRACE_TYPE)  // 완갑이면
             {
                 extra.m_vambraceLevel = item.m_enhancement;  // 완갑 재련 단계 기록
+                extra.m_vambraceGrade = Models::CombatExtra::ParseVambraceGrade(item.m_grade);  // 완갑 등급 기록 (영웅 · 전설 · 유물 · 고대, 모르면 없음)
 
                 // 한계 해방 추가 효과 "추가 효과 … 기본 공격력 +2.00%" (없으면 등급 표로 추정하도록 비워 둠)
                 const std::string text{ ReadTooltipText(tooltip) };  // 태그를 지운 툴팁 글자

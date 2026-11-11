@@ -32,15 +32,20 @@ namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
             return step != nullptr ? *step : EMPTY_STEP;  // 찾았으면 그 단계, 아니면 빈 단계 반환
         }
 
-        // 완갑 재련 단계의 한계 해방 추가 효과 기본 공격력 비율 (등급 표 기준, 해방 경계 10 · 15 · 20단계는 해방 전 등급)
-        [[nodiscard]] double GetVambraceGradeRate(int level) noexcept  // 완갑 등급 추가 효과 비율 조회
+        // 완갑 등급의 한계 해방 추가 효과 기본 공격력 비율 (계수 표 순서 = 등급 번호, 표가 모자라면 0)
+        [[nodiscard]] double GetVambraceGradeRate(VambraceGrade grade) noexcept  // 완갑 등급 추가 효과 비율 조회
         {
-            double rate{};  // 해당 등급의 추가 효과 비율 (표가 비면 0)
-            for (const Data::VambraceGradeBonus& bonus : Data::GetVambraceGradeBonuses())  // 낮은 등급부터 차례로 확인
-            {
-                if (level >= bonus.m_firstStep) rate = bonus.m_rate;  // 그 등급의 첫 단계 이상이면 그 등급 비율로 갱신
-            }
-            return rate;  // 마지막으로 해당한 등급의 비율 반환
+            const std::span<const Data::VambraceGradeBonus> bonuses{ Data::GetVambraceGradeBonuses() };  // 등급별 추가 효과 표
+            const std::size_t index{ static_cast<std::size_t>(grade) };  // 등급 번호
+            return index < bonuses.size() ? bonuses[index].m_rate : 0.0;  // 범위 안이면 그 등급 비율, 아니면 0
+        }
+
+        // 상태의 완갑 등급 (사용자가 고른 등급이 단계와 맞으면 그 등급, 아니면 단계의 기본 등급)
+        [[nodiscard]] VambraceGrade ResolveVambraceGrade(const ExtraState& state) noexcept  // 상태의 완갑 등급 결정
+        {
+            const int level{ state.m_vambraceLevel.value_or(MIN_VALUE) };  // 완갑 재련 단계 (없으면 0)
+            if (state.m_vambraceGrade.has_value() && CombatExtra::IsVambraceGradeValid(*state.m_vambraceGrade, level)) return *state.m_vambraceGrade;  // 고른 등급이 단계와 맞으면 그대로
+            return CombatExtra::GetVambraceGradeForLevel(level);  // 아니면 단계의 기본 등급
         }
     }
 
@@ -117,10 +122,38 @@ namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
             gain.m_mainStat = to.m_mainStat - from.m_mainStat;  // 주스탯 차이
             gain.m_baseAttack = to.m_baseAttack - from.m_baseAttack;  // 기본 공격력 차이
 
-            // 한계 해방 추가 효과 (현재는 API 툴팁 값을 우선, 목표 단계가 같으면 현재 등급 그대로)
-            gain.m_gradeRateFrom = current.m_vambraceGradeRate.value_or(GetVambraceGradeRate(*current.m_vambraceLevel));  // 현재 추가 효과 비율
-            gain.m_gradeRateTo = *target.m_vambraceLevel == *current.m_vambraceLevel ? gain.m_gradeRateFrom : GetVambraceGradeRate(*target.m_vambraceLevel);  // 목표 추가 효과 비율
+            // 한계 해방 추가 효과 (현재는 API 툴팁 값을 우선, 목표 등급이 현재와 같으면 현재 비율 그대로)
+            const VambraceGrade fromGrade{ ResolveVambraceGrade(current) };  // 현재 완갑 등급
+            const VambraceGrade toGrade{ ResolveVambraceGrade(target) };  // 목표 완갑 등급
+            gain.m_gradeRateFrom = current.m_vambraceGradeRate.value_or(GetVambraceGradeRate(fromGrade));  // 현재 추가 효과 비율
+            gain.m_gradeRateTo = toGrade == fromGrade ? gain.m_gradeRateFrom : GetVambraceGradeRate(toGrade);  // 목표 추가 효과 비율
             return gain;  // 변화량 반환
+        }
+
+        VambraceGrade GetVambraceGradeForLevel(int level) noexcept  // 재련 단계 → 기본 등급 (해방 전 등급)
+        {
+            for (std::size_t index{}; index < VAMBRACE_GRADE_COUNT; ++index)  // 낮은 등급부터 확인
+            {
+                if (level <= VAMBRACE_GRADE_MAX_LEVELS[index]) return static_cast<VambraceGrade>(index);  // 그 등급의 최고 단계 이하이면 그 등급
+            }
+            return VambraceGrade::VAMBRACE_ANCIENT;  // 범위를 넘으면 가장 높은 등급
+        }
+
+        bool IsVambraceGradeValid(VambraceGrade grade, int level) noexcept  // 등급 · 단계 조합 검사
+        {
+            const std::size_t index{ static_cast<std::size_t>(grade) };  // 등급 번호
+            if (index >= VAMBRACE_GRADE_COUNT) return false;  // 모르는 등급이면 맞지 않음
+            return level >= VAMBRACE_GRADE_MIN_LEVELS[index] && level <= VAMBRACE_GRADE_MAX_LEVELS[index];  // 등급의 재련 가능 범위 안인지 확인
+        }
+
+        std::optional<VambraceGrade> ParseVambraceGrade(std::string_view name) noexcept  // 등급 이름 해석
+        {
+            const std::span<const Data::VambraceGradeBonus> bonuses{ Data::GetVambraceGradeBonuses() };  // 등급 표 (이름 · 순서)
+            for (std::size_t index{}; index < bonuses.size() && index < VAMBRACE_GRADE_COUNT; ++index)  // 등급 표 순회
+            {
+                if (bonuses[index].m_name == name) return static_cast<VambraceGrade>(index);  // 이름이 같으면 그 등급
+            }
+            return std::nullopt;  // 모르는 이름이면 없음
         }
 
         ExtraState Clamp(const ExtraState& state)  // 입력 범위 안으로 맞추기
@@ -134,7 +167,12 @@ namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
             for (int& level : clamped.m_arkGemLevels) level = std::clamp(level, MIN_VALUE, MAX_ARK_GEM_LEVEL_SUM);  // 아크 젬 레벨 합 범위 제한
             clamped.m_passive.m_rank = std::clamp(clamped.m_passive.m_rank, MIN_VALUE, MAX_PASSIVE_RANK);  // 아크 패시브 랭크 범위 제한
             for (int& level : clamped.m_passive.m_levels) level = std::clamp(level, MIN_VALUE, MAX_PASSIVE_LEVEL);  // 아크 패시브 트리 레벨 범위 제한
-            if (clamped.m_vambraceLevel.has_value()) clamped.m_vambraceLevel = std::clamp(*clamped.m_vambraceLevel, MIN_VALUE, MAX_VAMBRACE_LEVEL);  // 완갑 재련 단계 범위 제한
+            if (clamped.m_vambraceLevel.has_value())  // 완갑이 있으면
+            {
+                clamped.m_vambraceLevel = std::clamp(*clamped.m_vambraceLevel, MIN_VALUE, MAX_VAMBRACE_LEVEL);  // 완갑 재련 단계 범위 제한
+                clamped.m_vambraceGrade = ResolveVambraceGrade(clamped);  // 단계와 맞지 않는 등급은 단계의 기본 등급으로 맞춤
+            }
+            else clamped.m_vambraceGrade.reset();  // 완갑이 없으면 등급도 없음
             return clamped;  // 보정한 상태 반환
         }
     }

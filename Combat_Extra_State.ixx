@@ -48,6 +48,18 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
         CORE_ANCIENT         // 고대
     };
 
+    // 완갑 등급 (한계 해방으로 오름, 번호 = 계수 표 GetVambraceGradeBonuses() 순서)
+    enum class VambraceGrade
+    {
+        VAMBRACE_EPIC,       // 영웅 (재련 전 ~ 10단계)
+        VAMBRACE_LEGENDARY,  // 전설 (10단계 해방 ~ 15단계)
+        VAMBRACE_RELIC,      // 유물 (15단계 해방 ~ 20단계)
+        VAMBRACE_ANCIENT     // 고대 (20단계 해방 ~ 25단계)
+    };
+    inline constexpr std::size_t VAMBRACE_GRADE_COUNT{ 4 };  // 완갑 등급 개수
+    inline constexpr std::array<int, VAMBRACE_GRADE_COUNT> VAMBRACE_GRADE_MIN_LEVELS{ 0, 10, 15, 20 };   // 등급별 재련 가능 최저 단계 (해방 직후 단계)
+    inline constexpr std::array<int, VAMBRACE_GRADE_COUNT> VAMBRACE_GRADE_MAX_LEVELS{ 10, 15, 20, 25 };  // 등급별 재련 가능 최고 단계 (해방 전 단계)
+
     // 악세서리 한 개 (연마 효과 문구 3개 + 기본 효과 주스탯)
     struct AccessoryState
     {
@@ -114,6 +126,7 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
         ArkPassiveState m_passive;  // 아크 패시브 상태
         std::optional<int> m_vambraceLevel;                                  // 완갑 재련 (없으면 nullopt)
         std::optional<double> m_vambraceGradeRate;                           // 완갑 한계 해방 추가 효과 기본 공격력 (0.02 = 2%, API에서 읽음, 모르면 등급 표로 추정)
+        std::optional<VambraceGrade> m_vambraceGrade;                        // 완갑 등급 (현재 = API 등급, 목표 = 사용자가 고름, 모르면 단계로 추정)
         bool m_isEstherWeapon{};                                             // 에스더 무기 (완갑 · 무기 공격력 옵션 계수 선택용)
         [[nodiscard]] bool operator==(const ExtraState& other) const = default;  // 모든 멤버가 같으면 같은 상태 (기본 비교 연산)
     };
@@ -143,6 +156,15 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
             double m_gradeRateFrom{};        // 현재 완갑 한계 해방 추가 효과 기본 공격력 비율 (보석 기본 공격력 %와 합산)
             double m_gradeRateTo{};          // 목표 완갑 한계 해방 추가 효과 기본 공격력 비율
         };
+
+        // 완갑 재련 단계의 기본 등급 (해방 경계 10 · 15 · 20단계는 해방 전 등급)
+        [[nodiscard]] VambraceGrade GetVambraceGradeForLevel(int level) noexcept;  // 단계 → 기본 등급 함수 선언
+
+        // 그 등급에서 가질 수 있는 재련 단계인지 (영웅 0~10 · 전설 10~15 · 유물 15~20 · 고대 20~25)
+        [[nodiscard]] bool IsVambraceGradeValid(VambraceGrade grade, int level) noexcept;  // 등급 · 단계 조합 검사 함수 선언
+
+        // 완갑 등급 이름 ("영웅" · "전설" · "유물" · "고대") → 등급 (모르면 nullopt)
+        [[nodiscard]] std::optional<VambraceGrade> ParseVambraceGrade(std::string_view name) noexcept;  // 등급 이름 해석 함수 선언
 
         // 완갑 재련 단계 차이 (현재나 목표 완갑이 없으면 모두 0 · 배율 1)
         [[nodiscard]] VambraceGain GetVambraceGain(const ExtraState& current, const ExtraState& target);  // 완갑 재련 변화량 계산 함수 선언

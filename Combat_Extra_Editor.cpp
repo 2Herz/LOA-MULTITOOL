@@ -46,6 +46,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view RANK_LABEL{ L"랭크" };  // 랭크 행 이름
         constexpr std::wstring_view ENLIGHTENMENT_LABEL{ L"깨달음 포인트 구성" };  // 깨달음 포인트 구성 행 이름
         constexpr std::wstring_view AVATAR_HEADER{ L"아바타 (장착 중인 것)" };  // 아바타 구분 제목
+        constexpr std::wstring_view VAMBRACE_HEADER{ L"완갑 (한계 해방)" };  // 완갑 구분 제목
+        constexpr std::wstring_view VAMBRACE_GRADE_LABEL{ L"완갑 등급" };  // 완갑 등급 행 이름 (재련 단계는 장비 표에서 입력)
 
         // 악세서리 슬롯 이름 · 종류 (목걸이, 귀걸이 1 · 2, 반지 1 · 2)
         constexpr std::array<std::wstring_view, Models::ACCESSORY_SLOT_COUNT> ACCESSORY_NAMES{ L"목걸이", L"귀걸이 1", L"귀걸이 2", L"반지 1", L"반지 2" };  // 악세서리 슬롯 이름 표
@@ -62,6 +64,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         // 아바타 · 코어 등급 선택지 (열거형 순서와 같음)
         constexpr std::array<std::wstring_view, 3> AVATAR_CHOICES{ NONE_LABEL, EPIC_NAME, LEGEND_NAME };  // 아바타 등급 선택지
         constexpr std::array<std::wstring_view, 4> CORE_GRADE_CHOICES{ EPIC_NAME, LEGEND_NAME, RELIC_NAME, ANCIENT_NAME };  // 코어 등급 선택지
+        constexpr std::array<std::wstring_view, Models::VAMBRACE_GRADE_COUNT> VAMBRACE_GRADE_CHOICES{ EPIC_NAME, LEGEND_NAME, RELIC_NAME, ANCIENT_NAME };  // 완갑 등급 선택지 (VambraceGrade 순서)
 
         // UTF-8 → 화면 글자 (변환할 수 없으면 빈 글자)
         [[nodiscard]] std::wstring Wide(std::string_view text)  // UTF-8을 화면 글자로 변환
@@ -342,6 +345,21 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 [slot](const Models::ExtraState& state) { return static_cast<std::size_t>(state.m_avatars[slot]); },  // 현재 등급 번호 읽기 함수
                 [slot](Models::ExtraState& state, std::size_t index) { state.m_avatars[slot] = static_cast<Models::AvatarGrade>(index); });  // 등급 번호 쓰기 함수
         }
+
+        // 완갑 등급: 고르면 재련 단계를 그 등급의 범위 안으로 맞춤 (예: +17에서 고대 → +20)
+        AddHeader(specs, VAMBRACE_HEADER);  // 완갑 구분 제목 추가
+        AddIndexChoice(specs, VAMBRACE_GRADE_LABEL, ToWideList(VAMBRACE_GRADE_CHOICES),  // 완갑 등급 선택 행 추가
+            [](const Models::ExtraState& state)  // 현재 등급 번호 읽기 함수 (완갑이 없으면 범위 밖 = 빈 글자)
+            {
+                if (!state.m_vambraceLevel.has_value()) return Models::VAMBRACE_GRADE_COUNT;  // 완갑이 없으면 빈 글자
+                return static_cast<std::size_t>(state.m_vambraceGrade.value_or(Models::CombatExtra::GetVambraceGradeForLevel(*state.m_vambraceLevel)));  // 등급이 없으면 단계의 기본 등급
+            },
+            [](Models::ExtraState& state, std::size_t index)  // 등급 번호 쓰기 함수
+            {
+                if (!state.m_vambraceLevel.has_value() || index >= Models::VAMBRACE_GRADE_COUNT) return;  // 완갑이 없거나 번호가 범위 밖이면 무시
+                state.m_vambraceGrade = static_cast<Models::VambraceGrade>(index);  // 고른 등급 기록
+                state.m_vambraceLevel = std::clamp(*state.m_vambraceLevel, Models::VAMBRACE_GRADE_MIN_LEVELS[index], Models::VAMBRACE_GRADE_MAX_LEVELS[index]);  // 단계를 등급 범위 안으로 맞춤
+            });
     }
 
     std::vector<CombatListRow> CombatExtraEditor::BuildRows(CombatCard card, const Models::ExtraState& current, const Models::ExtraState& target) const  // 카드의 화면 행 만들기

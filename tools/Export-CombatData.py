@@ -3,7 +3,7 @@
 사용법:
     python tools/Export-CombatData.py [입력 JSON] [출력 .cpp] [장비 재련 정보 CSV]
 인자를 생략하면 프로젝트 폴더 기준 data/CombatCoefficients.json 을 읽어 Combat_Coefficient_Data.cpp 에 쓴다.
-CSV(기본: 바탕화면\장비데이터\장비_재련정보.csv)가 있으면 먼저 에스더 무기의 단계별 아이템 레벨(ItemLevels)을
+CSV(기본: 바탕화면\장비\장비데이터\장비_재련정보.csv)가 있으면 먼저 에스더 무기의 단계별 아이템 레벨(ItemLevels)을
 JSON 에 채워 넣고 저장한다 (CSV 가 없으면 JSON 에 있던 값을 그대로 씀).
 
 규칙:
@@ -22,7 +22,7 @@ import sys
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # tools 폴더의 상위 = 프로젝트 폴더
 DEFAULT_INPUT = os.path.join(PROJECT_DIR, 'data', 'CombatCoefficients.json')
 DEFAULT_OUTPUT = os.path.join(PROJECT_DIR, 'Combat_Coefficient_Data.cpp')
-DEFAULT_CSV = os.path.join(os.path.expanduser('~'), 'Desktop', '장비데이터', '장비_재련정보.csv')
+DEFAULT_CSV = os.path.join(os.path.expanduser('~'), 'Desktop', '장비', '장비데이터', '장비_재련정보.csv')
 
 # ===== 장비 재련 정보 CSV =====
 CSV_ENCODING = 'utf-8-sig'                 # 엑셀에서 저장한 BOM 있는 UTF-8

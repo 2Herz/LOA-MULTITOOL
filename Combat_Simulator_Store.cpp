@@ -63,6 +63,8 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         constexpr std::string_view KEY_ENLIGHTENMENT{ "Enlightenment" };  // 깨달음 키
         constexpr std::string_view KEY_LEVELS{ "Levels" };  // 레벨 배열 키
         constexpr std::string_view KEY_VAMBRACE{ "Vambrace" };  // 완갑 레벨 키
+        constexpr std::string_view KEY_VAMBRACE_GRADE{ "VambraceGrade" };  // 완갑 등급 키 (0 영웅 ~ 3 고대)
+        constexpr int MAX_VAMBRACE_GRADE{ static_cast<int>(Models::VambraceGrade::VAMBRACE_ANCIENT) };  // 완갑 등급 최대값 (고대)
         constexpr int MAX_STORED_VALUE{ 100000 };                 // 손으로 고친 파일의 이상한 값을 막는 상한
         constexpr int MAX_AVATAR_GRADE{ static_cast<int>(Models::AvatarGrade::AVATAR_LEGENDARY) };  // 아바타 등급 최대값 (전설)
         constexpr int MAX_CORE_GRADE{ static_cast<int>(Models::ArkCoreGrade::CORE_ANCIENT) };  // 아크 코어 등급 최대값 (고대)
@@ -168,6 +170,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             add(KEY_PASSIVE, MakeObject({ { KEY_RANK, MakeNumber(extra.m_passive.m_rank) }, { KEY_ENLIGHTENMENT, MakeString(extra.m_passive.m_enlightenment) },  // 아크 패시브 저장 (랭크 · 깨달음 · 레벨)
                 { KEY_LEVELS, MakeNumbers(extra.m_passive.m_levels) } }));
             if (extra.m_vambraceLevel.has_value()) add(KEY_VAMBRACE, MakeNumber(*extra.m_vambraceLevel));  // 완갑 레벨이 있을 때만 저장
+            if (extra.m_vambraceGrade.has_value()) add(KEY_VAMBRACE_GRADE, MakeNumber(static_cast<int>(*extra.m_vambraceGrade)));  // 완갑 등급이 있을 때만 저장
             return JSONValue::CreateObject(std::move(keys), std::move(values));  // 전체 객체 생성 후 반환
         }
 
@@ -221,6 +224,12 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
                 int level{};  // 완갑 레벨 임시 변수
                 ReadStored(root.FindMember(KEY_VAMBRACE), level);  // 값 읽기
                 extra.m_vambraceLevel = level;  // 완갑 레벨 반영
+            }
+            if (root.FindMember(KEY_VAMBRACE_GRADE).GetType() == JSONType::NUMBER_VALUE)  // 완갑 등급이 숫자일 때만 반영
+            {
+                int grade{};  // 완갑 등급 임시 변수
+                ReadStored(root.FindMember(KEY_VAMBRACE_GRADE), grade);  // 값 읽기
+                extra.m_vambraceGrade = static_cast<Models::VambraceGrade>(std::min(grade, MAX_VAMBRACE_GRADE));  // 최대 등급을 넘지 않게 열거형으로 반영
             }
             return Models::CombatExtra::Clamp(extra);  // 입력 범위에 맞춰 보정하고 반환
         }
