@@ -132,16 +132,22 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
         double m_atMax{};                       // 각인서 레벨 4
     };
 
+    struct StoneSumBonus
+    {
+        int m_minLevel{};                       // 보너스가 붙는 두 줄 레벨 합의 최솟값
+        double m_ln{};                          // 보너스 ln (레벨 합이 최솟값 이상일 때 더함)
+    };
+
     inline constexpr int ENGRAVING_BOOK_MAX_LEVEL{ 4 };                                  // 각인서 레벨 0 ~ 4
     inline constexpr int STONE_MAX_LEVEL{ 4 };                                           // 스톤 각인 레벨 0 ~ 4
 
-    [[nodiscard]] std::span<const KeyedValue> GetStoneCells() noexcept;                  // "D12" = 다른 각인 · 1번 줄 1 · 2번 줄 2
-    [[nodiscard]] std::span<const KeyedValue> GetStoneNameLn() noexcept;                 // 스톤 각인 이름 → 보정 ln (레벨 1 이상인 줄마다 더함, 없는 이름은 0)
-    [[nodiscard]] std::span<const KeyedValue> GetStoneUnstable() noexcept;               // 1번 줄 없음: 2번 줄 레벨("1" ~ "4") → 평균 ln
+    [[nodiscard]] std::span<const KeyedValue> GetStoneLevelOne() noexcept;               // 스톤 각인 이름 → 레벨 1 효과 비율 (같은 이름 각인서에 더함, 없는 이름은 0)
+    [[nodiscard]] std::span<const double> GetStoneLevelScale() noexcept;                 // 스톤 레벨 0 ~ 4 → 레벨 1 효과 대비 배수
+    [[nodiscard]] const StoneSumBonus& GetStoneSumBonus() noexcept;                      // 스톤 두 줄 레벨 합 보너스
     [[nodiscard]] std::span<const std::string_view> GetStoneCandidates() noexcept;       // 스톤 각인 이름 선택지 ("없음" 먼저)
     [[nodiscard]] std::span<const EngravingBook> GetEngravingBooks() noexcept;  // 각인서 효과 표 조회
     [[nodiscard]] std::span<const std::string_view> GetBookCandidates() noexcept;        // 각인서 이름 선택지 ("없음" 먼저)
-    [[nodiscard]] const LevelRange& GetLegendPenalty() noexcept;                         // 전설 각인서 감점 ln
+    [[nodiscard]] const LevelRange& GetLegendRatio() noexcept;                           // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0 ~ 4 보간)
 
     // ===== 아바타 =====
     [[nodiscard]] std::span<const KeyedValue> GetAvatarLn() noexcept;                    // 등급 이름("전설" · "영웅" · "없음") → 한 부위 ln

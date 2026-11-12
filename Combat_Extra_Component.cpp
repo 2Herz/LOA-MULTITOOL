@@ -21,8 +21,8 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         constexpr double ATTACK_DIVISOR{ 6.0 };               // 공격력 = sqrt(주스탯 × 무기 공격력 / 6)
         constexpr double MIN_RATIO{ 1e-6 };                   // 나눗셈 보호
         constexpr double NO_CHANGE_FACTOR{ 1.0 };             // 바뀐 것이 없거나 계산할 수 없음
-        constexpr std::string_view KEY_SAME{ "S" };           // 스톤 두 줄이 같은 각인
-        constexpr std::string_view KEY_DIFFERENT{ "D" };      // 스톤 두 줄이 다른 각인
+        constexpr int NO_STONE_LEVEL{ 0 };                    // 스톤 줄이 없거나 이어진 각인서가 없을 때 레벨
+        constexpr double NO_STONE_RATIO{ 0.0 };               // 스톤 효과 · 보너스가 없을 때 값
         constexpr std::string_view AVATAR_LEGENDARY_KEY{ "전설" };  // 아바타 전설 등급 표 키
         constexpr std::string_view AVATAR_EPIC_KEY{ "영웅" };  // 아바타 영웅 등급 표 키
         constexpr std::string_view AVATAR_NONE_KEY{ "없음" };  // 아바타 없음 표 키
@@ -109,38 +109,49 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
             return Models::IsNone(line.m_name) ? 0 : line.m_level;  // 이름이 없으면 0, 있으면 저장된 레벨
         }
 
-        // 스톤 두 줄 조합의 ln (표에 없으면 nullopt, 1번 줄이 없을 때는 2번 줄 레벨별 평균)
-        [[nodiscard]] std::optional<double> GetStoneLn(const Models::ExtraState& state)  // 스톤 두 줄 조합의 ln 계산
+        // 각인서 한 권의 기본 ln (유물: 레벨 0 ~ 4 보간, 전설: 유물 레벨 0 효과 × 등급 비율)
+        [[nodiscard]] double GetBookBaseLn(const Data::EngravingBook& entry, const Models::BookState& book)  // 각인서 한 권의 기본 ln 계산
         {
-            const Models::StoneLine& first{ state.m_stone[0] };  // 첫 번째 스톤 줄
-            const Models::StoneLine& second{ state.m_stone[1] };  // 두 번째 스톤 줄
-            const int firstLevel{ GetStoneLevel(first) };  // 첫 줄 레벨
-            const int secondLevel{ GetStoneLevel(second) };  // 둘째 줄 레벨
-            const bool isSame{ !Models::IsNone(first.m_name) && first.m_name == second.m_name };  // 두 줄이 같은 각인인지 여부
+            const double fraction{ static_cast<double>(std::clamp(book.m_level, Models::MIN_VALUE, Data::ENGRAVING_BOOK_MAX_LEVEL)) / Data::ENGRAVING_BOOK_MAX_LEVEL };  // 레벨 비율 (0 ~ 1)
+            if (!book.m_isLegendary) return entry.m_base + (entry.m_top - entry.m_base) * fraction;  // 유물이면 기본값과 최대값 사이를 레벨 비율로 보간
 
-            // 레벨 1 이상인 줄의 각인 이름별 보정 (표에 없는 이름은 0)
-            const auto getNameLn{ [](const Models::StoneLine& line, int level)  // 줄의 각인 이름별 보정 값을 구하는 람다
-            {
-                if (level <= 0) return 0.0;  // 레벨 0 이하면 보정 없음
-                const Data::KeyedValue* offset{ Data::FindKeyed(Data::GetStoneNameLn(), line.m_name) };  // 이름 보정 표 조회
-                return offset != nullptr ? offset->m_value : 0.0;  // 표에 없으면 0
-            } };
-            const double nameLn{ getNameLn(first, firstLevel) + getNameLn(second, secondLevel) };  // 두 줄의 이름 보정 합
-
-            const std::string key{ std::string{ isSame ? KEY_SAME : KEY_DIFFERENT } + std::to_string(firstLevel) + std::to_string(secondLevel) };  // 조합 키 (같은/다른 + 두 레벨)
-            if (const Data::KeyedValue* found{ Data::FindKeyed(Data::GetStoneCells(), key) }; found != nullptr) return found->m_value + nameLn;  // 조합 표에 있으면 값에 이름 보정을 더해 반환
-
-            if (firstLevel == 0 && secondLevel > 0)  // 첫 줄이 없고 둘째 줄만 있으면
-            {
-                if (const Data::KeyedValue* unstable{ Data::FindKeyed(Data::GetStoneUnstable(), std::to_string(secondLevel)) }; unstable != nullptr) return unstable->m_value + nameLn;  // 불안정 평균 표에서 둘째 줄 레벨로 조회
-            }
-            return std::nullopt;  // 표에 없는 조합이면 값 없음
+            const Data::LevelRange& ratio{ Data::GetLegendRatio() };  // 전설 등급 효과 비율 범위
+            const double scale{ ratio.m_atMin + (ratio.m_atMax - ratio.m_atMin) * fraction };  // 레벨 비율로 보간한 전설 비율
+            return std::log1p(std::expm1(entry.m_base) * scale);  // 유물 레벨 0 효과(비율)에 전설 비율을 곱해 ln 으로 되돌림
         }
 
-        // 각인서 5개의 ln 합 (없음 · 앞 칸과 같은 이름 · 효과 없는 각인은 0)
-        [[nodiscard]] double GetBooksLn(const Models::ExtraState& state)  // 각인서 ln 합 계산
+        // 각인 이름과 같은 스톤 줄의 가장 높은 레벨 (같은 이름 줄이 없으면 0)
+        [[nodiscard]] int GetLinkedStoneLevel(const Models::ExtraState& state, std::string_view name)  // 각인서와 이어진 스톤 레벨 조회
         {
-            double sum{};  // 합계
+            int level{ NO_STONE_LEVEL };  // 이어진 스톤 레벨 (기본 0)
+            for (const Models::StoneLine& line : state.m_stone)  // 스톤 두 줄 순회
+            {
+                if (line.m_name == name) level = std::max(level, GetStoneLevel(line));  // 이름이 같으면 더 높은 레벨을 유지
+            }
+            return std::clamp(level, NO_STONE_LEVEL, Data::STONE_MAX_LEVEL);  // 0 ~ 최대 레벨로 제한해 반환
+        }
+
+        // 스톤 레벨 → 레벨 1 효과 대비 배수 (표 범위 밖이면 0)
+        [[nodiscard]] double GetStoneScale(int level) noexcept  // 스톤 레벨 배수 조회
+        {
+            const std::span<const double> scale{ Data::GetStoneLevelScale() };  // 레벨별 배수 표
+            const std::size_t index{ static_cast<std::size_t>(std::max(level, NO_STONE_LEVEL)) };  // 표 위치 (음수 보호)
+            return index < scale.size() ? scale[index] : NO_STONE_RATIO;  // 범위 안이면 배수, 밖이면 0
+        }
+
+        // 스톤 두 줄 레벨 합 보너스 ln (합이 기준 이상이면 보너스)
+        [[nodiscard]] double GetStoneSumLn(const Models::ExtraState& state) noexcept  // 스톤 레벨 합 보너스 계산
+        {
+            int total{ NO_STONE_LEVEL };  // 두 줄 레벨 합
+            for (const Models::StoneLine& line : state.m_stone) total += GetStoneLevel(line);  // 각 줄 레벨을 합산
+            const Data::StoneSumBonus& bonus{ Data::GetStoneSumBonus() };  // 레벨 합 보너스 기준과 값
+            return total >= bonus.m_minLevel ? bonus.m_ln : NO_STONE_RATIO;  // 기준 이상이면 보너스 ln, 아니면 0
+        }
+
+        // 각인서 5개 + 스톤의 ln 합 (각인서 효과 비율에 같은 이름 스톤 효과를 더한 뒤 ln, 없음 · 앞 칸과 같은 이름 · 효과 없는 각인은 0)
+        [[nodiscard]] double GetEngravingLn(const Models::ExtraState& state)  // 각인서 · 스톤 ln 합 계산
+        {
+            double sum{ GetStoneSumLn(state) };  // 합계 (스톤 레벨 합 보너스부터 시작)
             for (std::size_t index{}; index < Models::BOOK_COUNT; ++index)  // 각인서 5개 순회
             {
                 const Models::BookState& book{ state.m_books[index] };  // 현재 각인서
@@ -153,13 +164,9 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
                 const auto found{ std::ranges::find(books, book.m_name, &Data::EngravingBook::m_name) };  // 이름으로 표 항목 찾기
                 if (found == books.end() || (found->m_base == 0.0 && found->m_top == 0.0)) continue;  // 표에 없거나 효과가 없는 각인은 건너뜀
 
-                const double fraction{ static_cast<double>(std::clamp(book.m_level, Models::MIN_VALUE, Data::ENGRAVING_BOOK_MAX_LEVEL)) / Data::ENGRAVING_BOOK_MAX_LEVEL };  // 레벨 비율 (0 ~ 최대 레벨 → 0 ~ 1)
-                sum += found->m_base + (found->m_top - found->m_base) * fraction;  // 기본값과 최대값 사이를 레벨 비율로 보간해 합산
-                if (book.m_isLegendary)  // 전설 등급 각인서이면
-                {
-                    const Data::LevelRange& penalty{ Data::GetLegendPenalty() };  // 전설 감점 범위
-                    sum += penalty.m_atMin + (penalty.m_atMax - penalty.m_atMin) * fraction;  // 감점도 같은 비율로 보간해 합산
-                }
+                const Data::KeyedValue* levelOne{ Data::FindKeyed(Data::GetStoneLevelOne(), book.m_name) };  // 같은 이름 스톤의 레벨 1 효과
+                const double stoneRatio{ levelOne != nullptr ? levelOne->m_value * GetStoneScale(GetLinkedStoneLevel(state, book.m_name)) : NO_STONE_RATIO };  // 이어진 스톤 효과 비율
+                sum += std::log(std::exp(GetBookBaseLn(*found, book)) + stoneRatio);  // 각인서 배율에 스톤 비율을 더한 값의 ln 을 합산
             }
             return sum;  // 합계 반환
         }
@@ -299,12 +306,7 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
 
     double EngravingFactorComponent::GetFactor(const Models::CombatState& current, const Models::CombatState& target) const  // 스톤 · 각인서 배율 계산
     {
-        double lnChange{ GetBooksLn(target.m_extra) - GetBooksLn(current.m_extra) };  // 각인서 ln 변화량
-
-        // 스톤: 현재나 목표 조합이 표에 없으면 스톤은 계산하지 않음
-        const std::optional<double> currentStone{ GetStoneLn(current.m_extra) };  // 현재 스톤 조합의 ln
-        const std::optional<double> targetStone{ GetStoneLn(target.m_extra) };  // 목표 스톤 조합의 ln
-        if (currentStone.has_value() && targetStone.has_value()) lnChange += *targetStone - *currentStone;  // 둘 다 표에 있을 때만 스톤 변화량 반영
+        const double lnChange{ GetEngravingLn(target.m_extra) - GetEngravingLn(current.m_extra) };  // 각인서 · 스톤 ln 변화량
         return std::exp(lnChange);  // ln 변화량을 지수로 되돌려 배율로 반환
     }
 

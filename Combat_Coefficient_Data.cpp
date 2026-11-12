@@ -858,69 +858,64 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
             "파티원보호및회복효과가3.5%증가한다.",   // 선택지
         } };   // BRACELET_OPTION_CANDIDATES 끝
 
-        // 스톤 두 줄 조합 ln (키 = D(다른 각인) 또는 S(같은 각인) + 1번 줄 레벨 + 2번 줄 레벨)
-        constexpr std::array<KeyedValue, 35> STONE_CELLS{ {   // 문구 키 35개
-            KeyedValue{ "D10", -0.0608715 },   // 키 → 값
-            KeyedValue{ "D11", -0.0367696 },   // 키 → 값
-            KeyedValue{ "D12", -0.0310749 },   // 키 → 값
-            KeyedValue{ "D13", -0.0171233 },   // 키 → 값
-            KeyedValue{ "D14", -0.0004117 },   // 키 → 값
-            KeyedValue{ "D20", -0.0544689 },   // 키 → 값
-            KeyedValue{ "D21", -0.0305176 },   // 키 → 값
-            KeyedValue{ "D22", -0.0242657 },   // 키 → 값
-            KeyedValue{ "D23", 0.000696 },   // 키 → 값
-            KeyedValue{ "D24", 0.0065626 },   // 키 → 값
-            KeyedValue{ "D30", -0.0433148 },   // 키 → 값
-            KeyedValue{ "D31", -0.0188214 },   // 키 → 값
-            KeyedValue{ "D32", 1.12e-05 },   // 키 → 값
-            KeyedValue{ "D33", 0.014605 },   // 키 → 값
-            KeyedValue{ "D34", 0.0177471 },   // 키 → 값
-            KeyedValue{ "D40", -0.0381048 },   // 키 → 값
-            KeyedValue{ "D41", -0.0004078 },   // 키 → 값
-            KeyedValue{ "D42", 0.0064987 },   // 키 → 값
-            KeyedValue{ "D43", 0.0192971 },   // 키 → 값
-            KeyedValue{ "D44", 0.0242997 },   // 키 → 값
-            KeyedValue{ "S11", -0.0600533 },   // 키 → 값
-            KeyedValue{ "S12", -0.0546208 },   // 키 → 값
-            KeyedValue{ "S13", -0.0423769 },   // 키 → 값
-            KeyedValue{ "S14", -0.0240782 },   // 키 → 값
-            KeyedValue{ "S21", -0.0524428 },   // 키 → 값
-            KeyedValue{ "S22", -0.0553594 },   // 키 → 값
-            KeyedValue{ "S23", -0.0304004 },   // 키 → 값
-            KeyedValue{ "S24", -0.0241706 },   // 키 → 값
-            KeyedValue{ "S31", -0.0430698 },   // 키 → 값
-            KeyedValue{ "S32", -0.0306608 },   // 키 → 값
-            KeyedValue{ "S33", -0.0296097 },   // 키 → 값
-            KeyedValue{ "S34", -0.0233556 },   // 키 → 값
-            KeyedValue{ "S41", -0.0255432 },   // 키 → 값
-            KeyedValue{ "S42", -0.0234594 },   // 키 → 값
-            KeyedValue{ "S43", -0.023025 },   // 키 → 값
-        } };   // STONE_CELLS 끝
-        // 스톤 1번 줄이 없을 때 2번 줄 레벨별 평균 ln (불안정, 근사)
-        constexpr std::array<KeyedValue, 4> STONE_UNSTABLE{ {   // 문구 키 4개
-            KeyedValue{ "3", 0.002081418 },   // 키 → 값
-            KeyedValue{ "1", -0.003841627 },   // 키 → 값
-            KeyedValue{ "4", 0.0182114 },   // 키 → 값
-            KeyedValue{ "2", -0.05658047 },   // 키 → 값
-        } };   // STONE_UNSTABLE 끝
-        // 스톤 각인 이름별 보정 ln (레벨 1 이상인 줄마다 더함, 없는 이름은 0)
-        constexpr std::array<KeyedValue, 5> STONE_NAME_LN{ {   // 문구 키 5개
-            KeyedValue{ "기습의 대가", -0.001376 },   // 키 → 값
-            KeyedValue{ "돌격대장", 0.001539 },   // 키 → 값
-            KeyedValue{ "아드레날린", -6.5e-05 },   // 키 → 값
-            KeyedValue{ "원한", 0.001507 },   // 키 → 값
-            KeyedValue{ "질량 증가", 0.001336 },   // 키 → 값
-        } };   // STONE_NAME_LN 끝
+        // 스톤 각인 레벨 1 효과 (각인 이름 → 같은 이름 각인서에 더하는 비율, 표에 없는 이름은 0)
+        constexpr std::array<KeyedValue, 25> STONE_LEVEL_ONE{ {   // 문구 키 25개
+            KeyedValue{ "결투의 대가", 0.025885 },   // 키 → 값
+            KeyedValue{ "구슬동자", 0.006767 },   // 키 → 값
+            KeyedValue{ "기습의 대가", 0.027093 },   // 키 → 값
+            KeyedValue{ "달인의 저력", 0.028466 },   // 키 → 값
+            KeyedValue{ "돌격대장", 0.029982 },   // 키 → 값
+            KeyedValue{ "마나 효율 증가", 0.030135 },   // 키 → 값
+            KeyedValue{ "마나의 흐름", 0.0 },   // 키 → 값
+            KeyedValue{ "바리케이드", 0.0317 },   // 키 → 값
+            KeyedValue{ "부러진 뼈", 0.00905 },   // 키 → 값
+            KeyedValue{ "분쇄의 주먹", 0.000935 },   // 키 → 값
+            KeyedValue{ "속전속결", 0.024402 },   // 키 → 값
+            KeyedValue{ "슈퍼 차지", 0.026464 },   // 키 → 값
+            KeyedValue{ "승부사", 0.003342 },   // 키 → 값
+            KeyedValue{ "시선 집중", 0.011975 },   // 키 → 값
+            KeyedValue{ "아드레날린", 0.02718 },   // 키 → 값
+            KeyedValue{ "안정된 상태", 0.030309 },   // 키 → 값
+            KeyedValue{ "약자 무시", 0.024992 },   // 키 → 값
+            KeyedValue{ "에테르 포식자", 0.032926 },   // 키 → 값
+            KeyedValue{ "예리한 둔기", 0.027384 },   // 키 → 값
+            KeyedValue{ "원한", 0.032177 },   // 키 → 값
+            KeyedValue{ "저주받은 인형", 0.028944 },   // 키 → 값
+            KeyedValue{ "정밀 단도", 0.022695 },   // 키 → 값
+            KeyedValue{ "질량 증가", 0.030568 },   // 키 → 값
+            KeyedValue{ "추진력", 0.0209 },   // 키 → 값
+            KeyedValue{ "타격의 대가", 0.028992 },   // 키 → 값
+        } };   // STONE_LEVEL_ONE 끝
+        constexpr std::array<double, 5> STONE_LEVEL_SCALE{ { 0.0, 1.0, 1.25, 1.75, 2.0 } };   // 스톤 레벨 0 ~ 4 → 레벨 1 효과 대비 배수
+        constexpr StoneSumBonus STONE_SUM_BONUS{ 5, 0.011873 };   // 스톤 두 줄 레벨 합 보너스 (최소 합, ln)
         // 스톤 각인 이름 선택지
-        constexpr std::array<std::string_view, 8> STONE_CANDIDATES{ {   // 선택지 8개
+        constexpr std::array<std::string_view, 26> STONE_CANDIDATES{ {   // 선택지 26개
             "없음",   // 선택지
-            "아드레날린",   // 선택지
+            "결투의 대가",   // 선택지
+            "구슬동자",   // 선택지
             "기습의 대가",   // 선택지
-            "원한",   // 선택지
-            "예리한 둔기",   // 선택지
-            "저주받은 인형",   // 선택지
+            "달인의 저력",   // 선택지
             "돌격대장",   // 선택지
+            "마나 효율 증가",   // 선택지
+            "마나의 흐름",   // 선택지
+            "바리케이드",   // 선택지
+            "부러진 뼈",   // 선택지
+            "분쇄의 주먹",   // 선택지
+            "속전속결",   // 선택지
+            "슈퍼 차지",   // 선택지
+            "승부사",   // 선택지
+            "시선 집중",   // 선택지
+            "아드레날린",   // 선택지
+            "안정된 상태",   // 선택지
+            "약자 무시",   // 선택지
+            "에테르 포식자",   // 선택지
+            "예리한 둔기",   // 선택지
+            "원한",   // 선택지
+            "저주받은 인형",   // 선택지
+            "정밀 단도",   // 선택지
             "질량 증가",   // 선택지
+            "추진력",   // 선택지
+            "타격의 대가",   // 선택지
         } };   // STONE_CANDIDATES 끝
         // 각인서 (ln = 기본 + (최대 - 기본) / 4 × 각인서 레벨, 효과 없는 각인은 0)
         constexpr std::array<EngravingBook, 47> ENGRAVING_BOOKS{ {   // 각인서 47개
@@ -1023,7 +1018,7 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
             "탈출의 명수",   // 선택지
             "폭발물 전문가",   // 선택지
         } };   // BOOK_CANDIDATES 끝
-        constexpr LevelRange LEGEND_PENALTY{ -0.0195, -0.032 };   // 전설 각인서 감점 (레벨 0, 레벨 4)
+        constexpr LevelRange LEGEND_RATIO{ 0.861525, 0.976897 };   // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0, 레벨 4)
 
         // 아바타 한 부위의 ln 배율 (등급 이름 → 값)
         constexpr std::array<KeyedValue, 3> AVATAR_LN{ {   // 문구 키 3개
@@ -1296,22 +1291,22 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         return BRACELET_OPTION_CANDIDATES;   // 팔찌 옵션 선택지 반환
     }
 
-    // 스톤 두 줄 조합 ln 표
-    std::span<const KeyedValue> GetStoneCells() noexcept
+    // 스톤 각인 이름별 레벨 1 효과 비율
+    std::span<const KeyedValue> GetStoneLevelOne() noexcept
     {
-        return STONE_CELLS;   // 스톤 두 줄 조합 ln 표 반환
+        return STONE_LEVEL_ONE;   // 스톤 각인 이름별 레벨 1 효과 비율 반환
     }
 
-    // 스톤 1번 줄이 없을 때 2번 줄 레벨별 평균 ln
-    std::span<const KeyedValue> GetStoneUnstable() noexcept
+    // 스톤 레벨별 배수
+    std::span<const double> GetStoneLevelScale() noexcept
     {
-        return STONE_UNSTABLE;   // 스톤 1번 줄이 없을 때 2번 줄 레벨별 평균 ln 반환
+        return STONE_LEVEL_SCALE;   // 스톤 레벨별 배수 반환
     }
 
-    // 스톤 각인 이름별 보정 ln
-    std::span<const KeyedValue> GetStoneNameLn() noexcept
+    // 스톤 두 줄 레벨 합 보너스
+    const StoneSumBonus& GetStoneSumBonus() noexcept
     {
-        return STONE_NAME_LN;   // 스톤 각인 이름별 보정 ln 반환
+        return STONE_SUM_BONUS;   // 스톤 두 줄 레벨 합 보너스 반환
     }
 
     // 스톤 각인 이름 선택지
@@ -1332,10 +1327,10 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         return BOOK_CANDIDATES;   // 각인서 이름 선택지 반환
     }
 
-    // 전설 각인서 감점
-    const LevelRange& GetLegendPenalty() noexcept
+    // 전설 각인서 효과 비율
+    const LevelRange& GetLegendRatio() noexcept
     {
-        return LEGEND_PENALTY;   // 전설 각인서 감점 반환
+        return LEGEND_RATIO;   // 전설 각인서 효과 비율 반환
     }
 
     // 아바타 등급별 ln

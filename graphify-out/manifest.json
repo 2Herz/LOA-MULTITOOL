@@ -636,9 +636,9 @@
     "semantic_hash": "fbc636189be753c9224214700f2755f9"
   },
   "tools/Export-CombatData.py": {
-    "mtime": 1794242326.8072863,
-    "seen": 1794427549.652151,
-    "ast_hash": "56d3bf0f0b09951ebcfc5e6e6f7df2aa",
+    "mtime": 1794522468.50358,
+    "seen": 1794522715.538043,
+    "ast_hash": "45c87ce10d1b624f215a837b5ff555e6",
     "semantic_hash": ""
   },
   "tools/Set-RemoteSwitch.ps1": {
@@ -654,21 +654,21 @@
     "semantic_hash": "3f0ef05426f8012213355e7bc02dfe98"
   },
   "README.md": {
-    "mtime": 1794427736.9169476,
-    "seen": 1794427848.4597483,
-    "ast_hash": "87968f5ae57cae19cfb0c06008e4100c",
+    "mtime": 1794524965.9164815,
+    "seen": 1794524979.5217648,
+    "ast_hash": "82690702a79789e2100777ad4765a347",
     "semantic_hash": ""
   },
   "Visual.html": {
-    "mtime": 1794433716.8911498,
-    "seen": 1794521642.3011565,
-    "ast_hash": "c03b17cc87d804ffa665b5713a9fc7dd",
+    "mtime": 1794522722.7641132,
+    "seen": 1794524979.5217688,
+    "ast_hash": "ae7759863bb9edfd9a0839fa4d75c333",
     "semantic_hash": ""
   },
   "\ud328\uce58\ub178\ud2b8.md": {
-    "mtime": 1794427736.3851113,
-    "seen": 1794427848.4597583,
-    "ast_hash": "737a2e4ae6fb8cf866d7fde882154a32",
+    "mtime": 1794524965.915481,
+    "seen": 1794524979.5217726,
+    "ast_hash": "b081f61c70667c70a110970acea945c8",
     "semantic_hash": ""
   },
   "API_Key_Dialog.ixx": {
@@ -686,9 +686,9 @@
     "language": "language=.cpp"
   },
   "APP_Constants.ixx": {
-    "mtime": 1794520964.8879628,
-    "seen": 1794521642.300169,
-    "ast_hash": "fd19f1e9d319b4fe92c6d2723da6e1f4",
+    "mtime": 1794524965.9144812,
+    "seen": 1794524979.5207598,
+    "ast_hash": "bcf43940580063a724b58781b8736750",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1509,15 +1509,15 @@
     "language": "language=.cpp"
   },
   "Combat_Coefficient_Data.cpp": {
-    "mtime": 1794242327.191994,
-    "seen": 1794427549.6485045,
-    "ast_hash": "18531902b0a44a38253d089ce9e4805d",
+    "mtime": 1794522642.9051034,
+    "seen": 1794522715.5372982,
+    "ast_hash": "2cad274970d68ee783eb9ca7b774583b",
     "semantic_hash": ""
   },
   "Combat_Coefficient_Data.ixx": {
-    "mtime": 1794177870.5370252,
-    "seen": 1794178441.0669677,
-    "ast_hash": "f3dc8bf778b871f8e35f8ce3d1f46388",
+    "mtime": 1794522481.6565604,
+    "seen": 1794522715.5373032,
+    "ast_hash": "78579f5c2545d8a9608f823e94474306",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1600,15 +1600,15 @@
     "language": "language=.cpp"
   },
   "data/CombatCoefficients.json": {
-    "mtime": 1794178140.2651446,
-    "seen": 1794178441.0716562,
-    "ast_hash": "19b1d13d695e883b86d7aa9aba23fb17",
+    "mtime": 1794522642.668673,
+    "seen": 1794522715.5380306,
+    "ast_hash": "7dc691155d42ca7ef437f8a3c2c21c30",
     "semantic_hash": ""
   },
   "Combat_Extra_Component.cpp": {
-    "mtime": 1794177855.81091,
-    "seen": 1794178441.0669746,
-    "ast_hash": "60882b1022a25ec61e1f558585751ccc",
+    "mtime": 1794522529.4276967,
+    "seen": 1794522715.5373075,
+    "ast_hash": "4982ba10a153e9aea68daa8b5af8b917",
     "semantic_hash": ""
   },
   "Combat_Extra_Component.ixx": {

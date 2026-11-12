@@ -221,9 +221,10 @@ def build_extra(data):
 
     # ----- 스톤 · 각인서 -----
     stone = find_component(components, STONE_ID)
-    consts.append(format_keyed('STONE_CELLS', list(stone['C_ln'].items()), '스톤 두 줄 조합 ln (키 = D(다른 각인) 또는 S(같은 각인) + 1번 줄 레벨 + 2번 줄 레벨)'))
-    consts.append(format_keyed('STONE_UNSTABLE', list(stone['SlotOneNoneMeanLn'].items()), '스톤 1번 줄이 없을 때 2번 줄 레벨별 평균 ln (불안정, 근사)'))
-    consts.append(format_keyed('STONE_NAME_LN', list(stone.get('NameLn', {}).items()), '스톤 각인 이름별 보정 ln (레벨 1 이상인 줄마다 더함, 없는 이름은 0)'))
+    consts.append(format_keyed('STONE_LEVEL_ONE', list(stone['LevelOne'].items()), '스톤 각인 레벨 1 효과 (각인 이름 → 같은 이름 각인서에 더하는 비율, 표에 없는 이름은 0)'))
+    scale = stone['LevelScale']
+    consts.append(f'{INDENT * 2}constexpr std::array<double, {len(scale)}> STONE_LEVEL_SCALE{{ {{ {", ".join(format_number(float(v)) for v in scale)} }} }};   // 스톤 레벨 0 ~ 4 → 레벨 1 효과 대비 배수')
+    consts.append(f'{INDENT * 2}constexpr StoneSumBonus STONE_SUM_BONUS{{ {int(stone["SumBonusMinLevel"])}, {format_number(stone["SumBonusLn"])} }};   // 스톤 두 줄 레벨 합 보너스 (최소 합, ln)')
     consts.append(format_strings('STONE_CANDIDATES', cands['StoneEngraving'], '스톤 각인 이름 선택지'))
     book = find_component(components, BOOK_ID)
     consts.append(f'{INDENT * 2}// 각인서 (ln = 기본 + (최대 - 기본) / 4 × 각인서 레벨, 효과 없는 각인은 0)')
@@ -233,8 +234,8 @@ def build_extra(data):
         consts.append(f'{INDENT * 3}EngravingBook{{ {cpp_string(name)}, {format_number(base_value)}, {format_number(top_value)} }},   // 이름 · 레벨 0 ln · 레벨 4 ln')
     consts.append(f'{INDENT * 2}}} }};   // ENGRAVING_BOOKS 끝')
     consts.append(format_strings('BOOK_CANDIDATES', cands['EngravingBook'], '각인서 이름 선택지'))
-    penalty = book['GradeLegendPenaltyLn']
-    consts.append(f'{INDENT * 2}constexpr LevelRange LEGEND_PENALTY{{ {format_number(penalty["X0"])}, {format_number(penalty["X4"])} }};   // 전설 각인서 감점 (레벨 0, 레벨 4)')
+    legend = book['GradeLegendRatio']
+    consts.append(f'{INDENT * 2}constexpr LevelRange LEGEND_RATIO{{ {format_number(legend["X0"])}, {format_number(legend["X4"])} }};   // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0, 레벨 4)')
     consts.append('')
 
     # ----- 아바타 -----
@@ -303,13 +304,13 @@ def build_extra(data):
         ('std::span<const KeyedValue> GetBraceletOptions() noexcept', 'BRACELET_OPTIONS', '팔찌 옵션 ln 표'),
         ('std::span<const BraceletWeaponLine> GetBraceletWeaponLines() noexcept', 'BRACELET_WEAPON_LINES', '무기 공격력이 들어간 팔찌 옵션 줄'),
         ('std::span<const std::string_view> GetBraceletOptionCandidates() noexcept', 'BRACELET_OPTION_CANDIDATES', '팔찌 옵션 선택지'),
-        ('std::span<const KeyedValue> GetStoneCells() noexcept', 'STONE_CELLS', '스톤 두 줄 조합 ln 표'),
-        ('std::span<const KeyedValue> GetStoneUnstable() noexcept', 'STONE_UNSTABLE', '스톤 1번 줄이 없을 때 2번 줄 레벨별 평균 ln'),
-        ('std::span<const KeyedValue> GetStoneNameLn() noexcept', 'STONE_NAME_LN', '스톤 각인 이름별 보정 ln'),
+        ('std::span<const KeyedValue> GetStoneLevelOne() noexcept', 'STONE_LEVEL_ONE', '스톤 각인 이름별 레벨 1 효과 비율'),
+        ('std::span<const double> GetStoneLevelScale() noexcept', 'STONE_LEVEL_SCALE', '스톤 레벨별 배수'),
+        ('const StoneSumBonus& GetStoneSumBonus() noexcept', 'STONE_SUM_BONUS', '스톤 두 줄 레벨 합 보너스'),
         ('std::span<const std::string_view> GetStoneCandidates() noexcept', 'STONE_CANDIDATES', '스톤 각인 이름 선택지'),
         ('std::span<const EngravingBook> GetEngravingBooks() noexcept', 'ENGRAVING_BOOKS', '각인서 효과 표'),
         ('std::span<const std::string_view> GetBookCandidates() noexcept', 'BOOK_CANDIDATES', '각인서 이름 선택지'),
-        ('const LevelRange& GetLegendPenalty() noexcept', 'LEGEND_PENALTY', '전설 각인서 감점'),
+        ('const LevelRange& GetLegendRatio() noexcept', 'LEGEND_RATIO', '전설 각인서 효과 비율'),
         ('std::span<const KeyedValue> GetAvatarLn() noexcept', 'AVATAR_LN', '아바타 등급별 ln'),
         ('std::span<const double> GetArkCoreAncientGains() noexcept', 'ARK_CORE_ANCIENT_GAINS', '코어 번호별 고대 등급 추가 ln'),
         ('std::span<const ArkCorePoint> GetArkCorePoints() noexcept', 'ARK_CORE_POINTS', '코어 의지력 포인트별 ln 표'),
