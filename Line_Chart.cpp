@@ -160,11 +160,11 @@ namespace LostArkMultiTool::Views::UI
     void LineChart::Render(Core::Renderer& renderer)
     {
         const Core::RectF& bounds{ GetBounds() };
-        renderer.FillRect(bounds, Theme::BACKGROUND_COLOR);
-        renderer.DrawRect(bounds, Theme::GRID_LINE_COLOR, Theme::BORDER_WIDTH);
+        renderer.FillRoundedRect(bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // v1.5.0: 그래프도 카드 모양 (바탕)
+        renderer.DrawRoundedRect(bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리
 
         const Core::RectF titleRect{ bounds.m_left + CHART_PADDING, bounds.m_top, bounds.m_right - CHART_PADDING, bounds.m_top + TITLE_HEIGHT };
-        renderer.DrawString(m_title, titleRect, Theme::TEXT_COLOR, TITLE_STYLE);
+        renderer.DrawString(m_title, titleRect, Theme::HEADER_TEXT_COLOR, TITLE_STYLE);   // 카드 제목처럼 밝은 글자
 
         UpdateLayout(renderer);
         if (m_layout.m_positions.empty()) return;   // 기록이 없거나 그래프가 너무 작음 → 제목(안내 문구)만

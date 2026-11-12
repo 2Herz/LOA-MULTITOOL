@@ -313,11 +313,12 @@ namespace LostArkMultiTool::Views
     // 묶음 상자: 둥근 테두리 + 왼쪽 위 제목
     void EngravingFinderView::RenderPanel(Core::Renderer& renderer) const
     {
-        renderer.DrawRoundedRect(m_panelBounds, Theme::PANEL_CORNER_RADIUS, Theme::GRID_LINE_COLOR, Theme::BORDER_WIDTH);
+        renderer.FillRoundedRect(m_panelBounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // 카드 바탕 (배경보다 살짝 밝게)
+        renderer.DrawRoundedRect(m_panelBounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리
 
         const Core::RectF titleRect{ m_panelBounds.m_left + PANEL_TITLE_LEFT, m_panelBounds.m_top,
             m_panelBounds.m_right - PANEL_TITLE_LEFT, m_panelBounds.m_top + Theme::PANEL_TITLE_HEIGHT };
-        renderer.DrawString(PANEL_TITLE, titleRect, Theme::TEXT_COLOR, PANEL_TITLE_STYLE);
+        renderer.DrawString(PANEL_TITLE, titleRect, Theme::HEADER_TEXT_COLOR, PANEL_TITLE_STYLE);
     }
 
     void EngravingFinderView::NotifyFilterChanged() const

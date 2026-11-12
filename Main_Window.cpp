@@ -30,8 +30,8 @@ namespace LostArkMultiTool::Views
         constexpr DWORD WINDOW_EX_STYLE{ 0 };
 
         constexpr float DEFAULT_DPI{ 96.0f };            // 배율 100%일 때 DPI (DIP 기준)
-        constexpr int MIN_WINDOW_WIDTH_DIP{ 960 };       // 계산기 도구 막대 · 표 · 그래프가 찌그러지지 않는 최소 크기
-        constexpr int MIN_WINDOW_HEIGHT_DIP{ 640 };
+        constexpr int MIN_WINDOW_WIDTH_DIP{ 1156 };       // v1.5.0: 왼쪽 메뉴 · 여백만큼 늘림, 계산기 도구 막대 · 표 · 그래프가 찌그러지지 않는 최소 크기
+        constexpr int MIN_WINDOW_HEIGHT_DIP{ 736 };   // v1.5.0: 왼쪽 메뉴(180) · 위 막대 + 머리말(140)만큼 늘려 탭 내용 최소 크기는 예전과 같게
 
         constexpr DWORD DARK_TITLE_BAR_ATTRIBUTE{ 20 };  // DWMWA_USE_IMMERSIVE_DARK_MODE (예전 SDK에는 이름이 없어 값으로 지정)
 

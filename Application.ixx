@@ -50,7 +50,7 @@ export namespace LostArkMultiTool::Views
         enum class PointerOwner
         {
             POINTER_NONE,
-            POINTER_HEADER,   // 탭 막대
+            POINTER_HEADER,   // 왼쪽 메뉴 · 위 막대
             POINTER_TOOL      // 탭 내용
         };
 
@@ -79,15 +79,16 @@ export namespace LostArkMultiTool::Views
         // ===== 프레임 =====
         void Update(double deltaSeconds);
         void Render();
-        void RenderTabBar();
+        void RenderSidebar();      // 왼쪽 메뉴 (로고 · 탭 목록 · API 키 설정 · API 상태)
+        void RenderTopBar();       // 위 막대 (경로 표시 "멀티툴 › 탭 제목" · 버전)
+        void RenderPageHeader();   // 탭 내용 위 머리말 (영문 소제목 · 큰 제목 · 설명)
         void LayoutHeader();
 
-        [[nodiscard]] Core::RectF GetTabRect(std::size_t index) const noexcept;
-        [[nodiscard]] float GetTabWidth() const noexcept;   // 탭 하나의 너비 (창이 좁으면 오른쪽 버튼을 가리지 않게 줄어듦)
+        [[nodiscard]] Core::RectF GetTabRect(std::size_t index) const noexcept;   // 왼쪽 메뉴에서 탭 항목 하나의 영역
         [[nodiscard]] Core::RectF GetContentRect() const noexcept;
         [[nodiscard]] Core::RectF GetScreenRect() const noexcept;
         [[nodiscard]] std::optional<std::size_t> FindTabAt(float x, float y) const noexcept;
-        [[nodiscard]] static bool IsInHeader(float y) noexcept;
+        [[nodiscard]] bool IsInHeader(float x, float y) const noexcept;   // 왼쪽 메뉴 · 위 막대 · 페이지 머리말 안인지 (탭 내용 밖)
         [[nodiscard]] Core::ToolManager& GetActiveTool() const noexcept;
 
         std::array<std::reference_wrapper<Core::ToolManager>, TOOL_COUNT> m_tools;   // 탭 순서 (매니저는 싱글톤이 소유)
@@ -103,7 +104,7 @@ export namespace LostArkMultiTool::Views
         Core::BackgroundTask<std::optional<Models::ServerConfig>> m_configTask;   // m_configChecker보다 먼저 해제 (끝날 때까지 기다림)
         Core::IntervalTimer m_configTimer;                  // 실행 중 점검 스위치 확인 (30분)
         UI::Dialog* m_serverCheckDialog{};                  // 실행 직후 확인 대화상자 (m_notifier가 소유, 닫으면 비움)
-        UI::ControlHost m_headerHost;                       // 탭 막대 오른쪽 버튼
+        UI::ControlHost m_headerHost;                       // 왼쪽 메뉴 아래 버튼 (API 키 설정)
         UI::Button* m_apiKeyButton{};                       // m_headerHost가 소유
 
         std::size_t m_activeIndex{};
@@ -116,7 +117,7 @@ export namespace LostArkMultiTool::Views
         bool m_isAPIKeyDialogOpen{};                        // API 키 창이 두 번 열리지 않게
         bool m_isStartupCheck{};                            // 지금 진행 중인 원격 설정 확인이 실행 직후 확인인지
         bool m_isMaintenanceLocked{};                       // 점검 중 → 안내만 보여 주고 종료 (탭 화면 갱신 · 자동 갱신 멈춤)
-        float m_indicatorPosition{};                        // 탭 밑줄 위치 (탭 번호 단위, 선택한 탭을 부드럽게 따라감)
+        float m_indicatorPosition{};                        // 왼쪽 메뉴 선택 표시 위치 (탭 번호 단위, 선택한 탭을 부드럽게 따라감)
         float m_contentFade{};                              // 탭을 바꾼 직후 내용 영역을 덮는 배경색 투명도 (1 → 0)
     };
 }

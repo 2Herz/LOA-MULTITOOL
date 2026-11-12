@@ -618,12 +618,13 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
         for (const Panel* panel : panels)  // 상자마다
         {
-            renderer.DrawRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::GRID_LINE_COLOR, Theme::BORDER_WIDTH);  // 테두리 그리기
+            renderer.FillRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // 카드 바탕 (배경보다 살짝 밝게)
+            renderer.DrawRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리
             if (panel->m_title.empty()) continue;  // 제목이 없으면 건너뜀
 
             const Core::RectF titleRect{ panel->m_bounds.m_left + PANEL_TITLE_LEFT, panel->m_bounds.m_top,  // 제목 영역
                 panel->m_bounds.m_right - PANEL_TITLE_LEFT, panel->m_bounds.m_top + Theme::PANEL_TITLE_HEIGHT };
-            renderer.DrawString(panel->m_title, titleRect, Theme::TEXT_COLOR, PANEL_TITLE_STYLE);  // 제목 글자 그리기
+            renderer.DrawString(panel->m_title, titleRect, Theme::HEADER_TEXT_COLOR, PANEL_TITLE_STYLE);  // 제목 글자 그리기
         }
     }
 }

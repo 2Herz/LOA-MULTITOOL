@@ -36,10 +36,10 @@
     "semantic_hash": "d43f5df29d5d4eae14f24212f47b6977"
   },
   "Accessory_Finder_View.cpp": {
-    "mtime": 1793940483.6303947,
-    "seen": 1794002445.6220872,
-    "ast_hash": "25bc7ff3bc8f35da4bc86e097ce3a7a6",
-    "semantic_hash": "25bc7ff3bc8f35da4bc86e097ce3a7a6"
+    "mtime": 1794521293.8257072,
+    "seen": 1794521642.3001916,
+    "ast_hash": "b25ce2d0d43fc52bac1f3825fae6a26b",
+    "semantic_hash": ""
   },
   "Accessory_Search_Service.cpp": {
     "mtime": 1794144620.352754,
@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "Application.cpp": {
-    "mtime": 1794144376.7220912,
-    "seen": 1794144548.2187955,
-    "ast_hash": "2ad095e83cff0752364833d106055a8a",
+    "mtime": 1794521565.2307227,
+    "seen": 1794521642.300219,
+    "ast_hash": "ae71d234ab19d80b1f670cab5f15cba4",
     "semantic_hash": ""
   },
   "Ark_Gem_Finder_Manager.cpp": {
@@ -60,9 +60,9 @@
     "semantic_hash": ""
   },
   "Ark_Gem_Finder_View.cpp": {
-    "mtime": 1794144620.367994,
-    "seen": 1794146512.273425,
-    "ast_hash": "c8754715911c31742ef52c2a9c135800",
+    "mtime": 1794521293.8279097,
+    "seen": 1794521642.3002365,
+    "ast_hash": "d1b9d90a87eccd331560f843c56218e4",
     "semantic_hash": ""
   },
   "Ark_Gem_Price_Service.cpp": {
@@ -114,10 +114,10 @@
     "semantic_hash": ""
   },
   "Button.cpp": {
-    "mtime": 1793829674.0113664,
-    "seen": 1794002445.6221027,
-    "ast_hash": "0767785b9e18af5ff1243f3c6eaf0edc",
-    "semantic_hash": "0767785b9e18af5ff1243f3c6eaf0edc"
+    "mtime": 1794521023.5554104,
+    "seen": 1794521642.3003325,
+    "ast_hash": "6421898ac65463e54e36ef45aa8fb5d4",
+    "semantic_hash": ""
   },
   "Calculator_Manager.cpp": {
     "mtime": 1793926096.0966632,
@@ -144,10 +144,10 @@
     "semantic_hash": "3d5e3c4264f3392985c535f4b78e0bd6"
   },
   "Check_Box.cpp": {
-    "mtime": 1793829970.0298479,
-    "seen": 1794002445.6221085,
-    "ast_hash": "b777601e62ee81ea75adbbc8a119aa04",
-    "semantic_hash": "b777601e62ee81ea75adbbc8a119aa04"
+    "mtime": 1794521023.8345299,
+    "seen": 1794521642.300381,
+    "ast_hash": "51d8c44f180dfef4116a274299cef3c3",
+    "semantic_hash": ""
   },
   "Combo_Box.cpp": {
     "mtime": 1793940434.6434765,
@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "Engraving_Finder_View.cpp": {
-    "mtime": 1794144620.456499,
-    "seen": 1794146512.2750063,
-    "ast_hash": "368eb837bc06b992860cc35ded7f7a17",
+    "mtime": 1794521293.8339703,
+    "seen": 1794521642.3005414,
+    "ast_hash": "5902af3e55779c7eac0ad064f8714101",
     "semantic_hash": ""
   },
   "Engraving_Price_Service.cpp": {
@@ -246,10 +246,10 @@
     "semantic_hash": "198b41f1cec27f75db27751b694d6413"
   },
   "Gem_Finder_View.cpp": {
-    "mtime": 1793885510.4075878,
-    "seen": 1794002445.6221268,
-    "ast_hash": "1450839cab7384d95af2c12401d31ed7",
-    "semantic_hash": "1450839cab7384d95af2c12401d31ed7"
+    "mtime": 1794521293.837044,
+    "seen": 1794521642.300596,
+    "ast_hash": "97ca68a34591dde6ed907a743898f3cf",
+    "semantic_hash": ""
   },
   "Gem_Price_Service.cpp": {
     "mtime": 1793880902.3927007,
@@ -354,10 +354,10 @@
     "semantic_hash": "cbfc9db838fab01ba1f55f0241bbb000"
   },
   "Line_Chart.cpp": {
-    "mtime": 1793940220.4838958,
-    "seen": 1794002445.6221468,
-    "ast_hash": "7b4dff05f00864c7a7a83a148b6d8667",
-    "semantic_hash": "7b4dff05f00864c7a7a83a148b6d8667"
+    "mtime": 1794521314.386208,
+    "seen": 1794521642.3007443,
+    "ast_hash": "a90e4c3e5ab52a3da4c60c8db4e49ec8",
+    "semantic_hash": ""
   },
   "Local_Time.cpp": {
     "mtime": 1793942508.2395403,
@@ -366,10 +366,10 @@
     "semantic_hash": "7817e506686f0ca185dd737ca7e78445"
   },
   "Main_Window.cpp": {
-    "mtime": 1794154869.5051029,
-    "seen": 1794174986.4317667,
-    "ast_hash": "843fbcea16857b5f9f2fc952cc9d75bd",
-    "semantic_hash": "843fbcea16857b5f9f2fc952cc9d75bd"
+    "mtime": 1794521293.8492613,
+    "seen": 1794521642.300759,
+    "ast_hash": "3689553ef3872ed4399109660301f4a9",
+    "semantic_hash": ""
   },
   "Market_API.cpp": {
     "mtime": 1793804219.0973058,
@@ -468,10 +468,10 @@
     "semantic_hash": ""
   },
   "Refine_Book_Finder_View.cpp": {
-    "mtime": 1793925612.480806,
-    "seen": 1794002445.62217,
-    "ast_hash": "2c929f32e52c9bd700c91912c4d0c426",
-    "semantic_hash": "2c929f32e52c9bd700c91912c4d0c426"
+    "mtime": 1794521293.8380437,
+    "seen": 1794521642.3008962,
+    "ast_hash": "524980e9ca7bfba725023b3dc30c4310",
+    "semantic_hash": ""
   },
   "Refine_Book_Price_Service.cpp": {
     "mtime": 1794144620.584426,
@@ -504,9 +504,9 @@
     "semantic_hash": ""
   },
   "Refine_Simulator_View.cpp": {
-    "mtime": 1794147025.2033792,
-    "seen": 1794174986.4320514,
-    "ast_hash": "93968a9904291903aace98a3978ee324",
+    "mtime": 1794521293.8402243,
+    "seen": 1794521642.3009517,
+    "ast_hash": "44d1e15e47a805378b92ac9e26b22e7e",
     "semantic_hash": ""
   },
   "Refresh_Scheduler.cpp": {
@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "Visual.html": {
-    "mtime": 1794427411.5141366,
-    "seen": 1794427549.6521764,
-    "ast_hash": "93f2a892e56967b7b54a55d386fcacdd",
+    "mtime": 1794433716.8911498,
+    "seen": 1794521642.3011565,
+    "ast_hash": "c03b17cc87d804ffa665b5713a9fc7dd",
     "semantic_hash": ""
   },
   "\ud328\uce58\ub178\ud2b8.md": {
@@ -686,9 +686,9 @@
     "language": "language=.cpp"
   },
   "APP_Constants.ixx": {
-    "mtime": 1794427558.3779562,
-    "seen": 1794427848.4579186,
-    "ast_hash": "f726c22ab4a7b4bc55e85b0e8a391721",
+    "mtime": 1794520964.8879628,
+    "seen": 1794521642.300169,
+    "ast_hash": "fd19f1e9d319b4fe92c6d2723da6e1f4",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -735,10 +735,10 @@
     "language": "language=.cpp"
   },
   "Application.ixx": {
-    "mtime": 1794065450.6238995,
-    "seen": 1794065944.039012,
-    "ast_hash": "921617f90c5dad82271ac09e60db943a",
-    "semantic_hash": "921617f90c5dad82271ac09e60db943a",
+    "mtime": 1794521067.3290012,
+    "seen": 1794521642.3002229,
+    "ast_hash": "efcbe80950a8f8808e911e0ef13a7314",
+    "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Ark_Gem_Finder_Manager.ixx": {
@@ -1407,10 +1407,10 @@
     "language": "language=.cpp"
   },
   "Theme.ixx": {
-    "mtime": 1793940443.921031,
-    "seen": 1794003452.296014,
-    "ast_hash": "060ba325d75b951414a614497485d885",
-    "semantic_hash": "060ba325d75b951414a614497485d885",
+    "mtime": 1794521007.211533,
+    "seen": 1794521642.301052,
+    "ast_hash": "1999c46cd3a63ba7ae914031b65ae000",
+    "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Toast_Host.ixx": {
@@ -1574,9 +1574,9 @@
     "language": "language=.cpp"
   },
   "Combat_Simulator_View.cpp": {
-    "mtime": 1794144585.3567028,
-    "seen": 1794146512.2748666,
-    "ast_hash": "742b674ad3ffc61a36992194fbdc1b07",
+    "mtime": 1794521293.8311987,
+    "seen": 1794521642.3004544,
+    "ast_hash": "06247abd0f465fd66e4ec66c9fdb42a7",
     "semantic_hash": ""
   },
   "Combat_Simulator_View.ixx": {

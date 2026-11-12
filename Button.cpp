@@ -65,8 +65,10 @@ namespace LostArkMultiTool::Views::UI
             renderer.DrawRoundedRect(bounds, Theme::CORNER_RADIUS, Theme::FOCUS_BORDER_COLOR, Theme::FOCUS_BORDER_WIDTH);
         }
 
-        const Core::Color& textColor{ IsEnabled() ? Theme::HEADER_TEXT_COLOR : Theme::MUTED_TEXT_COLOR };
-        renderer.DrawString(m_text, bounds, textColor, BUTTON_TEXT_STYLE);
+        const bool isPrimary{ m_style == ButtonStyle::BUTTON_PRIMARY };   // 주요 버튼인지 (청록 바탕 → 어두운 글자)
+        const Core::Color& enabledColor{ isPrimary ? Theme::PRIMARY_TEXT_COLOR : Theme::HEADER_TEXT_COLOR };   // 켜진 버튼 글자색
+        const Core::Color& textColor{ IsEnabled() ? enabledColor : Theme::MUTED_TEXT_COLOR };   // 꺼져 있으면 회색 글자
+        renderer.DrawString(m_text, bounds, textColor, BUTTON_TEXT_STYLE);   // 버튼 글자 그리기
     }
 
     void Button::OnMouseUp(const Core::MouseButtonEvent& /*event*/, bool isInside)

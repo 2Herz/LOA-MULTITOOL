@@ -51,15 +51,53 @@ namespace LostArkMultiTool::Views
         constexpr int WINDOW_WIDTH{ 1920 };    // 처음 창 안쪽 크기 (DIP)
         constexpr int WINDOW_HEIGHT{ 1080 };
 
-        // ===== 탭 막대 (DIP) =====
-        constexpr float TAB_BAR_HEIGHT{ 44.0f };
-        constexpr float TAB_WIDTH{ 180.0f };            // 탭 하나의 최대 너비 (탭이 많고 창이 좁으면 GetTabWidth가 줄임)
-        constexpr float TAB_INDICATOR_HEIGHT{ 3.0f };   // 선택한 탭 밑줄 두께
-        constexpr float TAB_DIVIDER_MARGIN{ 12.0f };    // 탭 사이 구분선의 위아래 여백
-        constexpr float LINE_WIDTH{ 1.0f };
-        constexpr float HEADER_BUTTON_WIDTH{ 110.0f };  // 오른쪽 "API 키 설정" 버튼
-        constexpr float HEADER_BUTTON_MARGIN{ 7.0f };
-        constexpr float HEADER_MARGIN_SIDES{ 2.0f };    // 버튼 양옆 여백 수 (탭 너비 계산용)
+        // ===== 왼쪽 메뉴 (DIP) =====
+        constexpr float SIDEBAR_WIDTH{ 180.0f };         // 왼쪽 메뉴 너비 (예전 위쪽 탭 막대를 대신함)
+        constexpr float SIDEBAR_PADDING{ 10.0f };        // 메뉴 항목 좌우 여백
+        constexpr float LOGO_ICON_SIZE{ 28.0f };         // 로고 청록 정사각형 아이콘 크기
+        constexpr float LOGO_ICON_LEFT{ 16.0f };         // 로고 아이콘 왼쪽 위치
+        constexpr float LOGO_TEXT_GAP{ 10.0f };          // 로고 아이콘과 글자 사이
+        constexpr float LOGO_TITLE_HEIGHT{ 16.0f };      // 로고 "LOA KIT" 줄 높이
+        constexpr float LOGO_SUBTITLE_HEIGHT{ 14.0f };   // 로고 "로스트아크 멀티툴" 줄 높이
+        constexpr float LOGO_ICON_RADIUS{ 6.0f };        // 로고 아이콘 모서리
+        constexpr float SECTION_LABEL_TOP{ 70.0f };      // "TOOLS" 구역 이름 위치
+        constexpr float SECTION_LABEL_HEIGHT{ 20.0f };   // "TOOLS" 줄 높이
+        constexpr float SECTION_LABEL_LEFT{ 16.0f };     // "TOOLS" 왼쪽 위치
+        constexpr float NAV_TOP{ 94.0f };                // 첫 메뉴 항목 위치
+        constexpr float NAV_ITEM_HEIGHT{ 36.0f };        // 메뉴 항목 하나 높이
+        constexpr float NAV_ITEM_GAP{ 2.0f };            // 메뉴 항목 사이 간격
+        constexpr float NAV_ITEM_RADIUS{ 6.0f };         // 메뉴 항목 바탕 모서리
+        constexpr float NAV_ICON_LEFT{ 8.0f };          // 항목 안 아이콘 왼쪽 위치
+        constexpr float NAV_ICON_WIDTH{ 20.0f };         // 아이콘 칸 너비
+        constexpr float NAV_TEXT_LEFT{ 34.0f };          // 항목 안 제목 왼쪽 위치
+        constexpr float NAV_CHEVRON_WIDTH{ 14.0f };      // 오른쪽 "›" 칸 너비 (선택 항목만 차지)
+        constexpr float NAV_TEXT_RIGHT_PADDING{ 4.0f };  // 선택 안 된 항목 제목 오른쪽 여백
+        constexpr float NAV_ACCENT_WIDTH{ 3.0f };        // 선택 항목 왼쪽 청록 막대 두께
+        constexpr float NAV_ACCENT_INSET{ 8.0f };        // 청록 막대 위아래 여백
+        constexpr float SIDEBAR_BOTTOM_PADDING{ 12.0f }; // 메뉴 아래쪽 여백
+        constexpr float API_STATUS_HEIGHT{ 34.0f };      // 아래 API 상태 줄 높이
+        constexpr float API_STATUS_DOT_RADIUS{ 3.5f };   // API 상태 점 반지름
+        constexpr float API_STATUS_DOT_LEFT{ 12.0f };    // 상태 점 가운데 x (상태 줄 왼쪽 기준)
+        constexpr float API_STATUS_TEXT_LEFT{ 22.0f };   // 상태 글자 왼쪽 위치 (상태 줄 왼쪽 기준)
+        constexpr float API_BUTTON_HEIGHT{ 34.0f };      // "API 키 설정" 버튼 높이
+        constexpr float API_BUTTON_GAP{ 6.0f };          // 버튼과 상태 줄 사이
+        constexpr float LINE_WIDTH{ 1.0f };              // 구분선 두께
+        constexpr float HALF{ 0.5f };                    // 가운데 정렬 계산용
+
+        // ===== 위 막대 · 페이지 머리말 (DIP) =====
+        constexpr float TOP_BAR_HEIGHT{ 56.0f };         // 위 막대 높이 (경로 표시)
+        constexpr float TOP_BAR_PADDING{ 24.0f };        // 위 막대 좌우 여백
+        constexpr float BREADCRUMB_GAP{ 10.0f };         // 경로 글자 사이 간격 ("멀티툴" › "제목")
+        constexpr float VERSION_TEXT_WIDTH{ 120.0f };    // 오른쪽 버전 글자 칸 너비
+        constexpr float PAGE_HEADER_HEIGHT{ 84.0f };     // 페이지 머리말 높이 (영문 · 제목 · 설명)
+        constexpr float PAGE_HEADER_LEFT{ 24.0f };       // 머리말 왼쪽 여백 (탭 내용 안쪽 여백과 맞춤)
+        constexpr float PAGE_EYEBROW_TOP{ 16.0f };       // 영문 소제목 위치
+        constexpr float PAGE_EYEBROW_HEIGHT{ 14.0f };    // 영문 소제목 줄 높이
+        constexpr float PAGE_TITLE_TOP{ 32.0f };         // 큰 제목 위치
+        constexpr float PAGE_TITLE_HEIGHT{ 32.0f };      // 큰 제목 줄 높이
+        constexpr float PAGE_DESCRIPTION_TOP{ 64.0f };   // 설명 위치
+        constexpr float PAGE_DESCRIPTION_HEIGHT{ 18.0f };// 설명 줄 높이
+        constexpr float CONTENT_INSET{ 8.0f };           // 탭 내용 좌우 여백 (탭 화면 자체 여백 16과 합쳐 머리말 24에 맞춤)
 
         // ===== 탭 전환 애니메이션 =====
         constexpr double INDICATOR_SMOOTHING{ 14.0 };   // 클수록 밑줄이 빨리 따라감 (초당 감쇠 계수)
@@ -67,7 +105,6 @@ namespace LostArkMultiTool::Views
         constexpr double CONTENT_FADE_SECONDS{ 0.18 };  // 새 탭 내용이 나타나는 시간
         constexpr float FULL_FADE{ 1.0f };
         constexpr float NO_FADE{ 0.0f };
-        constexpr float HOVER_ALPHA{ 0.35f };           // 마우스를 올린 탭 배경 투명도
         constexpr double MAX_FRAME_SECONDS{ 0.1 };      // 창을 끌거나 멈췄다 돌아왔을 때 애니메이션이 튀지 않게
         constexpr int BACKGROUND_TICK_MS{ 250 };        // 트레이에 숨은 동안 백그라운드 작업 · 자동 갱신을 확인하는 간격
 
@@ -81,7 +118,7 @@ namespace LostArkMultiTool::Views
         constexpr std::size_t NEXT_TAB_STEP{ 1 };
 
         // ===== 문구 =====
-        constexpr std::wstring_view API_KEY_BUTTON_TEXT{ L"API 키 설정" };
+        constexpr std::wstring_view API_KEY_BUTTON_TEXT{ L"⚙  API 키 설정" };   // 왼쪽 메뉴 아래 버튼 (톱니 기호 + 문구)
         constexpr std::wstring_view KEY_SAVE_ERROR_TITLE{ L"API 키 저장 실패" };
         constexpr std::wstring_view KEY_SAVE_ERROR_TEXT{ L"API 키를 저장하지 못했어요!\n" };
         constexpr std::wstring_view KEY_SAVED_TEXT{ L"API 키를 저장했어요!" };
@@ -103,8 +140,74 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view HTTP_PREFIX{ L"http://" };
         constexpr std::wstring_view TRIM_CHARACTERS{ L" \t\r\n" };
 
-        constexpr Core::TextStyle ACTIVE_TAB_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::BOLD, Core::TextAlign::CENTER };
-        constexpr Core::TextStyle INACTIVE_TAB_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };
+        // ===== 화면 틀 문구 =====
+        constexpr std::wstring_view LOGO_TITLE_TEXT{ L"LOA KIT" };              // 로고 큰 글자
+        constexpr std::wstring_view LOGO_SUBTITLE_TEXT{ L"로스트아크 멀티툴" };   // 로고 작은 글자
+        constexpr std::wstring_view LOGO_ICON_TEXT{ L"L" };                     // 로고 아이콘 안 글자
+        constexpr std::wstring_view SECTION_LABEL_TEXT{ L"TOOLS" };             // 메뉴 구역 이름
+        constexpr std::wstring_view NAV_CHEVRON_TEXT{ L"›" };                   // 선택 항목 오른쪽 꺾쇠
+        constexpr std::wstring_view BREADCRUMB_ROOT_TEXT{ L"멀티툴" };           // 위 막대 경로 첫 단계
+        constexpr std::wstring_view BREADCRUMB_SEPARATOR_TEXT{ L"›" };          // 위 막대 경로 구분 기호
+        constexpr std::wstring_view VERSION_PREFIX_TEXT{ L"v" };                // 버전 앞 글자
+        constexpr std::wstring_view API_STATUS_READY_TEXT{ L"LOA API · 키 등록됨" };     // API 키가 저장되어 있음
+        constexpr std::wstring_view API_STATUS_MISSING_TEXT{ L"LOA API · 키 미등록" };   // API 키가 없음
+
+        constexpr std::size_t TAB_TEXT_COUNT{ 9 };   // 탭별 아이콘 · 머리말 문구 수 (Application::TOOL_COUNT와 같은지 RenderPageHeader에서 검사)
+
+        // 탭별 메뉴 아이콘 (탭 순서 = m_tools 순서, 이미지 없이 유니코드 기호 → DirectWrite가 기호 글꼴로 대체해서 그림)
+        constexpr std::array<std::wstring_view, TAB_TEXT_COUNT> TAB_ICONS{
+            L"▤",   // 귀속재료 계산기
+            L"◆",   // 보석 최저가 검색기
+            L"▲",   // 낙원력 트래커
+            L"↗",   // 유각 시세 검색기
+            L"✦",   // 악세 검색기
+            L"▣",   // 강화책 검색기
+            L"◈",   // 젬 시세 검색기
+            L"⚔",   // 전투력 시뮬레이터
+            L"⚒"    // 재련 시뮬레이터
+        };
+
+        // 탭별 페이지 머리말 영문 소제목 (탭 순서 = m_tools 순서)
+        constexpr std::array<std::wstring_view, TAB_TEXT_COUNT> TAB_EYEBROWS{
+            L"BOUND MATERIAL",      // 귀속재료 계산기
+            L"JEWEL MARKET",        // 보석 최저가 검색기
+            L"PARADISE TRACKER",    // 낙원력 트래커
+            L"ENGRAVING MARKET",    // 유각 시세 검색기
+            L"ACCESSORY FINDER",    // 악세 검색기
+            L"HONING BOOK",         // 강화책 검색기
+            L"ARK PASSIVE GEM",     // 젬 시세 검색기
+            L"COMBAT LAB",          // 전투력 시뮬레이터
+            L"HONING SIMULATOR"     // 재련 시뮬레이터
+        };
+
+        // 탭별 페이지 머리말 설명 (각 탭이 실제로 하는 일, 탭 순서 = m_tools 순서)
+        constexpr std::array<std::wstring_view, TAB_TEXT_COUNT> TAB_DESCRIPTIONS{
+            L"원정대 캐릭터의 보유 귀속 재료를 골드 가치로 환산하고, 총자산 변동을 기록해요.",   // 귀속재료 계산기
+            L"레벨 · 종류별 보석 최저가와 등락을 확인하고, 목표가 알림과 시세 기록을 관리해요.",   // 보석 최저가 검색기
+            L"캐릭터별 낙원력을 기록하고 변화 추이를 표와 그래프로 확인해요.",                    // 낙원력 트래커
+            L"거래소 유물 각인서 시세와 직전 · 전일 대비 등락을 한눈에 비교해요.",                 // 유각 시세 검색기
+            L"경매장 4티어 고대 악세서리를 딜러 유효 옵션 기준으로 즉시 구매가 낮은 순으로 찾아요.", // 악세 검색기
+            L"야금술 · 재봉술 강화책 시세를 단계별로 확인해요.",                                  // 강화책 검색기
+            L"질서 · 혼돈 젬 시세를 확인하고, 원정대 귀속 젬 가치를 계산해요.",                    // 젬 시세 검색기
+            L"장비 · 보석 · 각인 · 아크패시브를 바꿨을 때의 예상 전투력을 비교해요.",              // 전투력 시뮬레이터
+            L"시작 → 목표 단계까지 필요한 재료 · 골드와 재련 경로를 계산해요."                     // 재련 시뮬레이터
+        };
+
+        constexpr Core::TextStyle LOGO_TITLE_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::BOLD, Core::TextAlign::LEADING };        // 로고 큰 글자
+        constexpr Core::TextStyle LOGO_SUBTITLE_STYLE{ Theme::FONT_SIZE_SMALL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };  // 로고 작은 글자
+        constexpr Core::TextStyle LOGO_ICON_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::BOLD, Core::TextAlign::CENTER };           // 로고 아이콘 글자
+        constexpr Core::TextStyle SECTION_LABEL_STYLE{ Theme::FONT_SIZE_EYEBROW, Core::FontWeight::BOLD, Core::TextAlign::LEADING };  // "TOOLS"
+        constexpr Core::TextStyle NAV_ICON_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };       // 메뉴 아이콘
+        constexpr Core::TextStyle ACTIVE_TAB_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::LEADING };      // 선택한 메뉴 제목
+        constexpr Core::TextStyle INACTIVE_TAB_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };  // 다른 메뉴 제목
+        constexpr Core::TextStyle NAV_CHEVRON_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };       // "›"
+        constexpr Core::TextStyle API_STATUS_STYLE{ Theme::FONT_SIZE_SMALL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };     // API 상태 줄
+        constexpr Core::TextStyle BREADCRUMB_ROOT_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };   // 경로 첫 단계
+        constexpr Core::TextStyle BREADCRUMB_TITLE_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::LEADING };    // 경로 현재 탭
+        constexpr Core::TextStyle VERSION_STYLE{ Theme::FONT_SIZE_SMALL, Core::FontWeight::NORMAL, Core::TextAlign::TRAILING };          // 오른쪽 버전
+        constexpr Core::TextStyle PAGE_EYEBROW_STYLE{ Theme::FONT_SIZE_EYEBROW, Core::FontWeight::BOLD, Core::TextAlign::LEADING };      // 머리말 영문 소제목
+        constexpr Core::TextStyle PAGE_TITLE_STYLE{ Theme::FONT_SIZE_PAGE_TITLE, Core::FontWeight::BOLD, Core::TextAlign::LEADING };     // 머리말 큰 제목
+        constexpr Core::TextStyle PAGE_DESCRIPTION_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING }; // 머리말 설명
 
         // 제목 표시줄: "로스트아크 멀티툴 v1.1.0"
         [[nodiscard]] std::wstring BuildWindowTitle()
@@ -179,7 +282,7 @@ namespace LostArkMultiTool::Views
         m_toolContext = std::make_unique<Core::ToolContext>(Core::ToolContext{ *m_window, *m_notifier, *m_marketAPI,
             [this] { OpenAPIKeyDialog(APIKeyDialogMode::API_KEY_CHANGE); } });
 
-        // 탭 막대 오른쪽 버튼 (키보드 포커스를 가져가지 않음 → 탭 화면 입력칸의 포커스 유지)
+        // 왼쪽 메뉴 아래 버튼 (키보드 포커스를 가져가지 않음 → 탭 화면 입력칸의 포커스 유지)
         m_apiKeyButton = &m_headerHost.Emplace<UI::Button>(std::wstring{ API_KEY_BUTTON_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY,
             [this] { OpenAPIKeyDialog(APIKeyDialogMode::API_KEY_CHANGE); });
         m_apiKeyButton->SetFocusable(false);
@@ -532,7 +635,7 @@ namespace LostArkMultiTool::Views
         std::visit(Core::Overloaded{
             [&](const Core::MouseMoveEvent& move)
             {
-                m_isPointerInHeader = IsInHeader(move.m_y);
+                m_isPointerInHeader = IsInHeader(move.m_x, move.m_y);   // 왼쪽 메뉴 · 위 막대 · 머리말 위인지
 
                 // 누른 채 움직이면 누른 곳으로만 보냄
                 if (m_pointerOwner == PointerOwner::POINTER_TOOL)
@@ -560,7 +663,7 @@ namespace LostArkMultiTool::Views
             [&](const Core::MouseButtonEvent& button) { RouteMouseButton(event, button); },
             [&](const Core::MouseWheelEvent& wheel)
             {
-                if (IsInHeader(wheel.m_y)) m_headerHost.HandleInput(event);
+                if (IsInHeader(wheel.m_x, wheel.m_y)) m_headerHost.HandleInput(event);   // 화면 틀 위 휠은 틀로
                 else static_cast<void>(tool.HandleInput(event));
             },
             [&](const auto&)
@@ -577,7 +680,7 @@ namespace LostArkMultiTool::Views
 
         if (button.m_isPressed)
         {
-            const bool isHeader{ IsInHeader(button.m_y) };
+            const bool isHeader{ IsInHeader(button.m_x, button.m_y) };   // 화면 틀(메뉴 · 위 막대 · 머리말)을 눌렀는지
             if (isLeft) m_pointerOwner = isHeader ? PointerOwner::POINTER_HEADER : PointerOwner::POINTER_TOOL;
 
             if (!isHeader)
@@ -593,7 +696,7 @@ namespace LostArkMultiTool::Views
 
         // 뗄 때는 누른 곳으로 (누른 적이 없으면 마우스 위치 기준)
         PointerOwner owner{ isLeft ? m_pointerOwner : PointerOwner::POINTER_NONE };
-        if (owner == PointerOwner::POINTER_NONE) owner = IsInHeader(button.m_y) ? PointerOwner::POINTER_HEADER : PointerOwner::POINTER_TOOL;
+        if (owner == PointerOwner::POINTER_NONE) owner = IsInHeader(button.m_x, button.m_y) ? PointerOwner::POINTER_HEADER : PointerOwner::POINTER_TOOL;   // 누른 적 없으면 위치로 판단
         if (isLeft) m_pointerOwner = PointerOwner::POINTER_NONE;
 
         if (owner == PointerOwner::POINTER_HEADER) m_headerHost.HandleInput(event);
@@ -643,7 +746,7 @@ namespace LostArkMultiTool::Views
         m_notifier->Update(deltaSeconds);   // 닫힌 대화상자 정리 → 모달 상태 확인보다 먼저
         SyncModalState();
 
-        // 탭 밑줄: 남은 거리의 일정 비율씩 다가감 (지수 감쇠 → 프레임 속도가 달라도 같은 빠르기)
+        // 메뉴 선택 표시: 남은 거리의 일정 비율씩 다가감 (지수 감쇠 → 프레임 속도가 달라도 같은 빠르기)
         const float targetPosition{ static_cast<float>(m_activeIndex) };
         const float followRatio{ static_cast<float>(1.0 - std::exp(-INDICATOR_SMOOTHING * deltaSeconds)) };
         m_indicatorPosition += (targetPosition - m_indicatorPosition) * followRatio;
@@ -664,90 +767,179 @@ namespace LostArkMultiTool::Views
 
     void Application::Render()
     {
-        if (!m_renderer || !m_notifier || !m_renderer->BeginFrame()) return;
+        if (!m_renderer || !m_notifier || !m_renderer->BeginFrame()) return;   // 그릴 준비가 안 됐으면 건너뜀
 
-        m_renderer->Clear(Theme::BACKGROUND_COLOR);
+        m_renderer->Clear(Theme::BACKGROUND_COLOR);   // 전체 배경 (거의 검정인 남색)
 
         // 1) 선택한 탭 내용
-        const Core::RectF contentRect{ GetContentRect() };
-        GetActiveTool().Render(*m_renderer, contentRect);
+        const Core::RectF contentRect{ GetContentRect() };   // 왼쪽 메뉴 · 위 막대 · 머리말을 뺀 영역
+        GetActiveTool().Render(*m_renderer, contentRect);    // 탭 화면 그리기
 
-        // 2) 탭 전환 직후: 내용 위에 배경색을 덮었다가 걷어 냄 (페이드 인)
+        // 2) 페이지 머리말 (영문 소제목 · 큰 제목 · 설명)
+        RenderPageHeader();
+
+        // 3) 탭 전환 직후: 머리말 · 내용 위에 배경색을 덮었다가 걷어 냄 (페이드 인)
         if (m_contentFade > NO_FADE)
         {
-            m_renderer->FillRect(contentRect, Core::WithAlpha(Theme::BACKGROUND_COLOR, m_contentFade));
+            const Core::RectF pageRect{ SIDEBAR_WIDTH, TOP_BAR_HEIGHT, m_renderer->GetWidth(), m_renderer->GetHeight() };   // 머리말 + 내용 영역
+            m_renderer->FillRect(pageRect, Core::WithAlpha(Theme::BACKGROUND_COLOR, m_contentFade));   // 배경색을 점점 투명하게
         }
 
-        // 3) 탭 막대는 내용 위에 그려서 항상 보이게
-        RenderTabBar();
+        // 4) 위 막대 · 왼쪽 메뉴는 내용 위에 그려서 항상 보이게
+        RenderTopBar();
+        RenderSidebar();
 
-        // 4) 대화상자 · 알림은 맨 위
+        // 5) 대화상자 · 알림은 맨 위
         m_notifier->Render(*m_renderer, GetScreenRect());
 
-        m_renderer->EndFrame();
+        m_renderer->EndFrame();   // 화면에 내보내기
     }
 
-    void Application::RenderTabBar()
+    void Application::RenderSidebar()
     {
-        const float width{ m_renderer->GetWidth() };
-        m_renderer->FillRect(Core::RectF{ 0.0f, 0.0f, width, TAB_BAR_HEIGHT }, Theme::HEADER_BACK_COLOR);
+        const float height{ m_renderer->GetHeight() };   // 창 높이
+        m_renderer->FillRect(Core::RectF{ 0.0f, 0.0f, SIDEBAR_WIDTH, height }, Theme::SIDEBAR_BACK_COLOR);   // 메뉴 바탕
+        m_renderer->DrawLine(SIDEBAR_WIDTH, 0.0f, SIDEBAR_WIDTH, height, Theme::CARD_BORDER_COLOR, LINE_WIDTH);   // 메뉴 오른쪽 경계선
 
+        // ===== 로고 (청록 정사각형 아이콘 + "LOA KIT / 로스트아크 멀티툴") =====
+        const float logoTop{ (TOP_BAR_HEIGHT - LOGO_ICON_SIZE) * HALF };   // 아이콘을 위 막대 높이 가운데에
+        const Core::RectF logoIcon{ LOGO_ICON_LEFT, logoTop, LOGO_ICON_LEFT + LOGO_ICON_SIZE, logoTop + LOGO_ICON_SIZE };   // 아이콘 영역
+        m_renderer->FillRoundedRect(logoIcon, LOGO_ICON_RADIUS, Theme::ACCENT_COLOR);   // 청록 정사각형
+        m_renderer->DrawString(LOGO_ICON_TEXT, logoIcon, Theme::ACCENT_TEXT_COLOR, LOGO_ICON_STYLE);   // 아이콘 안 글자
+
+        const float logoTextLeft{ logoIcon.m_right + LOGO_TEXT_GAP };   // 로고 글자 왼쪽
+        const float logoTextTop{ (TOP_BAR_HEIGHT - LOGO_TITLE_HEIGHT - LOGO_SUBTITLE_HEIGHT) * HALF };   // 두 줄을 세로 가운데에
+        m_renderer->DrawString(LOGO_TITLE_TEXT, Core::RectF{ logoTextLeft, logoTextTop, SIDEBAR_WIDTH, logoTextTop + LOGO_TITLE_HEIGHT },
+            Theme::HEADER_TEXT_COLOR, LOGO_TITLE_STYLE);   // "LOA KIT"
+        m_renderer->DrawString(LOGO_SUBTITLE_TEXT, Core::RectF{ logoTextLeft, logoTextTop + LOGO_TITLE_HEIGHT, SIDEBAR_WIDTH,
+            logoTextTop + LOGO_TITLE_HEIGHT + LOGO_SUBTITLE_HEIGHT }, Theme::MUTED_TEXT_COLOR, LOGO_SUBTITLE_STYLE);   // "로스트아크 멀티툴"
+        m_renderer->DrawLine(0.0f, TOP_BAR_HEIGHT, SIDEBAR_WIDTH, TOP_BAR_HEIGHT, Theme::CARD_BORDER_COLOR, LINE_WIDTH);   // 로고 아래 경계선
+
+        // ===== "TOOLS" 구역 이름 =====
+        m_renderer->DrawString(SECTION_LABEL_TEXT, Core::RectF{ SECTION_LABEL_LEFT, SECTION_LABEL_TOP, SIDEBAR_WIDTH, SECTION_LABEL_TOP + SECTION_LABEL_HEIGHT },
+            Theme::MUTED_TEXT_COLOR, SECTION_LABEL_STYLE);   // 구역 이름 (회색 작은 영문)
+
+        // ===== 선택 표시 (청록 바탕 + 왼쪽 막대, m_indicatorPosition을 따라 미끄러지듯 이동) =====
+        const Core::RectF firstRect{ GetTabRect(0) };   // 첫 항목 영역 (선택 표시 위치 계산 기준)
+        const float indicatorTop{ firstRect.m_top + m_indicatorPosition * (NAV_ITEM_HEIGHT + NAV_ITEM_GAP) };   // 선택 표시 위쪽
+        const Core::RectF indicatorRect{ firstRect.m_left, indicatorTop, firstRect.m_right, indicatorTop + NAV_ITEM_HEIGHT };   // 선택 표시 영역
+        m_renderer->FillRoundedRect(indicatorRect, NAV_ITEM_RADIUS, Core::WithAlpha(Theme::ACCENT_COLOR, Theme::NAV_ACTIVE_ALPHA));   // 청록 바탕
+        m_renderer->FillRect(Core::RectF{ indicatorRect.m_left, indicatorRect.m_top + NAV_ACCENT_INSET, indicatorRect.m_left + NAV_ACCENT_WIDTH,
+            indicatorRect.m_bottom - NAV_ACCENT_INSET }, Theme::ACCENT_COLOR);   // 왼쪽 청록 막대
+
+        // ===== 탭 항목 (아이콘 + 제목, 선택 항목은 "›") =====
         for (std::size_t index{}; index < TOOL_COUNT; ++index)
         {
-            const Core::RectF tabRect{ GetTabRect(index) };
-            const bool isActive{ index == m_activeIndex };
+            const Core::RectF tabRect{ GetTabRect(index) };   // 항목 영역
+            const bool isActive{ index == m_activeIndex };   // 선택한 탭인지
 
             if (!isActive && m_hoverIndex == index)
             {
-                m_renderer->FillRect(tabRect, Core::WithAlpha(Theme::SELECTION_BACK_COLOR, HOVER_ALPHA));
+                m_renderer->FillRoundedRect(tabRect, NAV_ITEM_RADIUS, Core::WithAlpha(Theme::ACCENT_COLOR, Theme::NAV_HOVER_ALPHA));   // 마우스를 올린 항목
             }
 
-            m_renderer->DrawString(m_tools[index].get().GetTabTitle(), tabRect,
-                isActive ? Theme::HEADER_TEXT_COLOR : Theme::MUTED_TEXT_COLOR,
-                isActive ? ACTIVE_TAB_STYLE : INACTIVE_TAB_STYLE);
+            const Core::Color& iconColor{ isActive ? Theme::ACCENT_COLOR : Theme::MUTED_TEXT_COLOR };   // 아이콘 색
+            const Core::Color& textColor{ isActive ? Theme::HEADER_TEXT_COLOR : Theme::MUTED_TEXT_COLOR };   // 제목 색
+            m_renderer->DrawString(TAB_ICONS[index], Core::RectF{ tabRect.m_left + NAV_ICON_LEFT, tabRect.m_top,
+                tabRect.m_left + NAV_ICON_LEFT + NAV_ICON_WIDTH, tabRect.m_bottom }, iconColor, NAV_ICON_STYLE);   // 아이콘
+            const float textRight{ tabRect.m_right - (isActive ? NAV_CHEVRON_WIDTH : NAV_TEXT_RIGHT_PADDING) };   // 꺾쇠는 선택 항목만 자리를 차지 (긴 제목이 잘리지 않게)
+            m_renderer->DrawString(m_tools[index].get().GetTabTitle(), Core::RectF{ tabRect.m_left + NAV_TEXT_LEFT, tabRect.m_top,
+                textRight, tabRect.m_bottom }, textColor, isActive ? ACTIVE_TAB_STYLE : INACTIVE_TAB_STYLE);   // 제목
 
-            // 탭 오른쪽 구분선
-            m_renderer->DrawLine(tabRect.m_right, tabRect.m_top + TAB_DIVIDER_MARGIN, tabRect.m_right, tabRect.m_bottom - TAB_DIVIDER_MARGIN,
-                Theme::GRID_LINE_COLOR, LINE_WIDTH);
+            if (isActive)
+            {
+                m_renderer->DrawString(NAV_CHEVRON_TEXT, Core::RectF{ tabRect.m_right - NAV_CHEVRON_WIDTH, tabRect.m_top, tabRect.m_right, tabRect.m_bottom },
+                    Theme::MUTED_TEXT_COLOR, NAV_CHEVRON_STYLE);   // 선택 항목 오른쪽 꺾쇠
+            }
         }
 
-        // 탭 막대 아래 경계선
-        m_renderer->DrawLine(0.0f, TAB_BAR_HEIGHT, width, TAB_BAR_HEIGHT, Theme::GRID_LINE_COLOR, LINE_WIDTH);
+        // ===== 아래: API 키 설정 버튼 + API 상태 줄 =====
+        const float statusTop{ height - SIDEBAR_BOTTOM_PADDING - API_STATUS_HEIGHT };   // 상태 줄 위쪽
+        const float buttonTop{ statusTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 버튼 위쪽
+        const float dividerY{ buttonTop - API_BUTTON_GAP };   // 아래 구역 경계선 위치
+        m_renderer->DrawLine(0.0f, dividerY, SIDEBAR_WIDTH, dividerY, Theme::CARD_BORDER_COLOR, LINE_WIDTH);   // 아래 구역 경계선
 
-        // 선택한 탭 밑줄 (m_indicatorPosition을 따라 미끄러지듯 이동)
-        const float tabWidth{ GetTabWidth() };
-        const float indicatorLeft{ m_indicatorPosition * tabWidth };
-        m_renderer->FillRect(Core::RectF{ indicatorLeft, TAB_BAR_HEIGHT - TAB_INDICATOR_HEIGHT, indicatorLeft + tabWidth, TAB_BAR_HEIGHT },
-            Theme::TOTAL_TEXT_COLOR);
+        LayoutHeader();                     // 창 높이가 바뀌면 버튼이 따라 움직임
+        m_headerHost.Render(*m_renderer);   // "API 키 설정" 버튼
 
-        // 오른쪽 버튼 (창 너비가 바뀌면 따라 움직임)
-        LayoutHeader();
-        m_headerHost.Render(*m_renderer);
+        const Core::RectF statusRect{ SIDEBAR_PADDING, statusTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, statusTop + API_STATUS_HEIGHT };   // 상태 줄 영역
+        m_renderer->FillRoundedRect(statusRect, NAV_ITEM_RADIUS, Theme::CARD_BACK_COLOR);   // 상태 줄 바탕 (카드)
+        m_renderer->DrawRoundedRect(statusRect, NAV_ITEM_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 상태 줄 테두리
+        const Core::Color& statusColor{ m_hasAPIKey ? Theme::NOTICE_SUCCESS_COLOR : Theme::NOTICE_ERROR_COLOR };   // 키가 있으면 초록, 없으면 빨강
+        const float statusMiddle{ statusTop + API_STATUS_HEIGHT * HALF };   // 상태 줄 세로 가운데
+        m_renderer->FillEllipse(Core::PointF{ statusRect.m_left + API_STATUS_DOT_LEFT, statusMiddle },
+            API_STATUS_DOT_RADIUS, API_STATUS_DOT_RADIUS, statusColor);   // 상태 점
+        m_renderer->DrawString(m_hasAPIKey ? API_STATUS_READY_TEXT : API_STATUS_MISSING_TEXT,
+            Core::RectF{ statusRect.m_left + API_STATUS_TEXT_LEFT, statusTop, statusRect.m_right, statusRect.m_bottom }, Theme::TEXT_COLOR, API_STATUS_STYLE);   // 상태 글자
     }
 
+    void Application::RenderTopBar()
+    {
+        const float width{ m_renderer->GetWidth() };   // 창 너비
+        m_renderer->FillRect(Core::RectF{ SIDEBAR_WIDTH, 0.0f, width, TOP_BAR_HEIGHT }, Theme::SIDEBAR_BACK_COLOR);   // 위 막대 바탕
+        m_renderer->DrawLine(SIDEBAR_WIDTH, TOP_BAR_HEIGHT, width, TOP_BAR_HEIGHT, Theme::CARD_BORDER_COLOR, LINE_WIDTH);   // 위 막대 아래 경계선
+
+        // 경로 표시: "멀티툴 › {탭 제목}"
+        float left{ SIDEBAR_WIDTH + TOP_BAR_PADDING };   // 다음 글자를 그릴 왼쪽 위치
+        const float right{ std::max(left, width - TOP_BAR_PADDING - VERSION_TEXT_WIDTH) };   // 경로가 버전 글자를 가리지 않는 오른쪽 끝
+        const float availableWidth{ right - left };   // 경로에 쓸 수 있는 너비
+        const float rootWidth{ m_renderer->MeasureString(BREADCRUMB_ROOT_TEXT, BREADCRUMB_ROOT_STYLE, availableWidth).m_width };   // "멀티툴" 너비
+        m_renderer->DrawString(BREADCRUMB_ROOT_TEXT, Core::RectF{ left, 0.0f, right, TOP_BAR_HEIGHT }, Theme::MUTED_TEXT_COLOR, BREADCRUMB_ROOT_STYLE);   // "멀티툴"
+        left = std::min(right, left + rootWidth + BREADCRUMB_GAP);   // 구분 기호 자리로
+
+        const float separatorWidth{ m_renderer->MeasureString(BREADCRUMB_SEPARATOR_TEXT, BREADCRUMB_ROOT_STYLE, availableWidth).m_width };   // "›" 너비
+        m_renderer->DrawString(BREADCRUMB_SEPARATOR_TEXT, Core::RectF{ left, 0.0f, right, TOP_BAR_HEIGHT }, Theme::MUTED_TEXT_COLOR, BREADCRUMB_ROOT_STYLE);   // "›"
+        left = std::min(right, left + separatorWidth + BREADCRUMB_GAP);   // 탭 제목 자리로
+
+        m_renderer->DrawString(GetActiveTool().GetTabTitle(), Core::RectF{ left, 0.0f, right, TOP_BAR_HEIGHT },
+            Theme::HEADER_TEXT_COLOR, BREADCRUMB_TITLE_STYLE);   // 현재 탭 제목
+
+        // 오른쪽: 현재 버전
+        const std::wstring versionText{ std::wstring{ VERSION_PREFIX_TEXT } + Core::TextEncoding::UTF8ToWide(Core::APPConstants::APP_VERSION) };   // "v1.5.0"
+        m_renderer->DrawString(versionText, Core::RectF{ width - TOP_BAR_PADDING - VERSION_TEXT_WIDTH, 0.0f, width - TOP_BAR_PADDING, TOP_BAR_HEIGHT },
+            Theme::MUTED_TEXT_COLOR, VERSION_STYLE);   // 회색 버전 글자
+    }
+
+    void Application::RenderPageHeader()
+    {
+        static_assert(TAB_TEXT_COUNT == TOOL_COUNT, "탭별 아이콘 · 머리말 문구 수가 탭 수와 달라요");   // 탭을 추가하면 문구도 함께 추가하도록 검사
+
+        const float width{ m_renderer->GetWidth() };   // 창 너비
+        const float headerTop{ TOP_BAR_HEIGHT };   // 머리말 위쪽 (위 막대 바로 아래)
+        m_renderer->FillRect(Core::RectF{ SIDEBAR_WIDTH, headerTop, width, headerTop + PAGE_HEADER_HEIGHT }, Theme::BACKGROUND_COLOR);   // 탭 내용이 넘쳐도 머리말이 깨끗하게
+
+        const float left{ SIDEBAR_WIDTH + PAGE_HEADER_LEFT };   // 머리말 글자 왼쪽
+        const float right{ std::max(left, width - PAGE_HEADER_LEFT) };   // 머리말 글자 오른쪽
+        m_renderer->DrawString(TAB_EYEBROWS[m_activeIndex], Core::RectF{ left, headerTop + PAGE_EYEBROW_TOP, right, headerTop + PAGE_EYEBROW_TOP + PAGE_EYEBROW_HEIGHT },
+            Theme::ACCENT_COLOR, PAGE_EYEBROW_STYLE);   // 청록 영문 소제목
+        m_renderer->DrawString(GetActiveTool().GetTabTitle(), Core::RectF{ left, headerTop + PAGE_TITLE_TOP, right, headerTop + PAGE_TITLE_TOP + PAGE_TITLE_HEIGHT },
+            Theme::HEADER_TEXT_COLOR, PAGE_TITLE_STYLE);   // 큰 제목
+        m_renderer->DrawString(TAB_DESCRIPTIONS[m_activeIndex], Core::RectF{ left, headerTop + PAGE_DESCRIPTION_TOP, right,
+            headerTop + PAGE_DESCRIPTION_TOP + PAGE_DESCRIPTION_HEIGHT }, Theme::MUTED_TEXT_COLOR, PAGE_DESCRIPTION_STYLE);   // 회색 설명
+    }
+
+    // "API 키 설정" 버튼을 왼쪽 메뉴 아래(상태 줄 바로 위)에 배치
     void Application::LayoutHeader()
     {
-        const float right{ m_renderer->GetWidth() - HEADER_BUTTON_MARGIN };
-        m_apiKeyButton->SetBounds(Core::RectF{ right - HEADER_BUTTON_WIDTH, HEADER_BUTTON_MARGIN, right, TAB_BAR_HEIGHT - HEADER_BUTTON_MARGIN });
+        const float statusTop{ m_renderer->GetHeight() - SIDEBAR_BOTTOM_PADDING - API_STATUS_HEIGHT };   // 상태 줄 위쪽
+        const float buttonTop{ statusTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 버튼 위쪽
+        m_apiKeyButton->SetBounds(Core::RectF{ SIDEBAR_PADDING, buttonTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, buttonTop + API_BUTTON_HEIGHT });   // 메뉴 너비에 맞춤
     }
 
+    // 왼쪽 메뉴의 탭 항목 하나 (세로로 차례대로 쌓임)
     Core::RectF Application::GetTabRect(std::size_t index) const noexcept
     {
-        const float tabWidth{ GetTabWidth() };
-        const float tabLeft{ static_cast<float>(index) * tabWidth };
-        return Core::RectF{ tabLeft, 0.0f, tabLeft + tabWidth, TAB_BAR_HEIGHT };
+        const float itemTop{ NAV_TOP + static_cast<float>(index) * (NAV_ITEM_HEIGHT + NAV_ITEM_GAP) };   // 항목 위쪽
+        return Core::RectF{ SIDEBAR_PADDING, itemTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, itemTop + NAV_ITEM_HEIGHT };   // 메뉴 좌우 여백 안쪽
     }
 
-    // 오른쪽 버튼 자리를 뺀 너비를 탭 수로 나눔 (최대 TAB_WIDTH → 창이 넓으면 예전과 같은 크기)
-    float Application::GetTabWidth() const noexcept
-    {
-        const float availableWidth{ m_renderer->GetWidth() - HEADER_BUTTON_WIDTH - HEADER_BUTTON_MARGIN * HEADER_MARGIN_SIDES };
-        return std::clamp(availableWidth / static_cast<float>(TOOL_COUNT), 0.0f, TAB_WIDTH);
-    }
-
+    // 탭 내용 영역: 왼쪽 메뉴 · 위 막대 · 페이지 머리말을 뺀 나머지
     Core::RectF Application::GetContentRect() const noexcept
     {
-        return Core::RectF{ 0.0f, TAB_BAR_HEIGHT, m_renderer->GetWidth(), m_renderer->GetHeight() };
+        const float left{ SIDEBAR_WIDTH + CONTENT_INSET };   // 왼쪽 메뉴 오른쪽
+        const float right{ std::max(left, m_renderer->GetWidth() - CONTENT_INSET) };   // 창 오른쪽 여백
+        const float top{ TOP_BAR_HEIGHT + PAGE_HEADER_HEIGHT };   // 머리말 아래
+        return Core::RectF{ left, top, right, std::max(top, m_renderer->GetHeight()) };   // 창이 아주 작아도 뒤집히지 않게
     }
 
     Core::RectF Application::GetScreenRect() const noexcept
@@ -764,9 +956,10 @@ namespace LostArkMultiTool::Views
         return std::nullopt;
     }
 
-    bool Application::IsInHeader(float y) noexcept
+    // 왼쪽 메뉴 · 위 막대 · 페이지 머리말 안이면 화면 틀 (탭 내용으로 입력을 보내지 않음)
+    bool Application::IsInHeader(float x, float y) const noexcept
     {
-        return y < TAB_BAR_HEIGHT;
+        return x < SIDEBAR_WIDTH || y < TOP_BAR_HEIGHT + PAGE_HEADER_HEIGHT;   // 메뉴 너비 안이거나 머리말 아래 경계보다 위
     }
 
     Core::ToolManager& Application::GetActiveTool() const noexcept

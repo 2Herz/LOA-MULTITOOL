@@ -71,7 +71,7 @@ namespace LostArkMultiTool::Views::UI
 
         if (m_isChecked)
         {
-            const Core::Color& checkColor{ isEnabled ? Theme::HEADER_TEXT_COLOR : Theme::MUTED_TEXT_COLOR };
+            const Core::Color& checkColor{ isEnabled ? Theme::PRIMARY_TEXT_COLOR : Theme::MUTED_TEXT_COLOR };   // 청록 상자 위 체크 표시는 어두운 색
             const float middleX{ box.m_left + BOX_SIZE * CHECK_MIDDLE_X };
             const float middleY{ box.m_top + BOX_SIZE * CHECK_MIDDLE_Y };
             renderer.DrawLine(box.m_left + BOX_SIZE * CHECK_START_X, box.m_top + BOX_SIZE * CHECK_START_Y, middleX, middleY, checkColor, CHECK_LINE_WIDTH);

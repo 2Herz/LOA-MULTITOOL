@@ -19,37 +19,38 @@ export namespace LostArkMultiTool::Views::Theme
         return Core::Color{ red / COLOR_CHANNEL_MAX, green / COLOR_CHANNEL_MAX, blue / COLOR_CHANNEL_MAX, alpha };
     }
 
-    // ===== 기본 색 (원본 GridTheme) =====
-    inline constexpr Core::Color BACKGROUND_COLOR{ MakeColor(28, 28, 32) };        // 빈 공간 (그래프 배경과 동일)
-    inline constexpr Core::Color CELL_BACK_COLOR{ MakeColor(36, 36, 42) };         // 일반 칸
-    inline constexpr Core::Color HEADER_BACK_COLOR{ MakeColor(48, 48, 56) };       // 머리글 · 탭 막대
-    inline constexpr Core::Color GRID_LINE_COLOR{ MakeColor(60, 60, 68) };         // 경계선
-    inline constexpr Core::Color TEXT_COLOR{ MakeColor(220, 220, 220) };           // 일반 글자 (Gainsboro)
-    inline constexpr Core::Color HEADER_TEXT_COLOR{ MakeColor(255, 255, 255) };    // 머리글 · 선택된 탭 글자
-    inline constexpr Core::Color SELECTION_BACK_COLOR{ MakeColor(70, 82, 110) };   // 선택 · 마우스를 올린 탭
-    inline constexpr Core::Color SELECTION_TEXT_COLOR{ MakeColor(255, 255, 255) };
-    inline constexpr Core::Color MUTED_TEXT_COLOR{ MakeColor(140, 140, 150) };     // 보조 글자 · 선택 안 된 탭
-    inline constexpr Core::Color TOTAL_TEXT_COLOR{ MakeColor(128, 222, 234) };     // 강조 (합계 · 탭 밑줄)
+    // ===== 기본 색 (v1.5.0 새 디자인: 남색에 가까운 검정 배경 + 청록 강조) =====
+    inline constexpr Core::Color BACKGROUND_COLOR{ MakeColor(11, 15, 21) };        // 빈 공간 (그래프 배경과 동일, 거의 검정인 남색)
+    inline constexpr Core::Color CELL_BACK_COLOR{ MakeColor(18, 24, 32) };         // 일반 칸 (카드 바탕과 같은 톤)
+    inline constexpr Core::Color HEADER_BACK_COLOR{ MakeColor(24, 31, 41) };       // 표 머리글 · 구분 열
+    inline constexpr Core::Color GRID_LINE_COLOR{ MakeColor(36, 46, 58) };         // 경계선 (카드 테두리보다 한 단계 밝게)
+    inline constexpr Core::Color TEXT_COLOR{ MakeColor(222, 228, 236) };           // 일반 글자 (어두운 바탕에서 대비 확보)
+    inline constexpr Core::Color HEADER_TEXT_COLOR{ MakeColor(255, 255, 255) };    // 머리글 · 선택된 메뉴 글자
+    inline constexpr Core::Color SELECTION_BACK_COLOR{ MakeColor(22, 72, 74) };    // 선택 · 마우스를 올린 항목 (청록 톤)
+    inline constexpr Core::Color SELECTION_TEXT_COLOR{ MakeColor(255, 255, 255) };  // 선택된 칸 글자 (흰색)
+    inline constexpr Core::Color MUTED_TEXT_COLOR{ MakeColor(136, 148, 162) };     // 보조 글자 · 선택 안 된 메뉴 (회색)
+    inline constexpr Core::Color TOTAL_TEXT_COLOR{ MakeColor(94, 234, 212) };      // 강조 (합계 · 포커스 · 청록 #5EEAD4)
 
     // ===== 용도별 색 (원본 GridTheme) =====
-    inline constexpr Core::Color READONLY_BACK_COLOR{ MakeColor(31, 31, 36) };     // 읽기 전용 칸
-    inline constexpr Core::Color TOTAL_BACK_COLOR{ MakeColor(24, 52, 58) };        // 합계 열
-    inline constexpr Core::Color HIGHLIGHT_BACK_COLOR{ MakeColor(62, 52, 22) };    // 강조 행 (★ 캐릭터 총합)
-    inline constexpr Core::Color HIGHLIGHT_TEXT_COLOR{ MakeColor(255, 215, 0) };   // Gold
+    inline constexpr Core::Color READONLY_BACK_COLOR{ MakeColor(15, 20, 27) };     // 읽기 전용 칸 (카드보다 살짝 어둡게)
+    inline constexpr Core::Color TOTAL_BACK_COLOR{ MakeColor(16, 46, 48) };        // 합계 열 (어두운 청록)
+    inline constexpr Core::Color HIGHLIGHT_BACK_COLOR{ MakeColor(46, 36, 18) };    // 강조 행 (★ 캐릭터 총합, 어두운 금색)
+    inline constexpr Core::Color HIGHLIGHT_TEXT_COLOR{ MakeColor(255, 196, 77) };  // 골드 금액 (금색)
     inline constexpr Core::Color UP_TEXT_COLOR{ MakeColor(255, 112, 112) };        // 상승 ▲ · 오류
     inline constexpr Core::Color DOWN_TEXT_COLOR{ MakeColor(110, 168, 255) };      // 하락 ▼
     inline constexpr Core::Color ERROR_BACK_COLOR{ MakeColor(92, 32, 38) };        // 잘못된 입력 칸
     inline constexpr Core::Color LABEL_BACK_COLOR{ HEADER_BACK_COLOR };                  // 표의 구분 열
 
     // ===== 화면 부품 (버튼 · 입력칸) =====
-    inline constexpr Core::Color BUTTON_BACK_COLOR{ MakeColor(58, 58, 68) };
-    inline constexpr Core::Color BUTTON_HOVER_COLOR{ MakeColor(72, 72, 84) };
-    inline constexpr Core::Color BUTTON_PRESSED_COLOR{ MakeColor(46, 46, 54) };
-    inline constexpr Core::Color PRIMARY_BACK_COLOR{ MakeColor(34, 96, 110) };     // 주요 버튼 (저장 · 확인)
-    inline constexpr Core::Color PRIMARY_HOVER_COLOR{ MakeColor(44, 118, 134) };
-    inline constexpr Core::Color PRIMARY_PRESSED_COLOR{ MakeColor(28, 80, 92) };
-    inline constexpr Core::Color DISABLED_BACK_COLOR{ MakeColor(44, 44, 50) };
-    inline constexpr Core::Color INPUT_BACK_COLOR{ MakeColor(22, 22, 26) };        // 입력칸 바탕
+    inline constexpr Core::Color BUTTON_BACK_COLOR{ MakeColor(30, 39, 50) };       // 보조 버튼 바탕
+    inline constexpr Core::Color BUTTON_HOVER_COLOR{ MakeColor(40, 52, 66) };      // 보조 버튼 마우스 올림
+    inline constexpr Core::Color BUTTON_PRESSED_COLOR{ MakeColor(24, 31, 40) };    // 보조 버튼 누름
+    inline constexpr Core::Color PRIMARY_BACK_COLOR{ MakeColor(79, 209, 197) };    // 주요 버튼 (저장 · 확인 · 검색, 청록 #4FD1C5)
+    inline constexpr Core::Color PRIMARY_HOVER_COLOR{ MakeColor(110, 231, 214) };  // 주요 버튼 마우스 올림 (더 밝은 청록)
+    inline constexpr Core::Color PRIMARY_PRESSED_COLOR{ MakeColor(56, 170, 160) }; // 주요 버튼 누름 (어두운 청록)
+    inline constexpr Core::Color PRIMARY_TEXT_COLOR{ MakeColor(8, 24, 26) };       // 주요 버튼 글자 (청록 바탕 위 어두운 글자)
+    inline constexpr Core::Color DISABLED_BACK_COLOR{ MakeColor(26, 32, 41) };     // 꺼진 버튼 · 입력칸 바탕
+    inline constexpr Core::Color INPUT_BACK_COLOR{ MakeColor(12, 17, 23) };        // 입력칸 바탕 (카드 안에서 한 단계 어둡게)
     inline constexpr Core::Color FOCUS_BORDER_COLOR{ TOTAL_TEXT_COLOR };           // 포커스 테두리 · 링크 글자
     inline constexpr Core::Color CARET_COLOR{ MakeColor(235, 235, 235) };
     inline constexpr Core::Color COMPOSITION_LINE_COLOR{ TOTAL_TEXT_COLOR };       // 한글 조합 중인 글자 밑줄
@@ -77,12 +78,21 @@ export namespace LostArkMultiTool::Views::Theme
 
     // ===== 대화상자 · 알림 =====
     inline constexpr Core::Color OVERLAY_DIM_COLOR{ MakeColor(0, 0, 0, 0.55f) };   // 대화상자 뒤 화면을 어둡게
-    inline constexpr Core::Color PANEL_BACK_COLOR{ MakeColor(38, 38, 45) };
-    inline constexpr Core::Color PANEL_BORDER_COLOR{ MakeColor(72, 72, 82) };
+    inline constexpr Core::Color PANEL_BACK_COLOR{ MakeColor(20, 27, 36) };        // 대화상자 · 알림 · 펼침 목록 바탕
+    inline constexpr Core::Color PANEL_BORDER_COLOR{ MakeColor(44, 56, 70) };      // 대화상자 · 알림 테두리
     inline constexpr Core::Color NOTICE_INFO_COLOR{ TOTAL_TEXT_COLOR };
     inline constexpr Core::Color NOTICE_SUCCESS_COLOR{ MakeColor(112, 208, 128) };
     inline constexpr Core::Color NOTICE_WARNING_COLOR{ HIGHLIGHT_TEXT_COLOR };
     inline constexpr Core::Color NOTICE_ERROR_COLOR{ UP_TEXT_COLOR };
+
+    // ===== 카드 · 화면 틀 (v1.5.0 왼쪽 메뉴 · 위 막대 · 페이지 머리말) =====
+    inline constexpr Core::Color CARD_BACK_COLOR{ MakeColor(17, 23, 31) };         // 묶음 상자(카드) 바탕
+    inline constexpr Core::Color CARD_BORDER_COLOR{ MakeColor(32, 42, 54) };       // 카드 얇은 테두리
+    inline constexpr Core::Color SIDEBAR_BACK_COLOR{ MakeColor(13, 18, 25) };      // 왼쪽 메뉴 · 위 막대 바탕
+    inline constexpr Core::Color ACCENT_COLOR{ TOTAL_TEXT_COLOR };                 // 청록 강조 (로고 · 선택 막대 · 머리말 영문)
+    inline constexpr Core::Color ACCENT_TEXT_COLOR{ PRIMARY_TEXT_COLOR };          // 청록 바탕 위 글자 (로고 아이콘)
+    inline constexpr float NAV_ACTIVE_ALPHA{ 0.12f };                              // 선택한 메뉴의 청록 바탕 투명도
+    inline constexpr float NAV_HOVER_ALPHA{ 0.06f };                               // 마우스를 올린 메뉴의 청록 바탕 투명도
 
     // 알림 종류별 강조색 (대화상자 제목 막대 · 토스트 왼쪽 막대가 같은 색을 쓰도록 한 곳에서 결정)
     [[nodiscard]] constexpr const Core::Color& GetNoticeColor(Core::NoticeKind kind) noexcept
@@ -129,6 +139,8 @@ export namespace LostArkMultiTool::Views::Theme
     inline constexpr float FONT_SIZE_DIALOG_TITLE{ 15.0f };
     inline constexpr float FONT_SIZE_CHART_TITLE{ 16.0f };   // 원본 12pt
     inline constexpr float FONT_SIZE_TITLE{ 22.0f };
+    inline constexpr float FONT_SIZE_EYEBROW{ 10.0f };   // 페이지 머리말 · 카드 위 작은 영문 (청록 대문자)
+    inline constexpr float FONT_SIZE_PAGE_TITLE{ 24.0f }; // 페이지 머리말 큰 제목
 
     // ===== 크기 (DIP) =====
     inline constexpr float CORNER_RADIUS{ 4.0f };        // 버튼 · 입력칸 모서리
