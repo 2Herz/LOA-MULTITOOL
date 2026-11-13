@@ -5,6 +5,7 @@ import LostArkMultiTool.Core.BackgroundTask;
 import LostArkMultiTool.Core.EngravingPriceService;
 import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.IntervalTimer;
+import LostArkMultiTool.Core.PriceHistoryRepository;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.Singleton;
 import LostArkMultiTool.Core.ToolContext;
@@ -53,10 +54,17 @@ export namespace LostArkMultiTool::Views
         void RefreshTable();    // 검색어로 거르고 정렬해서 표에 채움 + 상태 글자
         void ShowAutoError(std::wstring_view title, const std::wstring& message);
 
+        // ===== 일별 최저가 기록 · 그래프 =====
+        void RecordHistory();    // 조회가 성공할 때마다 각인서별 오늘(06시 기준) 최저가 기록 + 저장
+        void SaveHistory();      // 기록 저장 (실패하면 알리고 다음 기회에 다시 시도)
+        void SelectRow();        // 표에서 고른 행의 각인서를 그래프 대상으로
+        void RefreshChart();     // 고른 각인서의 일별 최저가 그래프
+
         Core::ToolContext* m_context{};   // Application이 소유 (Initialize ~ Shutdown 동안만 유효)
 
         // 선언 순서 = 생성 순서 (화면은 서비스 결과를 쓰므로 반대 순서로 해제)
         std::unique_ptr<Core::EngravingPriceService> m_service;
+        std::unique_ptr<Core::PriceHistoryRepository> m_historyRepository;   // 일별 최저가 기록 (EngravingFinderData.json)
         std::unique_ptr<EngravingFinderView> m_view;
 
         Core::BackgroundTask<std::vector<Models::MarketItem>> m_refreshTask;
@@ -65,5 +73,9 @@ export namespace LostArkMultiTool::Views
         bool m_isRunningAuto{};                          // 진행 중인 조회가 자동 갱신인지 (오류 알림 방식이 다름)
         bool m_isAutoRefreshWanted{};                    // 사용자가 켠 상태 (키 오류로 잠시 꺼도 기억 → 키를 바꾸면 다시 켬)
         std::optional<std::wstring> m_lastAutoError;     // 같은 자동 갱신 오류 알림을 반복해서 띄우지 않기 위함
+
+        std::vector<std::string> m_rowKeys;              // 표 행 순서대로의 기록 키 (정렬 · 검색 결과와 같은 순서)
+        std::optional<std::string> m_selectedKey;        // 그래프에 보여 줄 각인서 (표를 다시 채워도 유지)
+        bool m_isHistoryDirty{};                         // 저장하지 못한 기록이 있음 (종료할 때 한 번 더 시도)
     };
 }

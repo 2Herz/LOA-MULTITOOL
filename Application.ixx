@@ -11,6 +11,7 @@ import LostArkMultiTool.Core.ServerConfigChecker;
 import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Models.ServerConfig;
+import LostArkMultiTool.Services.UpdateInstaller;
 import LostArkMultiTool.Views.APIKeyDialog;
 import LostArkMultiTool.Views.DX11Renderer;
 import LostArkMultiTool.Views.MainWindow;
@@ -64,6 +65,10 @@ export namespace LostArkMultiTool::Views
         void FinishServerCheck();
         void LockForMaintenance(const std::optional<std::string>& maintenanceMessage);
         void ShowStartupNotices(const Models::ServerConfig& config);
+        void AskOpenDownloadPage(const std::wstring& message);           // 다운로드 페이지 열기 질문
+        void StartAutoUpdate(const Services::UpdatePackage& package);    // zip 받기 · 검증 (백그라운드)
+        void FinishAutoUpdate();                                         // 설치 스크립트 실행 후 종료 또는 실패 안내
+        void OpenProblemReport();                                        // [문제 보고] 로그 폴더 열기
 
         // ===== API 키 =====
         void OpenAPIKeyDialog(APIKeyDialogMode mode);
@@ -106,6 +111,9 @@ export namespace LostArkMultiTool::Views
         UI::Dialog* m_serverCheckDialog{};                  // 실행 직후 확인 대화상자 (m_notifier가 소유, 닫으면 비움)
         UI::ControlHost m_headerHost;                       // 왼쪽 메뉴 아래 버튼 (API 키 설정)
         UI::Button* m_apiKeyButton{};                       // m_headerHost가 소유
+        UI::Button* m_reportButton{};                       // [문제 보고] 버튼 (m_headerHost가 소유)
+        Core::BackgroundTask<std::filesystem::path> m_updateTask;   // 자동 업데이트 받기 · 검증
+        std::wstring m_downloadURL;                         // 업데이트 다운로드 페이지 (자동 업데이트 실패 때 안내)
 
         std::size_t m_activeIndex{};
         std::optional<std::size_t> m_hoverIndex;            // 마우스를 올린 탭

@@ -69,6 +69,10 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
     [[nodiscard]] const QualityCurve& GetWeaponQualityCurve() noexcept;
     [[nodiscard]] double GetWeaponAttackExtra() noexcept;             // W0 = 무기 툴팁 공격력 + 이 값
 
+    // ===== 계수 버전 정보 · 계통별 오차 =====
+    [[nodiscard]] std::wstring_view GetCoefficientMeasuredAt() noexcept;   // 계수를 측정한 날짜 ("2026-11-13")
+    [[nodiscard]] std::wstring_view GetCoefficientBasis() noexcept;        // 계수 측정 근거 ("lopec.kr 시뮬레이터 측정 ...")
+
     // ===== 문구 키 표 (악세서리 · 팔찌 · 스톤 · 아바타 등 공통) =====
     struct KeyedValue
     {
@@ -78,6 +82,7 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
 
     // 표에서 키로 값 찾기 (없으면 nullptr)
     [[nodiscard]] const KeyedValue* FindKeyed(std::span<const KeyedValue> table, std::string_view key) noexcept;
+    [[nodiscard]] std::span<const KeyedValue> GetUncertainties() noexcept;   // 계통별 예상 오차 (%): GEAR · WEAPON_QUALITY · GEM · VAMBRACE · ACCESSORY · BRACELET · ENGRAVING_BOOK · STONE · AVATAR · ARK_CORE · ARK_GEM · ARK_PASSIVE · ARK_PASSIVE_PARTIAL · COMBO_SURCHARGE
 
     // ===== 악세서리 연마 옵션 =====
     enum class AccessoryKind

@@ -10,6 +10,7 @@ import LostArkMultiTool.Views.UI.ComboBox;
 import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Grid;
 import LostArkMultiTool.Views.UI.Label;
+import LostArkMultiTool.Views.UI.LineChart;
 import LostArkMultiTool.Views.UI.TextBox;
 
 export namespace LostArkMultiTool::Views
@@ -33,6 +34,7 @@ export namespace LostArkMultiTool::Views
         double m_yesterdayAvgPrice{};
         double m_recentPrice{};
         std::optional<double> m_dayChangeRate;    // 전일 평균가 대비 변동률(%)
+        std::string m_key;                        // 일별 기록을 찾는 키 (UTF-8 각인서 이름, 화면에는 표시하지 않음)
     };
 
     // 유각 시세 검색기 화면 구성
@@ -50,6 +52,7 @@ export namespace LostArkMultiTool::Views
         void SetOnRefresh(std::function<void()> onRefresh);
         void SetOnAutoRefreshChanged(std::function<void(bool isEnabled)> onAutoRefreshChanged);
         void SetOnFilterChanged(std::function<void()> onFilterChanged);   // 검색어 · 정렬이 바뀜
+        void SetOnRowSelected(std::function<void()> onRowSelected);       // 시세 표에서 행을 골랐음 (그래프 대상)
 
         // ===== 상단 바 =====
         void SetAutoRefreshChecked(bool isChecked) noexcept;   // 코드에서 바꿈 (알림 없음)
@@ -61,6 +64,11 @@ export namespace LostArkMultiTool::Views
 
         // ===== 시세 표 =====
         void ShowRows(const std::vector<EngravingRow>& rows);
+        [[nodiscard]] std::optional<std::size_t> GetSelectedRow() const noexcept;   // 고른 행 (없으면 nullopt)
+        void SelectRow(std::optional<std::size_t> row);                              // 코드에서 바꿈 (알림 없음)
+
+        // ===== 일별 최저가 그래프 (오른쪽) =====
+        void SetChart(std::wstring title, std::vector<UI::ChartPoint> points);
 
         // ===== 프레임 =====
         void Update(double deltaSeconds);
@@ -72,7 +80,7 @@ export namespace LostArkMultiTool::Views
 
     private:
         void Layout(const Core::RectF& contentArea);
-        void RenderPanel(Core::Renderer& renderer) const;
+        static void RenderPanel(Core::Renderer& renderer, const Core::RectF& bounds, std::wstring_view title);   // 묶음 상자 하나
         void NotifyFilterChanged() const;
 
         UI::ControlHost m_host;
@@ -86,13 +94,16 @@ export namespace LostArkMultiTool::Views
         UI::ComboBox& m_sortBox;
         UI::Label& m_statusLabel;
         UI::Grid& m_priceGrid;
+        UI::LineChart& m_chart;      // 고른 각인서의 일별 최저가 그래프
 
-        Core::RectF m_panelBounds;   // 묶음 상자 (테두리 + 제목)
+        Core::RectF m_panelBounds;        // 시세 표 묶음 상자 (테두리 + 제목)
+        Core::RectF m_chartPanelBounds;   // 그래프 묶음 상자
         Core::RectF m_layoutArea;
         bool m_hasLayout{};
 
         std::function<void()> m_onRefresh;
         std::function<void(bool)> m_onAutoRefreshChanged;
         std::function<void()> m_onFilterChanged;
+        std::function<void()> m_onRowSelected;
     };
 }

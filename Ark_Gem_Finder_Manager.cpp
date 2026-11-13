@@ -12,6 +12,7 @@ import LostArkMultiTool.Core.MarketAPI;
 import LostArkMultiTool.Core.Notifier;
 import LostArkMultiTool.Core.NumberFormat;
 import LostArkMultiTool.Core.Platform;
+import LostArkMultiTool.Core.PriceHistoryRepository;
 import LostArkMultiTool.Core.ArkGemPriceService;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.TextEncoding;
@@ -20,11 +21,14 @@ import LostArkMultiTool.Models.BoundGemData;
 import LostArkMultiTool.Models.BoundGemRosterData;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Models.MarketItem;
+import LostArkMultiTool.Models.PriceHistory;
 import LostArkMultiTool.Models.RateLimitState;
 import LostArkMultiTool.Models.ArkGemQuote;
 import LostArkMultiTool.Services.JSONBoundGemRepository;
+import LostArkMultiTool.Services.JSONPriceHistoryRepository;
 import LostArkMultiTool.Services.MarketArkGemPriceService;
 import LostArkMultiTool.Views.ArkGemFinderView;
+import LostArkMultiTool.Views.PriceHistoryChart;
 import LostArkMultiTool.Views.UI.LineChart;
 
 namespace LostArkMultiTool::Views
@@ -53,6 +57,10 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view LOAD_WARNING_TITLE{ L"저장 파일 안내" };
         constexpr std::wstring_view SAVE_ERROR_TITLE{ L"저장 오류" };
         constexpr std::wstring_view SAVE_ERROR_TEXT{ L"귀속 젬 수량을 저장하지 못했어요.\n" };
+        constexpr std::wstring_view PRICE_SAVE_ERROR_TEXT{ L"젬 시세 기록을 저장하지 못했어요.\n" };
+        constexpr std::wstring_view PRICE_CHART_TITLE_FORMAT{ L"{} 최저가 추이" };               // 시세 그래프 제목 (젬 이름)
+        constexpr std::wstring_view PRICE_CHART_EMPTY_FORMAT{ L"{} — 아직 기록이 없어요" };      // 고른 젬에 기록이 없을 때
+        constexpr std::wstring_view PRICE_CHART_HINT_TEXT{ L"젬 표에서 행을 고르면 일별 최저가 그래프가 보여요" };   // 아직 아무것도 고르지 않았을 때
         constexpr std::wstring_view IGNORED_CHARACTERS{ L" \t" };   // 이름을 비교할 때 무시하는 글자
 
         // ===== 원정대 동기화 · 캐릭터 선택 =====
@@ -137,7 +145,7 @@ namespace LostArkMultiTool::Views
         {
             const Models::MarketItem& item{ quote.m_item };
             ArkGemRow row{ ToWideMessage(item.m_name.c_str()), item.m_gradeName, item.m_currentMinPrice, std::nullopt,
-                item.m_yesterdayAvgPrice, item.m_recentPrice, std::nullopt };
+                item.m_yesterdayAvgPrice, item.m_recentPrice, std::nullopt, item.m_name };
 
             if (quote.m_previousMinPrice.has_value() && *quote.m_previousMinPrice > 0.0 && item.m_currentMinPrice > 0.0)
             {
@@ -167,6 +175,13 @@ namespace LostArkMultiTool::Views
         // 모델: 거래소 질서 · 혼돈의 젬 시세 (실행 중에만 보관) + 귀속 젬 보유 수량 (BoundGemData.json)
         m_service = std::make_unique<Services::MarketArkGemPriceService>();
         m_boundGemRepository = std::make_unique<Services::JSONBoundGemRepository>();
+
+        // 모델: 젬별 일별 최저가 기록 (ArkGemFinderData.json, 손상되면 백업으로 복구하고 안내)
+        m_priceHistoryRepository = std::make_unique<Services::JSONPriceHistoryRepository>(Services::PriceHistoryFiles::ARK_GEM_FILE_NAME);
+        if (const std::optional<std::string>& warning{ m_priceHistoryRepository->GetLoadWarning() }; warning.has_value())
+        {
+            context.m_notifier.ShowMessage(std::wstring{ LOAD_WARNING_TITLE }, ToWideMessage(warning->c_str()), Core::NoticeKind::NOTICE_WARNING, nullptr);
+        }
         if (const std::optional<std::string>& warning{ m_boundGemRepository->GetLoadWarning() }; warning.has_value())
         {
             context.m_notifier.ShowMessage(std::wstring{ LOAD_WARNING_TITLE }, ToWideMessage(warning->c_str()), Core::NoticeKind::NOTICE_WARNING, nullptr);
@@ -186,10 +201,12 @@ namespace LostArkMultiTool::Views
         });
         m_view->SetOnSyncRoster([this](const std::wstring& mainCharacterName) { SyncRoster(mainCharacterName); });
         m_view->SetOnCharacterSelected([this] { SelectCharacter(); });
+        m_view->SetOnPriceRowSelected([this](bool isOrder, std::size_t row) { SelectPriceRow(isOrder, row); });   // 시세 표 행을 고르면 그 젬의 그래프
 
         LoadCharacterList();
         RefreshTables();
         UpdateChart();
+        RefreshPriceChart();
     }
 
     void ArkGemFinderManager::Shutdown()
@@ -199,7 +216,21 @@ namespace LostArkMultiTool::Views
         m_refreshTask.Wait();
         m_rosterTask.Wait();
 
+        // 저장하지 못한 시세 기록이 남아 있으면 마지막으로 한 번 더 저장 (종료 중이라 실패해도 알리지 않음)
+        if (m_priceHistoryRepository && m_isPriceHistoryDirty)
+        {
+            try
+            {
+                m_priceHistoryRepository->Save();
+            }
+            catch (const std::exception&)
+            {
+                // 종료 중에는 알림을 띄울 수 없어 건너뜀
+            }
+        }
+
         m_view.reset();
+        m_priceHistoryRepository.reset();
         m_boundGemRepository.reset();
         m_service.reset();
         m_context = nullptr;
@@ -335,7 +366,8 @@ namespace LostArkMultiTool::Views
         }
 
         RefreshTables();
-        if (isApplied) RecordHistory();   // 새 시세로 계산한 원정대 총 가치를 오늘 기록으로
+        if (isApplied) RecordPriceHistory();   // 새 시세의 젬별 최저가를 오늘 기록으로
+        if (isApplied) RecordHistory();        // 새 시세로 계산한 원정대 총 가치를 오늘 기록으로
 
         // 조회가 끝난 뒤에 키 재입력 안내
         if (keyError.has_value()) HandleAPIKeyError(*keyError);
@@ -372,6 +404,29 @@ namespace LostArkMultiTool::Views
         }
         m_view->ShowOrder(orderRows);
         m_view->ShowChaos(chaosRows);
+
+        // 표 행 순서대로 기록 키를 보관하고, 고른 젬이 아직 표에 있으면 선택을 유지
+        m_orderKeys.clear();
+        for (const ArkGemRow& row : orderRows) m_orderKeys.push_back(row.m_key);
+        m_chaosKeys.clear();
+        for (const ArkGemRow& row : chaosRows) m_chaosKeys.push_back(row.m_key);
+
+        std::optional<std::size_t> orderSelected;   // 질서 표에서 다시 선택할 행
+        std::optional<std::size_t> chaosSelected;   // 혼돈 표에서 다시 선택할 행
+        if (m_selectedPriceKey.has_value())
+        {
+            if (const auto found{ std::ranges::find(m_orderKeys, *m_selectedPriceKey) }; found != m_orderKeys.end())
+            {
+                orderSelected = static_cast<std::size_t>(std::distance(m_orderKeys.begin(), found));
+            }
+            else if (const auto chaosFound{ std::ranges::find(m_chaosKeys, *m_selectedPriceKey) }; chaosFound != m_chaosKeys.end())
+            {
+                chaosSelected = static_cast<std::size_t>(std::distance(m_chaosKeys.begin(), chaosFound));
+            }
+        }
+        m_view->SelectOrderRow(orderSelected);
+        m_view->SelectChaosRow(chaosSelected);
+        RefreshPriceChart();   // 시세가 바뀌면 그래프도 새 기록으로
         RefreshBoundGems();
 
         // 상태: 조회 중이면 그대로, 아니면 종류 수 + 마지막 갱신 시각
@@ -626,5 +681,63 @@ namespace LostArkMultiTool::Views
         if (m_lastAutoError == message) return;
         m_lastAutoError = message;
         m_context->m_notifier.ShowToast(std::format(AUTO_ERROR_FORMAT, title, message), Core::NoticeKind::NOTICE_ERROR);
+    }
+
+    // 조회가 성공했을 때: 표에 보이는(영웅 등급) 젬 중 매물이 있는(현재 최저가 > 0) 젬마다 오늘(오전 6시 기준) 최저가를 기록 (그날 더 싸면 갱신)
+    void ArkGemFinderManager::RecordPriceHistory()
+    {
+        const std::string dayKey{ Core::LocalTime::MakeDateKey(Core::LocalTime::GetGameToday()) };   // 오늘 날짜 키
+        Models::PriceHistory& history{ m_priceHistoryRepository->GetHistory() };                      // 기록
+        bool isChanged{};   // 새로 기록하거나 갱신한 값이 있는지
+
+        for (const Models::ArkGemQuote& quote : m_service->GetQuotes())
+        {
+            if (quote.m_item.m_gradeName != Core::APPConstants::EPIC_GRADE_NAME) continue;   // 시세 표와 같은 영웅 등급만 (등급마다 이름이 같아 키가 겹치지 않게)
+            if (quote.m_item.m_currentMinPrice <= 0.0) continue;                              // 매물이 없으면 기록하지 않음
+            if (history.RecordLowest(quote.m_item.m_name, dayKey, std::llround(quote.m_item.m_currentMinPrice))) isChanged = true;
+        }
+
+        // 바뀐 게 있거나 지난번 저장에 실패했으면 저장
+        if (isChanged || m_isPriceHistoryDirty) SavePriceHistory();
+    }
+
+    // 시세 기록 저장 (실패하면 알리고, 다음 조회 · 종료 때 다시 시도)
+    void ArkGemFinderManager::SavePriceHistory()
+    {
+        try
+        {
+            m_priceHistoryRepository->Save();   // 임시 파일 → 교체 방식 저장
+            m_isPriceHistoryDirty = false;
+        }
+        catch (const std::exception& error)
+        {
+            m_isPriceHistoryDirty = true;       // 다음 기회에 다시 저장
+            m_context->m_notifier.ShowToast(std::wstring{ PRICE_SAVE_ERROR_TEXT } + ToWideMessage(error.what()), Core::NoticeKind::NOTICE_ERROR);
+        }
+    }
+
+    // 시세 표에서 행을 골랐을 때: 그 행의 젬이 그래프 대상
+    void ArkGemFinderManager::SelectPriceRow(bool isOrder, std::size_t row)
+    {
+        const std::vector<std::string>& keys{ isOrder ? m_orderKeys : m_chaosKeys };
+        if (row >= keys.size()) return;   // 범위를 벗어나면 무시
+
+        m_selectedPriceKey = keys[row];
+        RefreshPriceChart();
+    }
+
+    // 고른 젬의 일별 최저가 그래프 (고르지 않았으면 안내 문구)
+    void ArkGemFinderManager::RefreshPriceChart()
+    {
+        if (!m_view) return;
+        if (!m_selectedPriceKey.has_value())
+        {
+            m_view->SetPriceChart(std::wstring{ PRICE_CHART_HINT_TEXT }, {});
+            return;
+        }
+
+        const std::map<std::string, std::int64_t>& days{ m_priceHistoryRepository->GetHistory().GetDays(*m_selectedPriceKey) };
+        const std::wstring name{ ToWideMessage(m_selectedPriceKey->c_str()) };
+        m_view->SetPriceChart(days.empty() ? std::format(PRICE_CHART_EMPTY_FORMAT, name) : std::format(PRICE_CHART_TITLE_FORMAT, name), BuildPriceChartPoints(days));
     }
 }

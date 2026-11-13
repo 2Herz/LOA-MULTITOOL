@@ -11,14 +11,18 @@ import LostArkMultiTool.Core.LocalTime;
 import LostArkMultiTool.Core.MarketAPI;
 import LostArkMultiTool.Core.Notifier;
 import LostArkMultiTool.Core.Platform;
+import LostArkMultiTool.Core.PriceHistoryRepository;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Models.EngravingQuote;
 import LostArkMultiTool.Models.MarketItem;
+import LostArkMultiTool.Models.PriceHistory;
 import LostArkMultiTool.Models.RateLimitState;
+import LostArkMultiTool.Services.JSONPriceHistoryRepository;
 import LostArkMultiTool.Services.MarketEngravingPriceService;
 import LostArkMultiTool.Views.EngravingFinderView;
+import LostArkMultiTool.Views.PriceHistoryChart;
 
 namespace LostArkMultiTool::Views
 {
@@ -43,6 +47,12 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view API_KEY_ERROR_TITLE{ L"API 키 오류" };
         constexpr std::wstring_view API_KEY_RETRY_TEXT{ L"\n\nAPI 키를 다시 입력할까요?" };
         constexpr std::wstring_view UNKNOWN_ERROR_TEXT{ L"(알 수 없는 오류)" };
+        constexpr std::wstring_view LOAD_WARNING_TITLE{ L"저장 파일 안내" };   // 손상된 기록 파일을 백업으로 복구했을 때
+        constexpr std::wstring_view SAVE_ERROR_TITLE{ L"저장 오류" };
+        constexpr std::wstring_view SAVE_ERROR_TEXT{ L"각인서 시세 기록을 저장하지 못했어요.\n" };
+        constexpr std::wstring_view CHART_TITLE_FORMAT{ L"{} 최저가 추이" };               // 그래프 제목 (각인서 이름)
+        constexpr std::wstring_view CHART_EMPTY_FORMAT{ L"{} — 아직 기록이 없어요" };      // 고른 각인서에 기록이 없을 때
+        constexpr std::wstring_view CHART_HINT_TEXT{ L"표에서 각인서를 고르면 일별 최저가 그래프가 보여요" };   // 아직 아무것도 고르지 않았을 때
         constexpr std::wstring_view SEARCH_IGNORED_CHARACTERS{ L" \t" };   // 검색할 때 무시하는 글자 (띄어쓰기 차이)
 
         // 예외 메시지(UTF-8) → 화면 문구 (변환할 수 없으면 기본 문구)
@@ -122,6 +132,13 @@ namespace LostArkMultiTool::Views
         // 모델: 거래소 유물 각인서 시세 (실행 중에만 보관)
         m_service = std::make_unique<Services::MarketEngravingPriceService>();
 
+        // 모델: 각인서별 일별 최저가 기록 (EngravingFinderData.json, 손상되면 백업으로 복구하고 안내)
+        m_historyRepository = std::make_unique<Services::JSONPriceHistoryRepository>(Services::PriceHistoryFiles::ENGRAVING_FILE_NAME);
+        if (const std::optional<std::string>& warning{ m_historyRepository->GetLoadWarning() }; warning.has_value())
+        {
+            context.m_notifier.ShowMessage(std::wstring{ LOAD_WARNING_TITLE }, ToWideMessage(warning->c_str()), Core::NoticeKind::NOTICE_WARNING, nullptr);
+        }
+
         // 화면: 사용자 동작을 매니저 함수로 연결
         m_view = std::make_unique<EngravingFinderView>(context.m_platform);
         m_view->SetOnRefresh([this] { RequestRefresh(false); });
@@ -131,6 +148,7 @@ namespace LostArkMultiTool::Views
             SetAutoRefresh(isEnabled);
         });
         m_view->SetOnFilterChanged([this] { RefreshTable(); });
+        m_view->SetOnRowSelected([this] { SelectRow(); });   // 표 행을 고르면 그 각인서의 그래프
 
         RefreshTable();
     }
@@ -141,7 +159,21 @@ namespace LostArkMultiTool::Views
         m_autoTimer.Stop();
         m_refreshTask.Wait();
 
+        // 저장하지 못한 기록이 남아 있으면 마지막으로 한 번 더 저장 (종료 중이라 실패해도 알리지 않음)
+        if (m_historyRepository && m_isHistoryDirty)
+        {
+            try
+            {
+                m_historyRepository->Save();
+            }
+            catch (const std::exception&)
+            {
+                // 종료 중에는 알림을 띄울 수 없어 건너뜀
+            }
+        }
+
         m_view.reset();
+        m_historyRepository.reset();
         m_service.reset();
         m_context = nullptr;
     }
@@ -250,6 +282,7 @@ namespace LostArkMultiTool::Views
         {
             m_service->ApplyQuotes(m_refreshTask.TakeResult());   // 백그라운드에서 난 예외는 여기서 다시 던져짐
             m_lastAutoError.reset();
+            RecordHistory();                                       // 새 시세로 오늘의 각인서별 최저가 기록
         }
         catch (const Core::APIKeyInvalidException& error)
         {
@@ -311,11 +344,25 @@ namespace LostArkMultiTool::Views
             if (!keyword.empty() && !RemoveSpaces(name).contains(keyword)) continue;
 
             rows.push_back(EngravingRow{ std::move(name), quote.GetCurrentMinPrice(), quote.GetDiff(),
-                quote.GetYesterdayAvgPrice(), quote.GetRecentPrice(), quote.GetDayChangeRate() });
+                quote.GetYesterdayAvgPrice(), quote.GetRecentPrice(), quote.GetDayChangeRate(), quote.GetName() });
         }
 
         SortRows(rows, m_view->GetSortOrder());
         m_view->ShowRows(rows);
+
+        // 표 행 순서대로 기록 키를 보관하고, 고른 각인서가 아직 표에 있으면 선택을 유지 (정렬 · 검색으로 순서가 바뀌어도)
+        m_rowKeys.clear();
+        for (const EngravingRow& row : rows) m_rowKeys.push_back(row.m_key);
+        std::optional<std::size_t> selectedRow;   // 표에서 다시 선택할 행
+        if (m_selectedKey.has_value())
+        {
+            if (const auto found{ std::ranges::find(m_rowKeys, *m_selectedKey) }; found != m_rowKeys.end())
+            {
+                selectedRow = static_cast<std::size_t>(std::distance(m_rowKeys.begin(), found));
+            }
+        }
+        m_view->SelectRow(selectedRow);
+        RefreshChart();   // 시세가 바뀌면 그래프도 새 기록으로
 
         // 상태: 조회 중이면 그대로, 아니면 종류 수 + 마지막 갱신 시각
         if (m_refreshTask.IsRunning()) return;
@@ -338,5 +385,62 @@ namespace LostArkMultiTool::Views
         if (m_lastAutoError == message) return;
         m_lastAutoError = message;
         m_context->m_notifier.ShowToast(std::format(AUTO_ERROR_FORMAT, title, message), Core::NoticeKind::NOTICE_ERROR);
+    }
+
+    // 조회가 성공했을 때: 매물이 있는(현재 최저가 > 0) 각인서마다 오늘(오전 6시 기준) 최저가를 기록 (그날 더 싸면 갱신)
+    void EngravingFinderManager::RecordHistory()
+    {
+        const std::string dayKey{ Core::LocalTime::MakeDateKey(Core::LocalTime::GetGameToday()) };   // 오늘 날짜 키
+        Models::PriceHistory& history{ m_historyRepository->GetHistory() };                           // 기록
+        bool isChanged{};   // 새로 기록하거나 갱신한 값이 있는지
+
+        for (const Models::EngravingQuote& quote : m_service->GetQuotes())
+        {
+            if (quote.GetCurrentMinPrice() <= 0.0) continue;   // 매물이 없으면 기록하지 않음
+            if (history.RecordLowest(quote.GetName(), dayKey, std::llround(quote.GetCurrentMinPrice()))) isChanged = true;
+        }
+
+        // 바뀐 게 있거나 지난번 저장에 실패했으면 저장
+        if (isChanged || m_isHistoryDirty) SaveHistory();
+    }
+
+    // 기록 저장 (실패하면 알리고, 다음 조회 · 종료 때 다시 시도)
+    void EngravingFinderManager::SaveHistory()
+    {
+        try
+        {
+            m_historyRepository->Save();   // 임시 파일 → 교체 방식 저장
+            m_isHistoryDirty = false;
+        }
+        catch (const std::exception& error)
+        {
+            m_isHistoryDirty = true;       // 다음 기회에 다시 저장
+            m_context->m_notifier.ShowToast(std::wstring{ SAVE_ERROR_TEXT } + ToWideMessage(error.what()), Core::NoticeKind::NOTICE_ERROR);
+        }
+    }
+
+    // 표에서 행을 골랐을 때: 그 행의 각인서가 그래프 대상
+    void EngravingFinderManager::SelectRow()
+    {
+        const std::optional<std::size_t> row{ m_view->GetSelectedRow() };
+        if (!row.has_value() || *row >= m_rowKeys.size()) return;   // 선택이 없으면 그대로 둠
+
+        m_selectedKey = m_rowKeys[*row];
+        RefreshChart();
+    }
+
+    // 고른 각인서의 일별 최저가 그래프 (고르지 않았으면 안내 문구)
+    void EngravingFinderManager::RefreshChart()
+    {
+        if (!m_view) return;
+        if (!m_selectedKey.has_value())
+        {
+            m_view->SetChart(std::wstring{ CHART_HINT_TEXT }, {});
+            return;
+        }
+
+        const std::map<std::string, std::int64_t>& days{ m_historyRepository->GetHistory().GetDays(*m_selectedKey) };
+        const std::wstring name{ ToWideMessage(m_selectedKey->c_str()) };
+        m_view->SetChart(days.empty() ? std::format(CHART_EMPTY_FORMAT, name) : std::format(CHART_TITLE_FORMAT, name), BuildPriceChartPoints(days));
     }
 }

@@ -361,6 +361,60 @@
     <ClCompile Include="Local_Time.ixx">
       <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>
+    <ClCompile Include="App_Logger.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="App_Logger.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Crash_Reporter.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Crash_Reporter.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Update_Installer.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Update_Installer.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Self_Test.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Self_Test.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Price_History.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Price_History.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Price_History_Repository.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Price_History_Repository.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="JSON_Price_History_Repository.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="JSON_Price_History_Repository.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Price_History_Chart.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Price_History_Chart.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="API_Format_Monitor.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="API_Format_Monitor.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
     <ClCompile Include="Local_Time.cpp">
       <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>

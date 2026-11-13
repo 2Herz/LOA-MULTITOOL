@@ -516,6 +516,28 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         // ===== 무기 공격력 보정 (W0 = 무기 툴팁 공격력 + 이 값, 다른 무기 공격력 출처의 맞춤값) =====
         constexpr double WEAPON_ATTACK_EXTRA{ 21500.0 };   // 무기 툴팁 공격력에 더하는 보정값
 
+        // ===== 계수 버전 정보 (언제 · 무엇을 기준으로 측정했는지) =====
+        constexpr std::wstring_view COEFFICIENT_MEASURED_AT{ L"2026-11-13" };   // 측정 날짜
+        constexpr std::wstring_view COEFFICIENT_BASIS{ L"lopec.kr 시뮬레이터 측정 (v1.5.4 보정)" };   // 측정 근거
+
+        // 계통별 예상 오차 (%, lopec 측정 대비) - 키는 계통 이름, 모르는 키는 없음
+        constexpr std::array<KeyedValue, 14> UNCERTAINTIES{ {   // 문구 키 14개
+            KeyedValue{ "GEAR", 0.03 },   // 키 → 값
+            KeyedValue{ "WEAPON_QUALITY", 0.03 },   // 키 → 값
+            KeyedValue{ "GEM", 0.05 },   // 키 → 값
+            KeyedValue{ "VAMBRACE", 0.06 },   // 키 → 값
+            KeyedValue{ "ACCESSORY", 0.15 },   // 키 → 값
+            KeyedValue{ "BRACELET", 0.05 },   // 키 → 값
+            KeyedValue{ "ENGRAVING_BOOK", 0.1 },   // 키 → 값
+            KeyedValue{ "STONE", 0.05 },   // 키 → 값
+            KeyedValue{ "AVATAR", 0.05 },   // 키 → 값
+            KeyedValue{ "ARK_CORE", 0.03 },   // 키 → 값
+            KeyedValue{ "ARK_GEM", 0.03 },   // 키 → 값
+            KeyedValue{ "ARK_PASSIVE", 0.03 },   // 키 → 값
+            KeyedValue{ "ARK_PASSIVE_PARTIAL", 0.6 },   // 키 → 값
+            KeyedValue{ "COMBO_SURCHARGE", 1.0 },   // 키 → 값
+        } };   // UNCERTAINTIES 끝
+
         // ===== 악세서리 · 팔찌 · 스톤 · 각인서 · 아바타 · 아크 그리드 · 아크 패시브 · 완갑 =====
         // 악세서리 연마 옵션 (정확한 문구 → ln 배율, 무기 공격력 옵션은 식으로 따로 계산)
         constexpr std::array<KeyedValue, 31> ACCESSORY_OPTIONS{ {   // 문구 키 31개
@@ -1245,6 +1267,24 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
     double GetWeaponAttackExtra() noexcept
     {
         return WEAPON_ATTACK_EXTRA;   // 무기 공격력 보정값 반환
+    }
+
+    // 계수 측정 날짜
+    std::wstring_view GetCoefficientMeasuredAt() noexcept
+    {
+        return COEFFICIENT_MEASURED_AT;   // 계수 측정 날짜 반환
+    }
+
+    // 계수 측정 근거
+    std::wstring_view GetCoefficientBasis() noexcept
+    {
+        return COEFFICIENT_BASIS;   // 계수 측정 근거 반환
+    }
+
+    // 계통별 예상 오차 표 (%)
+    std::span<const KeyedValue> GetUncertainties() noexcept
+    {
+        return UNCERTAINTIES;   // 계통별 예상 오차 표 (%) 반환
     }
 
     // 악세서리 연마 옵션 ln 표

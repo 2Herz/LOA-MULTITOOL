@@ -2,6 +2,7 @@ export module LostArkMultiTool.Core.CombatExtraComponent;  // 추가 장착 배�
 
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.CombatFactorComponent;  // 배율 요소 기반 모듈 가져오기
+import LostArkMultiTool.Models.CombatExtraState;  // 추가 장착 상태 모듈 가져오기
 import LostArkMultiTool.Models.CombatState;  // 전투력 상태 모듈 가져오기
 
 export namespace LostArkMultiTool::Core  // 코어 네임스페이스 내보내기 시작
@@ -72,4 +73,7 @@ export namespace LostArkMultiTool::Core  // 코어 네임스페이스 내보내�
         [[nodiscard]] CombatFactorKind GetKind() const noexcept override;  // 요소 종류 조회 재정의
         [[nodiscard]] double GetFactor(const Models::CombatState& current, const Models::CombatState& target) const override;  // 현재 → 목표 배율 계산 재정의
     };
+
+    // 처음 보는 혼돈 코어 이름이 있어 같은 종류 혼돈 코어의 평균값으로 계산했는지 (화면 안내용)
+    [[nodiscard]] bool HasUnknownChaosCore(const Models::ExtraState& state);  // 모르는 혼돈 코어 이름 사용 여부 조회
 }

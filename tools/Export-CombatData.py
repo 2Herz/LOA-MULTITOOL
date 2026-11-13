@@ -503,6 +503,13 @@ def build_source(data, input_name):
     out.append(f'{INDENT * 2}// ===== 무기 공격력 보정 (W0 = 무기 툴팁 공격력 + 이 값, 다른 무기 공격력 출처의 맞춤값) =====')
     out.append(f'{INDENT * 2}constexpr double WEAPON_ATTACK_EXTRA{{ {format_number(weapon_extra)} }};   // 무기 툴팁 공격력에 더하는 보정값')
     out.append('')
+    meta = data.get('Meta', {})   # 계수 측정 정보 (측정 날짜 · 측정 근거)
+    out.append(f'{INDENT * 2}// ===== 계수 버전 정보 (언제 · 무엇을 기준으로 측정했는지) =====')
+    out.append(f'{INDENT * 2}constexpr std::wstring_view COEFFICIENT_MEASURED_AT{{ L{cpp_string(meta.get("MeasuredAt", ""))} }};   // 측정 날짜')
+    out.append(f'{INDENT * 2}constexpr std::wstring_view COEFFICIENT_BASIS{{ L{cpp_string(meta.get("Basis", ""))} }};   // 측정 근거')
+    out.append('')
+    out.append(format_keyed('UNCERTAINTIES', list(data.get('Uncertainty', {}).items()), '계통별 예상 오차 (%, lopec 측정 대비) - 키는 계통 이름, 모르는 키는 없음'))
+    out.append('')
     extra_consts, extra_funcs = build_extra(data)
     out.append(f'{INDENT * 2}// ===== 악세서리 · 팔찌 · 스톤 · 각인서 · 아바타 · 아크 그리드 · 아크 패시브 · 완갑 =====')
     out.extend(extra_consts)
@@ -531,6 +538,9 @@ def build_source(data, input_name):
         ('double GetNoGemValue() noexcept', 'NO_GEM_VALUE', '보석이 없을 때의 계수'),
         ('const QualityCurve& GetWeaponQualityCurve() noexcept', 'WEAPON_QUALITY_CURVE', '무기 품질 곡선'),
         ('double GetWeaponAttackExtra() noexcept', 'WEAPON_ATTACK_EXTRA', '무기 공격력 보정값'),
+        ('std::wstring_view GetCoefficientMeasuredAt() noexcept', 'COEFFICIENT_MEASURED_AT', '계수 측정 날짜'),
+        ('std::wstring_view GetCoefficientBasis() noexcept', 'COEFFICIENT_BASIS', '계수 측정 근거'),
+        ('std::span<const KeyedValue> GetUncertainties() noexcept', 'UNCERTAINTIES', '계통별 예상 오차 표 (%)'),
     ]:
         out.append(f'{INDENT}// {description}')
         out.append(f'{INDENT}{signature}')

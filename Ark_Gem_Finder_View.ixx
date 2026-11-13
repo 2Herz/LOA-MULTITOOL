@@ -26,6 +26,7 @@ export namespace LostArkMultiTool::Views
         double m_yesterdayAvgPrice{};
         double m_recentPrice{};
         std::optional<double> m_dayChangeRate;    // 전일 평균가 대비 변동률(%)
+        std::string m_key;                        // 일별 기록을 찾는 키 (UTF-8 젬 이름, 화면에는 표시하지 않음)
     };
 
     // 귀속 젬 계산기 표 한 행 (젬 하나의 등급별 수량 · 단가 · 합계)
@@ -54,6 +55,8 @@ export namespace LostArkMultiTool::Views
         void SetOnQuantityEdited(std::function<void(std::size_t gemIndex, std::size_t gradeIndex, const std::wstring& text)> onQuantityEdited);
         void SetOnSyncRoster(std::function<void(const std::wstring& mainCharacterName)> onSyncRoster);   // [원정대 동기화] · 이름 칸 Enter
         void SetOnCharacterSelected(std::function<void()> onCharacterSelected);                           // 캐릭터 선택을 바꿈
+        // 시세 표(질서 · 혼돈)에서 행을 골랐음 (isOrder = 질서의 젬 표인지, row = 고른 행, 그래프 대상)
+        void SetOnPriceRowSelected(std::function<void(bool isOrder, std::size_t row)> onPriceRowSelected);
 
         // ===== 상단 바 =====
         void SetAutoRefreshChecked(bool isChecked) noexcept;   // 코드에서 바꿈 (알림 없음)
@@ -64,6 +67,9 @@ export namespace LostArkMultiTool::Views
         // ===== 시세 표 =====
         void ShowOrder(const std::vector<ArkGemRow>& rows);   // 질서의 젬
         void ShowChaos(const std::vector<ArkGemRow>& rows);    // 혼돈의 젬
+        void SelectOrderRow(std::optional<std::size_t> row);    // 질서 표 선택을 코드에서 바꿈 (알림 없음, 다른 표 선택은 그대로)
+        void SelectChaosRow(std::optional<std::size_t> row);    // 혼돈 표 선택을 코드에서 바꿈 (알림 없음)
+        void SetPriceChart(std::wstring title, std::vector<UI::ChartPoint> points);   // 오른쪽 위: 고른 젬의 일별 최저가
 
         // ===== 귀속 젬 계산기 =====
         // 캐릭터 선택 목록 (0번 = ★ 원정대 전체 ★, 1번부터 캐릭터, 선택이 없으면 nullopt)
@@ -95,6 +101,7 @@ export namespace LostArkMultiTool::Views
 
         static void FillGrid(UI::Grid& grid, const std::vector<ArkGemRow>& rows);
         void InitializeBoundGemGrid();
+        void HandlePriceRowSelected(bool isOrder);   // 한쪽 표에서 행을 고르면 다른 쪽 선택을 풀고 알림
         void Layout(const Core::RectF& contentArea);
         [[nodiscard]] Core::RectF LayoutPanel(Panel& panel, const Core::RectF& bounds) const;   // 테두리 · 제목 자리를 뺀 안쪽 영역
         void RenderPanels(Core::Renderer& renderer) const;
@@ -112,11 +119,13 @@ export namespace LostArkMultiTool::Views
         UI::ComboBox& m_characterBox;    // 캐릭터 선택 (★ 원정대 전체 ★ + 캐릭터)
         UI::Grid& m_boundGemGrid;
         UI::LineChart& m_chart;          // 원정대 귀속 젬 총 가치 그래프
+        UI::LineChart& m_priceChart;     // 고른 젬의 일별 최저가 그래프
 
         Panel m_orderPanel;
         Panel m_chaosPanel;
         Panel m_boundGemPanel;
         Panel m_chartPanel;
+        Panel m_priceChartPanel;
         Core::RectF m_layoutArea;
         bool m_hasLayout{};
         bool m_isQuantityEditable{ true };   // 수량 칸 편집 가능 여부 (원정대 전체를 고르면 false)
@@ -126,5 +135,6 @@ export namespace LostArkMultiTool::Views
         std::function<void(std::size_t, std::size_t, const std::wstring&)> m_onQuantityEdited;
         std::function<void(const std::wstring&)> m_onSyncRoster;
         std::function<void()> m_onCharacterSelected;
+        std::function<void(bool, std::size_t)> m_onPriceRowSelected;
     };
 }

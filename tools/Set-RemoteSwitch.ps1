@@ -7,6 +7,11 @@
 # Rules : a field you do not pass is kept as it is.
 #         -State Off without -Message also clears MaintenanceMessage.
 #         Pass "" to clear Notice or DownloadUrl.
+# Update: -Version (Multi only) also downloads the release zip
+#         https://github.com/2Herz/LOA-MULTITOOL/releases/download/v<Version>/LostArk-MultiTool.zip,
+#         and writes PackageUrl + PackageSha256 so the app can auto-update and verify the file.
+#         If the zip is not uploaded yet, both fields are cleared (the app falls back to the download page).
+#         -PackagePath <zip> hashes that local file instead (must be the exact file uploaded to the release).
 # Token : read only from the GIST_TOKEN environment variable (classic token, "gist" scope only).
 # NOTE  : this file is ASCII-only on purpose.
 #         Windows PowerShell 5.1 reads BOM-less files as ANSI(CP949), which breaks non-ASCII text.
@@ -16,7 +21,8 @@ param(
     [string]$Message,                            # MaintenanceMessage (empty = app default message)
     [string]$Version,                            # LatestVersion (e.g. 1.0.5)
     [string]$Notice,                             # Notice (empty = no notice)
-    [string]$DownloadUrl                         # DownloadUrl (http/https only)
+    [string]$DownloadUrl,                        # DownloadUrl (http/https only)
+    [string]$PackagePath                         # local copy of the uploaded release zip (hash it instead of downloading)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +36,10 @@ $TARGETS = @{
 $GistId   = $TARGETS[$App].GistId
 $FileName = $TARGETS[$App].FileName
 $API_URL  = "https://api.github.com/gists/$GistId"
+
+# Release zip of the MultiTool (auto-update package)
+$RELEASE_DOWNLOAD_BASE = 'https://github.com/2Herz/LOA-MULTITOOL/releases/download'
+$PACKAGE_FILE_NAME     = 'LostArk-MultiTool.zip'
 
 # At least one field must be given
 $EDIT_KEYS = 'State', 'Message', 'Version', 'Notice', 'DownloadUrl'
@@ -83,6 +93,29 @@ if ($PSBoundParameters.ContainsKey('Version')) {
     $Parsed = $null
     if (-not [Version]::TryParse($Version.Trim(), [ref]$Parsed)) { throw "Invalid -Version '$Version'. Use a form like 1.0.5" }
     Set-Field $Config 'LatestVersion' $Version.Trim()
+
+    # Auto-update package (Multi only): hash the uploaded release zip so the app can verify the download
+    if ($App -eq 'Multi') {
+        $PackageUrl = "$RELEASE_DOWNLOAD_BASE/v$($Version.Trim())/$PACKAGE_FILE_NAME"
+        $TempZip = Join-Path ([IO.Path]::GetTempPath()) "LoaMultiToolPackage_$([Guid]::NewGuid().ToString('N')).zip"
+        try {
+            $HashSource = $TempZip
+            if ($PackagePath) { $HashSource = (Resolve-Path -LiteralPath $PackagePath).Path }   # local zip given
+            else { Invoke-WebRequest -Uri $PackageUrl -OutFile $TempZip -UseBasicParsing }       # download the uploaded zip
+            $Hash = (Get-FileHash -LiteralPath $HashSource -Algorithm SHA256).Hash.ToLowerInvariant()
+            Set-Field $Config 'PackageUrl' $PackageUrl
+            Set-Field $Config 'PackageSha256' $Hash
+            Write-Host "[OK] package $PackageUrl sha256=$Hash"
+        }
+        catch {
+            Write-Warning "Release zip not readable ($($_.Exception.Message)) at $PackageUrl. Auto-update is disabled for this version (download page only)."
+            Set-Field $Config 'PackageUrl' ''
+            Set-Field $Config 'PackageSha256' ''
+        }
+        finally {
+            if (Test-Path -LiteralPath $TempZip) { Remove-Item -LiteralPath $TempZip -Force }
+        }
+    }
 }
 
 if ($PSBoundParameters.ContainsKey('DownloadUrl')) {

@@ -36,6 +36,44 @@ msbuild "로스트아크 멀티툴.slnx" /t:Rebuild /p:Configuration=Release
 if %errorlevel% neq 0 goto error
 
 echo ==============================================
+echo 3. 데이터 자체 검사 (전투력 계수 · 재련 표)
+echo ==============================================
+rem GUI 프로그램이라 start /wait로 끝날 때까지 기다려 종료 코드(실패 항목 수)를 받음
+for %%C in (Debug Release) do (
+    start "" /wait "x64\%%C\LOA-MULTITOOL.exe" --self-test
+    if errorlevel 1 (
+        type "x64\%%C\self_test_report.txt"
+        echo [에러] %%C 자체 검사 실패
+        goto error
+    )
+)
+type "x64\Release\self_test_report.txt"
+
+echo ==============================================
+echo 4. 전투력 계수 회귀 테스트 (lopec 측정값, 보정 키트가 있는 PC만)
+echo ==============================================
+where python > nul 2>&1
+if %errorlevel% equ 0 (
+    python tools\Test-CombatRegression.py
+    if errorlevel 1 goto error
+) else (
+    echo [건너뜀] python이 없어 회귀 테스트를 건너뜁니다.
+)
+
+echo ==============================================
+echo 5. 코드 서명 (SIGN_CERT_THUMBPRINT 환경 변수가 있을 때만)
+echo ==============================================
+rem 인증서를 Windows 인증서 저장소에 설치한 뒤: setx SIGN_CERT_THUMBPRINT "인증서 지문"
+if defined SIGN_CERT_THUMBPRINT (
+    signtool sign /sha1 %SIGN_CERT_THUMBPRINT% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "x64\Release\LOA-MULTITOOL.exe"
+    if errorlevel 1 goto error
+    signtool verify /pa "x64\Release\LOA-MULTITOOL.exe"
+    if errorlevel 1 goto error
+) else (
+    echo [건너뜀] SIGN_CERT_THUMBPRINT가 없어 서명하지 않습니다.
+)
+
+echo ==============================================
 echo [성공] Debug 및 Release 멀티 빌드가 완료되었습니다!
 echo ==============================================
 pause

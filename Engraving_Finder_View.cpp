@@ -13,6 +13,7 @@ import LostArkMultiTool.Views.UI.ComboBox;
 import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Grid;
 import LostArkMultiTool.Views.UI.Label;
+import LostArkMultiTool.Views.UI.LineChart;
 import LostArkMultiTool.Views.UI.TextBox;
 
 namespace LostArkMultiTool::Views
@@ -49,6 +50,10 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view PLUS_SIGN{ L"+" };
         constexpr std::wstring_view PERCENT_SUFFIX{ L"%" };
 
+        // ===== 일별 최저가 그래프 =====
+        constexpr std::wstring_view CHART_PANEL_TITLE{ L"시세 기록 (일별 최저가)" };   // 그래프 묶음 상자 제목
+        constexpr std::wstring_view CHART_VALUE_SUFFIX{ L" 골드" };                    // 말풍선 값 뒤 단위
+
         constexpr std::array<std::wstring_view, COLUMN_COUNT> COLUMN_HEADERS{ L"각인서", L"현재 최저가", L"전일 평균가", L"최근 거래가", L"전일 대비" };
         constexpr std::array<float, COLUMN_COUNT> COLUMN_WEIGHTS{ NAME_COLUMN_WEIGHT, CURRENT_COLUMN_WEIGHT, PRICE_COLUMN_WEIGHT, PRICE_COLUMN_WEIGHT, CHANGE_COLUMN_WEIGHT };
 
@@ -60,6 +65,7 @@ namespace LostArkMultiTool::Views
         // ===== 배치 (DIP) =====
         constexpr float PAGE_PADDING{ 16.0f };
         constexpr float SECTION_GAP{ 16.0f };          // 상단 바 · 묶음 상자 사이
+        constexpr float PRICE_AREA_RATIO{ 0.62f };     // 본문 중 시세 표 몫 (나머지 = 그래프)
         constexpr float GROUP_GAP{ 12.0f };
         constexpr float LABEL_GAP{ 4.0f };             // "검색" 글자와 입력칸 사이
         constexpr float REFRESH_BUTTON_WIDTH{ 110.0f };
@@ -132,6 +138,7 @@ namespace LostArkMultiTool::Views
         , m_sortBox{ m_host.Emplace<UI::ComboBox>() }
         , m_statusLabel{ m_host.Emplace<UI::Label>(std::wstring{ INITIAL_STATUS_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
         , m_priceGrid{ m_host.Emplace<UI::Grid>(platform, MakeColumns(), 0) }
+        , m_chart{ m_host.Emplace<UI::LineChart>() }
     {
         m_refreshButton.SetOnClick([this]
         {
@@ -149,6 +156,14 @@ namespace LostArkMultiTool::Views
 
         // 시세 표: 읽기 전용, 행 단위 선택 (긴 표에서 줄을 따라 읽기 쉽게)
         m_priceGrid.SetSelectionMode(UI::GridSelectionMode::SELECT_ROW);
+        m_priceGrid.SetOnSelectionChanged([this]
+        {
+            if (const auto onRowSelected{ m_onRowSelected }) onRowSelected();   // 고른 각인서의 그래프로 바꿈
+        });
+
+        // 그래프: 유물 등급색 곡선 + 말풍선 "N 골드" (보석 검색기 그래프와 같은 형식)
+        m_chart.SetSeriesColor(Theme::GRADE_RELIC_COLOR);
+        m_chart.SetValueSuffix(std::wstring{ CHART_VALUE_SUFFIX });
     }
 
     EngravingFinderView::~EngravingFinderView() = default;
@@ -166,6 +181,27 @@ namespace LostArkMultiTool::Views
     void EngravingFinderView::SetOnFilterChanged(std::function<void()> onFilterChanged)
     {
         m_onFilterChanged = std::move(onFilterChanged);
+    }
+
+    void EngravingFinderView::SetOnRowSelected(std::function<void()> onRowSelected)
+    {
+        m_onRowSelected = std::move(onRowSelected);
+    }
+
+    std::optional<std::size_t> EngravingFinderView::GetSelectedRow() const noexcept
+    {
+        return m_priceGrid.GetSelectedRow();
+    }
+
+    void EngravingFinderView::SelectRow(std::optional<std::size_t> row)
+    {
+        m_priceGrid.SelectRow(row);
+    }
+
+    void EngravingFinderView::SetChart(std::wstring title, std::vector<UI::ChartPoint> points)
+    {
+        m_chart.SetTitle(std::move(title));
+        m_chart.SetPoints(std::move(points));
     }
 
     void EngravingFinderView::SetAutoRefreshChecked(bool isChecked) noexcept
@@ -251,7 +287,8 @@ namespace LostArkMultiTool::Views
     void EngravingFinderView::Render(Core::Renderer& renderer, const Core::RectF& contentArea)
     {
         Layout(contentArea);
-        RenderPanel(renderer);
+        RenderPanel(renderer, m_panelBounds, PANEL_TITLE);                // 시세 표 상자
+        RenderPanel(renderer, m_chartPanelBounds, CHART_PANEL_TITLE);     // 그래프 상자
         m_host.Render(renderer);
     }
 
@@ -302,23 +339,27 @@ namespace LostArkMultiTool::Views
         place(m_sortBox, SORT_BOX_WIDTH, SECTION_GAP);
         m_statusLabel.SetBounds(Core::RectF{ x, barTop, std::max(x, right), barBottom });
 
-        // 본문: 묶음 상자 (테두리 · 제목 자리를 뺀 안쪽에 표)
+        // 본문: 왼쪽 시세 표 | 오른쪽 일별 최저가 그래프 (각각 묶음 상자, 테두리 · 제목 자리를 뺀 안쪽을 채움)
         const float bodyTop{ barBottom + SECTION_GAP };
         const float bodyBottom{ std::max(bodyTop, contentArea.m_bottom - PAGE_PADDING) };
-        m_panelBounds = Core::RectF{ left, bodyTop, right, bodyBottom };
-        m_priceGrid.SetBounds(Core::RectF{ left + PANEL_PADDING, bodyTop + Theme::PANEL_TITLE_HEIGHT,
-            right - PANEL_PADDING, std::max(bodyTop + Theme::PANEL_TITLE_HEIGHT, bodyBottom - PANEL_PADDING) });
+        const float priceRight{ left + (right - left - SECTION_GAP) * PRICE_AREA_RATIO };   // 시세 표 상자 오른쪽 끝
+        const float innerTop{ bodyTop + Theme::PANEL_TITLE_HEIGHT };                          // 상자 제목 아래
+        const float innerBottom{ std::max(innerTop, bodyBottom - PANEL_PADDING) };            // 상자 아래 여백 위
+        m_panelBounds = Core::RectF{ left, bodyTop, priceRight, bodyBottom };
+        m_priceGrid.SetBounds(Core::RectF{ left + PANEL_PADDING, innerTop, priceRight - PANEL_PADDING, innerBottom });
+        m_chartPanelBounds = Core::RectF{ priceRight + SECTION_GAP, bodyTop, right, bodyBottom };
+        m_chart.SetBounds(Core::RectF{ m_chartPanelBounds.m_left + PANEL_PADDING, innerTop, right - PANEL_PADDING, innerBottom });
     }
 
     // 묶음 상자: 둥근 테두리 + 왼쪽 위 제목
-    void EngravingFinderView::RenderPanel(Core::Renderer& renderer) const
+    void EngravingFinderView::RenderPanel(Core::Renderer& renderer, const Core::RectF& bounds, std::wstring_view title)
     {
-        renderer.FillRoundedRect(m_panelBounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // 카드 바탕 (배경보다 살짝 밝게)
-        renderer.DrawRoundedRect(m_panelBounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리
+        renderer.FillRoundedRect(bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // 카드 바탕 (배경보다 살짝 밝게)
+        renderer.DrawRoundedRect(bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리
 
-        const Core::RectF titleRect{ m_panelBounds.m_left + PANEL_TITLE_LEFT, m_panelBounds.m_top,
-            m_panelBounds.m_right - PANEL_TITLE_LEFT, m_panelBounds.m_top + Theme::PANEL_TITLE_HEIGHT };
-        renderer.DrawString(PANEL_TITLE, titleRect, Theme::HEADER_TEXT_COLOR, PANEL_TITLE_STYLE);
+        const Core::RectF titleRect{ bounds.m_left + PANEL_TITLE_LEFT, bounds.m_top,
+            bounds.m_right - PANEL_TITLE_LEFT, bounds.m_top + Theme::PANEL_TITLE_HEIGHT };
+        renderer.DrawString(title, titleRect, Theme::HEADER_TEXT_COLOR, PANEL_TITLE_STYLE);
     }
 
     void EngravingFinderView::NotifyFilterChanged() const

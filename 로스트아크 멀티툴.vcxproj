@@ -624,6 +624,114 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
     </ClCompile>
+    <ClCompile Include="App_Logger.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="App_Logger.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Crash_Reporter.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Crash_Reporter.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Update_Installer.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Update_Installer.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Self_Test.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Self_Test.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Price_History.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Price_History.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Price_History_Repository.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Price_History_Repository.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="JSON_Price_History_Repository.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="JSON_Price_History_Repository.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Price_History_Chart.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Price_History_Chart.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="API_Format_Monitor.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="API_Format_Monitor.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
     <ClCompile Include="Local_Time.cpp">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>

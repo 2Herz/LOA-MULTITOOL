@@ -95,6 +95,8 @@ namespace LostArkMultiTool::Views
         // ===== 그래프 =====
         constexpr std::wstring_view CHART_PANEL_TITLE{ L"원정대 귀속 젬 가치 그래프" };
         constexpr std::wstring_view CHART_VALUE_SUFFIX{ L" 골드" };
+        constexpr std::wstring_view PRICE_CHART_PANEL_TITLE{ L"시세 기록 (일별 최저가)" };   // 고른 젬의 그래프 상자 제목
+        constexpr float PRICE_CHART_HEIGHT_RATIO{ 0.5f };   // 오른쪽 그래프 영역 중 시세 기록 그래프 몫 (나머지 = 귀속 젬 가치 그래프)
 
         constexpr Core::TextStyle BAR_TEXT_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };
         constexpr Core::TextStyle PANEL_TITLE_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::LEADING };
@@ -176,15 +178,21 @@ namespace LostArkMultiTool::Views
         , m_characterBox{ m_host.Emplace<UI::ComboBox>() }
         , m_boundGemGrid{ m_host.Emplace<UI::Grid>(platform, MakeBoundGemColumns(), BOUND_ROW_COUNT) }
         , m_chart{ m_host.Emplace<UI::LineChart>() }
+        , m_priceChart{ m_host.Emplace<UI::LineChart>() }
         , m_orderPanel{ Core::RectF{}, std::wstring{ ORDER_PANEL_TITLE } }
         , m_chaosPanel{ Core::RectF{}, std::wstring{ CHAOS_PANEL_TITLE } }
         , m_boundGemPanel{ Core::RectF{}, std::wstring{ BOUND_PANEL_TITLE } }
         , m_chartPanel{ Core::RectF{}, std::wstring{ CHART_PANEL_TITLE } }
+        , m_priceChartPanel{ Core::RectF{}, std::wstring{ PRICE_CHART_PANEL_TITLE } }
     {
         // 그래프: 귀속재료 계산기와 같은 골드 곡선 + 말풍선 "N 골드" + 직전 기록 대비
         m_chart.SetSeriesColor(Theme::CHART_LINE_COLOR);
         m_chart.SetValueSuffix(std::wstring{ CHART_VALUE_SUFFIX });
         m_chart.SetChangeShown(true);
+
+        // 시세 기록 그래프: 젬 색(보라) 곡선 + 말풍선 "N 골드" (보석 검색기 그래프와 같은 형식)
+        m_priceChart.SetSeriesColor(Theme::GEM_CHART_LINE_COLOR);
+        m_priceChart.SetValueSuffix(std::wstring{ CHART_VALUE_SUFFIX });
 
         m_refreshButton.SetOnClick([this]
         {
@@ -209,6 +217,8 @@ namespace LostArkMultiTool::Views
         // 시세 표: 읽기 전용, 행 단위 선택
         m_orderGrid.SetSelectionMode(UI::GridSelectionMode::SELECT_ROW);
         m_chaosGrid.SetSelectionMode(UI::GridSelectionMode::SELECT_ROW);
+        m_orderGrid.SetOnSelectionChanged([this] { HandlePriceRowSelected(true); });    // 행을 고르면 그 젬의 그래프
+        m_chaosGrid.SetOnSelectionChanged([this] { HandlePriceRowSelected(false); });
 
         InitializeBoundGemGrid();
     }
@@ -238,6 +248,40 @@ namespace LostArkMultiTool::Views
     void ArkGemFinderView::SetOnCharacterSelected(std::function<void()> onCharacterSelected)
     {
         m_onCharacterSelected = std::move(onCharacterSelected);
+    }
+
+    void ArkGemFinderView::SetOnPriceRowSelected(std::function<void(bool isOrder, std::size_t row)> onPriceRowSelected)
+    {
+        m_onPriceRowSelected = std::move(onPriceRowSelected);
+    }
+
+    // 한 번에 한 행만 고르도록 다른 쪽 표 선택을 풀고, 고른 행을 매니저에 알림
+    void ArkGemFinderView::HandlePriceRowSelected(bool isOrder)
+    {
+        UI::Grid& selectedGrid{ isOrder ? m_orderGrid : m_chaosGrid };
+        UI::Grid& otherGrid{ isOrder ? m_chaosGrid : m_orderGrid };
+
+        const std::optional<std::size_t> row{ selectedGrid.GetSelectedRow() };
+        if (!row.has_value()) return;   // 선택이 풀린 경우는 알리지 않음
+
+        otherGrid.SelectRow(std::nullopt);   // 다른 쪽 표 선택 해제
+        if (const auto onPriceRowSelected{ m_onPriceRowSelected }) onPriceRowSelected(isOrder, *row);
+    }
+
+    void ArkGemFinderView::SelectOrderRow(std::optional<std::size_t> row)
+    {
+        m_orderGrid.SelectRow(row);
+    }
+
+    void ArkGemFinderView::SelectChaosRow(std::optional<std::size_t> row)
+    {
+        m_chaosGrid.SelectRow(row);
+    }
+
+    void ArkGemFinderView::SetPriceChart(std::wstring title, std::vector<UI::ChartPoint> points)
+    {
+        m_priceChart.SetTitle(std::move(title));
+        m_priceChart.SetPoints(std::move(points));
     }
 
     void ArkGemFinderView::SetCharacterItems(std::vector<std::wstring> items, std::optional<std::size_t> selectedIndex)
@@ -515,7 +559,11 @@ namespace LostArkMultiTool::Views
         const float calculatorBottom{ std::max(calculatorTop, contentArea.m_bottom - PAGE_PADDING) };
         // 왼쪽 계산기 | 오른쪽 그래프
         const float calculatorRight{ left + (right - left - SECTION_GAP) * CALCULATOR_WIDTH_RATIO };
-        m_chart.SetBounds(LayoutPanel(m_chartPanel, Core::RectF{ calculatorRight + SECTION_GAP, calculatorTop, right, calculatorBottom }));
+        // 오른쪽: 위 = 고른 젬의 일별 최저가 그래프, 아래 = 원정대 귀속 젬 가치 그래프
+        const float chartLeft{ calculatorRight + SECTION_GAP };
+        const float chartSplit{ calculatorTop + (calculatorBottom - calculatorTop - SECTION_GAP) * PRICE_CHART_HEIGHT_RATIO };
+        m_priceChart.SetBounds(LayoutPanel(m_priceChartPanel, Core::RectF{ chartLeft, calculatorTop, right, chartSplit }));
+        m_chart.SetBounds(LayoutPanel(m_chartPanel, Core::RectF{ chartLeft, chartSplit + SECTION_GAP, right, calculatorBottom }));
         const Core::RectF inner{ LayoutPanel(m_boundGemPanel, Core::RectF{ left, calculatorTop, calculatorRight, calculatorBottom }) };
 
         const float rosterTop{ inner.m_top };
@@ -543,7 +591,7 @@ namespace LostArkMultiTool::Views
     // 묶음 상자: 둥근 테두리 + 왼쪽 위 제목
     void ArkGemFinderView::RenderPanels(Core::Renderer& renderer) const
     {
-        for (const Panel* panel : { &m_orderPanel, &m_chaosPanel, &m_boundGemPanel, &m_chartPanel })
+        for (const Panel* panel : { &m_orderPanel, &m_chaosPanel, &m_boundGemPanel, &m_chartPanel, &m_priceChartPanel })
         {
             renderer.FillRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // 카드 바탕 (배경보다 살짝 밝게)
             renderer.DrawRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리

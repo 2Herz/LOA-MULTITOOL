@@ -2,6 +2,7 @@ module LostArkMultiTool.Views.CombatSimulatorView;  // 전투력 시뮬레이터
 
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.Input;  // 입력 모듈 가져오기
+import LostArkMultiTool.Models.CombatCoefficientData;  // 계수 데이터 모듈 가져오기 (계수 기준 날짜)
 import LostArkMultiTool.Core.Platform;  // 플랫폼 모듈 가져오기
 import LostArkMultiTool.Core.Renderer;  // 렌더러 모듈 가져오기
 import LostArkMultiTool.Views.Theme;  // 테마(색 · 글꼴 크기) 모듈 가져오기
@@ -62,6 +63,22 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view GEAR_PANEL_TITLE{ L"장비 재련 · 완갑 (목표 칸에 숫자를 넣어요)" };  // 장비 재련 상자 제목
         constexpr std::wstring_view OPTION_PANEL_TITLE{ L"보석 · 무기 품질" };  // 보석 · 품질 상자 제목
         constexpr std::wstring_view NOTE_TEXT{ L"※ lopec 측정 기반 추정치예요. 근사: 스톤 1번 줄 없음(불안정) · 스톤과 같은 이름의 각인서(약 ±4%) · 깨달음 포인트 구성(최대로 가정) · 완갑(에스더/일반 두 가지 표)" };  // 추정치 안내 문구
+        constexpr std::wstring_view COEFFICIENT_NOTE_FORMAT{ L" 계수 기준: {} · {}" };  // 계수 기준 안내 서식 (측정 날짜 · 측정 근거)
+        constexpr std::wstring_view NOTE_EXTRA_SEPARATOR{ L" " };  // 안내 문구와 추가 안내 사이 구분 글자
+
+        // 안내 문구 전체 글자 (추정치 안내 + 계수 기준 + 필요할 때 추가 안내)
+        [[nodiscard]] std::wstring BuildNoteText(std::wstring_view extra)  // 안내 문구 만들기
+        {
+            std::wstring text{ NOTE_TEXT };  // 기본 추정치 안내
+            text += std::format(COEFFICIENT_NOTE_FORMAT, Models::CombatCoefficientData::GetCoefficientMeasuredAt(), Models::CombatCoefficientData::GetCoefficientBasis());  // 계수 기준 덧붙임
+            if (!extra.empty())  // 추가 안내가 있으면
+            {
+                text += NOTE_EXTRA_SEPARATOR;  // 구분 글자
+                text += extra;  // 추가 안내 덧붙임
+            }
+            return text;  // 완성된 안내 문구 반환
+        }
+
         constexpr std::wstring_view HINT_DEFAULT_TEXT{ L"항목을 고르면 여기서 선택지를 고를 수 있어요. 숫자 항목은 목표 칸을 눌러 바로 입력해요." };  // 카드 기본 안내 문구
         constexpr std::wstring_view HINT_NUMBER_FORMAT{ L"{}   현재 {}  →  목표 {}   (목표 칸을 눌러 숫자를 입력)" };  // 숫자 항목 안내 서식
         constexpr std::wstring_view HINT_CHOICE_FORMAT{ L"{}   현재 {}  →  목표 {}" };  // 선택 항목 안내 서식
@@ -181,7 +198,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         , m_changeLabel{ m_host.Emplace<UI::Label>(std::wstring{}, RESULT_TEXT_STYLE, Theme::TEXT_COLOR) }  // 증감 글자 생성
         , m_itemLevelLabel{ m_host.Emplace<UI::Label>(std::wstring{}, RESULT_TEXT_STYLE, Theme::TEXT_COLOR) }  // 아이템 레벨 글자 생성
         , m_factorLabel{ m_host.Emplace<UI::Label>(std::wstring{}, RESULT_TEXT_STYLE, Theme::MUTED_TEXT_COLOR) }  // 배율 내역 글자 생성 (흐린 색)
-        , m_noteLabel{ m_host.Emplace<UI::Label>(std::wstring{ NOTE_TEXT }, NOTE_TEXT_STYLE, Theme::MUTED_TEXT_COLOR) }  // 추정치 안내 글자 생성
+        , m_noteLabel{ m_host.Emplace<UI::Label>(BuildNoteText({}), NOTE_TEXT_STYLE, Theme::MUTED_TEXT_COLOR) }  // 추정치 안내 글자 생성
         , m_barPanel{ Core::RectF{}, std::wstring{} }  // 결과 바 상자 초기화
         , m_gearPanel{ Core::RectF{}, std::wstring{ GEAR_PANEL_TITLE } }  // 장비 재련 상자 초기화
         , m_optionPanel{ Core::RectF{}, std::wstring{ OPTION_PANEL_TITLE } }  // 보석 · 품질 상자 초기화
@@ -471,6 +488,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_changeLabel.SetColor(result.m_isUp ? Theme::UP_TEXT_COLOR : (result.m_isDown ? Theme::DOWN_TEXT_COLOR : Theme::TEXT_COLOR));  // 증가면 상승색, 감소면 하락색, 같으면 기본색
         m_itemLevelLabel.SetText(result.m_itemLevel);  // 아이템 레벨 글자 반영
         m_factorLabel.SetText(result.m_factors);  // 배율 내역 글자 반영
+        m_noteLabel.SetText(BuildNoteText(result.m_note));  // 안내 문구 반영 (모르는 혼돈 코어 안내 포함)
     }
 
     void CombatSimulatorView::Update(double deltaSeconds)  // 프레임 갱신

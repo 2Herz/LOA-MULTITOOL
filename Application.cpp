@@ -2,7 +2,9 @@
 
 import std;
 import LostArkMultiTool.Core.APIKeyStore;
+import LostArkMultiTool.Core.APIFormatMonitor;
 import LostArkMultiTool.Core.APPConstants;
+import LostArkMultiTool.Core.AppLogger;
 import LostArkMultiTool.Core.BackgroundTask;
 import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.IntervalTimer;
@@ -16,6 +18,7 @@ import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Models.ServerConfig;
 import LostArkMultiTool.Services.DPAPIKeyStore;
 import LostArkMultiTool.Services.GistServerConfigChecker;
+import LostArkMultiTool.Services.UpdateInstaller;
 import LostArkMultiTool.Services.WinHTTPMarketAPI;
 import LostArkMultiTool.Views.AccessoryFinderManager;
 import LostArkMultiTool.Views.APIKeyDialog;
@@ -119,6 +122,10 @@ namespace LostArkMultiTool::Views
 
         // ===== 문구 =====
         constexpr std::wstring_view API_KEY_BUTTON_TEXT{ L"⚙  API 키 설정" };   // 왼쪽 메뉴 아래 버튼 (톱니 기호 + 문구)
+        constexpr std::wstring_view REPORT_BUTTON_TEXT{ L"✉  문제 보고" };      // 로그 폴더 열기 버튼 (API 키 버튼 위)
+        constexpr std::wstring_view REPORT_TITLE{ L"문제 보고" };                // 안내 창 제목
+        constexpr std::wstring_view REPORT_OPENED_TEXT{ L"로그 폴더를 열었어요!\n\napp.log (crash_*.dmp 파일이 있으면 함께) 를 첨부해서\n문제 상황과 같이 알려 주세요." };
+        constexpr std::wstring_view REPORT_FAILED_TEXT{ L"로그 폴더를 열지 못했어요.\n\n%LocalAppData%\\LostArkMultiTool\\Logs 폴더를 직접 열어 주세요." };
         constexpr std::wstring_view KEY_SAVE_ERROR_TITLE{ L"API 키 저장 실패" };
         constexpr std::wstring_view KEY_SAVE_ERROR_TEXT{ L"API 키를 저장하지 못했어요!\n" };
         constexpr std::wstring_view KEY_SAVED_TEXT{ L"API 키를 저장했어요!" };
@@ -135,6 +142,10 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view UPDATE_TEXT_FORMAT{ L"새로운 버전({})이 출시됐어요!\n최신 버전으로 업데이트를 권장해요." };
         constexpr std::wstring_view UPDATE_QUESTION_TEXT{ L"\n\n다운로드 페이지를 열까요?" };
         constexpr std::wstring_view UPDATE_OPEN_FAILED_TEXT{ L"다운로드 페이지를 열지 못했어요.\n" };
+        constexpr std::wstring_view AUTO_UPDATE_QUESTION_TEXT{ L"\n\n지금 자동으로 업데이트할까요?\n(받은 파일을 검사한 뒤 프로그램을 다시 시작해요. [아니오]를 누르면 다운로드 페이지를 열지 물어봐요)" };
+        constexpr std::wstring_view AUTO_UPDATE_PROGRESS_TEXT{ L"업데이트 파일을 받고 있어요… 끝나면 자동으로 다시 시작해요." };
+        constexpr std::wstring_view AUTO_UPDATE_FAILED_FORMAT{ L"자동 업데이트를 하지 못했어요.\n{}\n\n[확인]을 누르면 다운로드 페이지를 열어요." };
+        constexpr std::wstring_view AUTO_UPDATE_LAUNCH_FAILED_TEXT{ L"업데이트 설치를 시작하지 못했어요." };
         constexpr std::wstring_view NOTICE_TITLE{ L"공지" };
         constexpr std::wstring_view HTTPS_PREFIX{ L"https://" };
         constexpr std::wstring_view HTTP_PREFIX{ L"http://" };
@@ -286,6 +297,11 @@ namespace LostArkMultiTool::Views
         m_apiKeyButton = &m_headerHost.Emplace<UI::Button>(std::wstring{ API_KEY_BUTTON_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY,
             [this] { OpenAPIKeyDialog(APIKeyDialogMode::API_KEY_CHANGE); });
         m_apiKeyButton->SetFocusable(false);
+
+        // 문제 보고: 로그 · 크래시 덤프 폴더를 열어 첨부하기 쉽게 (포커스는 가져가지 않음)
+        m_reportButton = &m_headerHost.Emplace<UI::Button>(std::wstring{ REPORT_BUTTON_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY,
+            [this] { OpenProblemReport(); });
+        m_reportButton->SetFocusable(false);   // 탭 화면 입력칸 포커스 유지
     }
 
     Application::~Application()
@@ -301,6 +317,7 @@ namespace LostArkMultiTool::Views
 
         // 원격 설정 확인이 진행 중이면 끝날 때까지 기다림 (확인 객체보다 먼저)
         m_configTask.Wait();
+        m_updateTask.Wait();   // 업데이트 받기가 진행 중이면 끝날 때까지
 
         // 서비스 · 렌더러(스왑체인)를 먼저 놓고 창을 닫음 → 창이 닫히며 오는 메시지는 빈 포인터 검사로 무시됨
         m_toolContext.reset();
@@ -507,11 +524,73 @@ namespace LostArkMultiTool::Views
             return;
         }
 
-        m_notifier->AskYesNo(std::wstring{ UPDATE_TITLE }, message + std::wstring{ UPDATE_QUESTION_TEXT }, [this, downloadURL](bool isYes)
+        m_downloadURL = downloadURL;   // 자동 업데이트가 실패하면 이 페이지를 안내
+
+        // 배포 zip 주소 + SHA-256이 있으면 자동 업데이트를 먼저 물어봄 ([아니오] → 다운로드 페이지)
+        Services::UpdatePackage package{ latestVersionText, config.GetPackageURL().value_or(std::string{}), config.GetPackageSHA256().value_or(std::string{}) };
+        if (Services::UpdateInstaller::IsValidPackage(package))
         {
-            if (!isYes || m_window->OpenURL(downloadURL)) return;
-            m_notifier->ShowMessage(std::wstring{ UPDATE_TITLE }, std::wstring{ UPDATE_OPEN_FAILED_TEXT } + downloadURL, Core::NoticeKind::NOTICE_WARNING, nullptr);
+            m_notifier->AskYesNo(std::wstring{ UPDATE_TITLE }, message + std::wstring{ AUTO_UPDATE_QUESTION_TEXT },
+                [this, package, message](bool isYes)
+            {
+                if (isYes) StartAutoUpdate(package);   // 받기 · 검증 시작
+                else AskOpenDownloadPage(message);     // 직접 받기
+            });
+            return;
+        }
+
+        AskOpenDownloadPage(message);   // 자동 업데이트 정보가 없는 버전 → 다운로드 페이지만
+    }
+
+    // 다운로드 페이지를 열지 물어봄 (원래 업데이트 안내)
+    void Application::AskOpenDownloadPage(const std::wstring& message)
+    {
+        m_notifier->AskYesNo(std::wstring{ UPDATE_TITLE }, message + std::wstring{ UPDATE_QUESTION_TEXT }, [this](bool isYes)
+        {
+            if (!isYes || m_window->OpenURL(m_downloadURL)) return;   // 열었거나 원하지 않음
+            m_notifier->ShowMessage(std::wstring{ UPDATE_TITLE }, std::wstring{ UPDATE_OPEN_FAILED_TEXT } + m_downloadURL, Core::NoticeKind::NOTICE_WARNING, nullptr);   // 열기 실패
         });
+    }
+
+    // 자동 업데이트: 백그라운드에서 zip 받기 + SHA-256 확인
+    void Application::StartAutoUpdate(const Services::UpdatePackage& package)
+    {
+        if (m_updateTask.IsRunning()) return;   // 이미 받는 중
+        m_notifier->ShowMessage(std::wstring{ UPDATE_TITLE }, std::wstring{ AUTO_UPDATE_PROGRESS_TEXT }, Core::NoticeKind::NOTICE_INFO, nullptr);   // 진행 안내
+        m_updateTask.Start([package] { return Services::UpdateInstaller::DownloadAndVerify(package); });   // 블로킹 요청은 백그라운드 (값 복사)
+    }
+
+    // 받기 · 검증 결과 → 성공하면 설치 스크립트를 띄우고 종료, 실패하면 이유 + 다운로드 페이지 안내
+    void Application::FinishAutoUpdate()
+    {
+        std::wstring failure;   // 실패 이유
+        try
+        {
+            const std::filesystem::path zipPath{ m_updateTask.TakeResult() };   // 검증까지 끝난 zip
+            if (Services::UpdateInstaller::LaunchInstaller(zipPath))
+            {
+                m_window->RequestClose();      // 종료 (탭 저장은 평소 종료 흐름) → 설치 스크립트가 덮어쓰고 새 버전 실행
+                return;
+            }
+            failure = std::wstring{ AUTO_UPDATE_LAUNCH_FAILED_TEXT };   // 스크립트 실행 실패
+        }
+        catch (const std::exception& exception)
+        {
+            Core::AppLogger::GetInstance().Warning(std::format("자동 업데이트 실패: {}", exception.what()));   // 원인 기록
+            failure = Core::TextEncoding::UTF8ToWide(exception.what());                                       // 화면 표시용
+        }
+
+        m_notifier->ShowMessage(std::wstring{ UPDATE_TITLE }, std::vformat(AUTO_UPDATE_FAILED_FORMAT, std::make_wformat_args(failure)),
+            Core::NoticeKind::NOTICE_WARNING, [this] { if (!m_downloadURL.empty()) (void)m_window->OpenURL(m_downloadURL); });   // 확인 → 다운로드 페이지
+    }
+
+    // 문제 보고: 로그 폴더를 열고 무엇을 첨부할지 안내
+    void Application::OpenProblemReport()
+    {
+        Core::AppLogger::GetInstance().Info(std::format("문제 보고 열기 (버전 {})", Core::APPConstants::APP_VERSION));   // 보고 시점의 버전 기록
+        const bool isOpened{ Core::AppLogger::OpenLogDirectory() };                                                     // 탐색기로 열기
+        m_notifier->ShowMessage(std::wstring{ REPORT_TITLE }, std::wstring{ isOpened ? REPORT_OPENED_TEXT : REPORT_FAILED_TEXT },
+            isOpened ? Core::NoticeKind::NOTICE_INFO : Core::NoticeKind::NOTICE_WARNING, nullptr);                       // 안내
     }
 
     void Application::InitializeTools()
@@ -742,6 +821,11 @@ namespace LostArkMultiTool::Views
         // 원격 설정 확인 결과 · 30분 주기 확인 (대화상자를 열 수 있으므로 알림 층 갱신보다 먼저)
         if (m_configTask.IsReady()) FinishServerCheck();
         if (m_configTimer.Poll()) StartServerCheck(false);
+        if (m_updateTask.IsReady()) FinishAutoUpdate();   // 자동 업데이트 받기 · 검증 결과
+
+        // 조회 스레드가 신고한 API 형식 변경 → 응답마다 한 번만 알림
+        if (const std::optional<std::wstring> formatNotice{ Core::APIFormatMonitor::TakePendingNotice() }; formatNotice.has_value())
+            m_notifier->ShowToast(*formatNotice, Core::NoticeKind::NOTICE_WARNING);
 
         m_notifier->Update(deltaSeconds);   // 닫힌 대화상자 정리 → 모달 상태 확인보다 먼저
         SyncModalState();
@@ -856,7 +940,8 @@ namespace LostArkMultiTool::Views
         // ===== 아래: API 키 설정 버튼 + API 상태 줄 =====
         const float statusTop{ height - SIDEBAR_BOTTOM_PADDING - API_STATUS_HEIGHT };   // 상태 줄 위쪽
         const float buttonTop{ statusTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 버튼 위쪽
-        const float dividerY{ buttonTop - API_BUTTON_GAP };   // 아래 구역 경계선 위치
+        const float reportTop{ buttonTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 문제 보고 버튼 위쪽
+        const float dividerY{ reportTop - API_BUTTON_GAP };   // 아래 구역 경계선 위치 (버튼 두 개 위)
         m_renderer->DrawLine(0.0f, dividerY, SIDEBAR_WIDTH, dividerY, Theme::CARD_BORDER_COLOR, LINE_WIDTH);   // 아래 구역 경계선
 
         LayoutHeader();                     // 창 높이가 바뀌면 버튼이 따라 움직임
@@ -924,6 +1009,8 @@ namespace LostArkMultiTool::Views
         const float statusTop{ m_renderer->GetHeight() - SIDEBAR_BOTTOM_PADDING - API_STATUS_HEIGHT };   // 상태 줄 위쪽
         const float buttonTop{ statusTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 버튼 위쪽
         m_apiKeyButton->SetBounds(Core::RectF{ SIDEBAR_PADDING, buttonTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, buttonTop + API_BUTTON_HEIGHT });   // 메뉴 너비에 맞춤
+        const float reportTop{ buttonTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 문제 보고 버튼은 API 키 버튼 바로 위
+        m_reportButton->SetBounds(Core::RectF{ SIDEBAR_PADDING, reportTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, reportTop + API_BUTTON_HEIGHT });   // 같은 너비
     }
 
     // 왼쪽 메뉴의 탭 항목 하나 (세로로 차례대로 쌓임)

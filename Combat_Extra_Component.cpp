@@ -192,8 +192,35 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
             return AVATAR_NONE_KEY;  // 없음 키 반환
         }
 
+        // 이름을 모르는 혼돈 코어의 평균 ln (표에 이름이 아예 없을 때만, 의지력 포인트가 같은 이름 있는 칸의 평균: 같은 코어 번호 우선, 없으면 모든 혼돈 코어)
+        [[nodiscard]] std::optional<double> GetChaosFallbackLn(std::size_t core, const Models::ArkCoreState& state)  // 모르는 혼돈 코어 이름의 평균 ln 계산
+        {
+            if (state.m_name.empty()) return std::nullopt;  // 이름이 없으면 모르는 이름이 아니므로 대체하지 않음
+            const std::span<const Data::ArkCorePoint> entries{ Data::GetArkCorePoints() };  // 의지력 포인트 표
+            if (std::ranges::any_of(entries, [&state](const Data::ArkCorePoint& entry) { return entry.m_name == state.m_name; })) return std::nullopt;  // 표에 있는 이름이면 대체하지 않음 (포인트가 칸에 없으면 효과 0 유지)
+
+            const bool isAncient{ state.m_grade == Models::ArkCoreGrade::CORE_ANCIENT };  // 고대 등급 여부
+            double slotSum{};  // 같은 코어 번호 칸의 ln 합
+            double allSum{};  // 모든 혼돈 코어 칸의 ln 합
+            std::size_t slotCount{};  // 같은 코어 번호 칸 개수
+            std::size_t allCount{};  // 모든 혼돈 코어 칸 개수
+            for (const Data::ArkCorePoint& entry : entries)  // 의지력 포인트 표 순회
+            {
+                if (entry.m_name.empty() || entry.m_points != state.m_points) continue;  // 질서 코어 칸이거나 포인트가 다르면 건너뜀
+                const double ln{ isAncient ? entry.m_ancientLn : entry.m_ln };  // 등급에 맞는 ln
+                allSum += ln;  // 전체 합에 더함
+                ++allCount;  // 전체 개수 증가
+                if (entry.m_core != static_cast<int>(core)) continue;  // 다른 코어 번호는 같은 번호 합에서 제외
+                slotSum += ln;  // 같은 번호 합에 더함
+                ++slotCount;  // 같은 번호 개수 증가
+            }
+            if (slotCount > 0) return slotSum / static_cast<double>(slotCount);  // 같은 코어 번호 평균 우선
+            if (allCount > 0) return allSum / static_cast<double>(allCount);  // 없으면 모든 혼돈 코어 평균
+            return std::nullopt;  // 평균을 낼 칸이 없으면 대체하지 않음
+        }
+
         // 코어 하나의 ln: 의지력 포인트가 표의 칸(10 / 14 / 17 / 18 / 19 / 20)과 정확히 같을 때만 효과가 켜지고 그 밖에는 0
-        // 질서 코어는 이름과 무관, 혼돈 코어는 이름이 표에 있어야 함 (없는 이름 = 효과 0)
+        // 질서 코어는 이름과 무관, 혼돈 코어는 이름이 표에 있어야 함 (표에 없는 처음 보는 이름은 같은 종류 혼돈 코어의 평균값으로 대체)
         [[nodiscard]] double GetCoreLn(std::size_t core, const Models::ArkCoreState& state)  // 코어 하나의 ln 계산
         {
             const bool isAncient{ state.m_grade == Models::ArkCoreGrade::CORE_ANCIENT };  // 고대 등급 여부
@@ -203,7 +230,7 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
                 if (!entry.m_name.empty() && entry.m_name != state.m_name) continue;  // 코어 이름 조건이 있고 이름이 다르면 건너뜀
                 return isAncient ? entry.m_ancientLn : entry.m_ln;  // 고대면 고대 ln, 아니면 일반 ln 반환
             }
-            return 0.0;  // 표에 없는 포인트는 효과 0
+            return GetChaosFallbackLn(core, state).value_or(0.0);  // 처음 보는 혼돈 코어 이름은 평균 ln, 대체할 수 없으면 효과 0
         }
 
         // 코어 6개의 ln 합
@@ -228,6 +255,19 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
             const Data::PassiveInteraction& interaction{ Data::GetPassiveInteraction() };  // 상호작용 계수
             return interaction.m_constantLn + interaction.m_crossLn * (FULL_PASSIVE_RATIO - rankRatio) * (FULL_PASSIVE_RATIO - enlightenmentRatio);  // 상수 + 교차항 × 랭크 감소폭 × 깨달음 감소폭
         }
+    }
+
+    // 처음 보는 혼돈 코어 이름이 있어 평균값으로 계산했는지 (질서 코어 · 표에 있는 이름 · 이름 없음은 해당 없음)
+    bool HasUnknownChaosCore(const Models::ExtraState& state)  // 모르는 혼돈 코어 이름 사용 여부 검사
+    {
+        for (std::size_t core{}; core < Models::ARK_CORE_COUNT; ++core)  // 코어 6개 순회
+        {
+            const Models::ArkCoreState& entry{ state.m_cores[core] };  // 현재 코어 상태
+            if (!GetChaosFallbackLn(core, entry).has_value()) continue;  // 평균 대체 대상이 아니면 건너뜀
+            const bool isNamedMatch{ std::ranges::any_of(Data::GetArkCorePoints(), [core, &entry](const Data::ArkCorePoint& row) { return row.m_core == static_cast<int>(core) && row.m_points == entry.m_points && (row.m_name.empty() || row.m_name == entry.m_name); }) };  // 표에서 그대로 찾아지는 코어인지
+            if (!isNamedMatch) return true;  // 표에 없어 평균으로 대체된 코어가 있으면 참
+        }
+        return false;  // 대체된 코어가 없으면 거짓
     }
 
     // ===================== 악세서리 =====================

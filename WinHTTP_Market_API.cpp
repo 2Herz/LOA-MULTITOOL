@@ -3,6 +3,7 @@
 import std;
 import LostArkMultiTool.Core.APPConstants;
 import LostArkMultiTool.Core.APPExceptions;
+import LostArkMultiTool.Core.APIFormatMonitor;
 import LostArkMultiTool.Core.LocalTime;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Models.AccessoryListing;
@@ -331,9 +332,18 @@ namespace LostArkMultiTool::Services
                 [] { return false; }));
         }
 
+        // 검색 응답의 Items가 배열이 아니면 형식 변경으로 신고 (빈 결과로 조용히 처리되지 않게)
+        void CheckItemsArray(const JSONValue& root, std::string_view context) noexcept
+        {
+            if (root.GetType() != JSONType::OBJECT_VALUE) return;                                 // 객체가 아닌 응답은 기존 오류 처리
+            if (root.FindMember(KEY_ITEMS).GetType() == JSONType::ARRAY_VALUE) return;            // 정상 (빈 배열 포함)
+            Core::APIFormatMonitor::Report(context, "Items 배열 없음");                            // 신고 (실행 중 한 번)
+        }
+
         // 거래소 응답에서 이름이 정확히 같은 아이템 찾기 (C# FirstOrDefault와 같음)
         const JSONValue* FindExactItem(const JSONValue& root, std::string_view itemName)
         {
+            CheckItemsArray(root, "거래소 · 경매장 검색");                                        // 형식 확인
             for (const JSONValue& item : root.FindMember(KEY_ITEMS).GetItems())
             {
                 if (std::string_view{ item.FindMember(KEY_NAME).GetString() } == itemName) return &item;
@@ -484,6 +494,7 @@ namespace LostArkMultiTool::Services
                 throw Core::APIRequestException{ HTTP_STATUS_OK, std::string{ INVALID_MARKET_RESPONSE_MESSAGE } };
             }
 
+            CheckItemsArray(root, "거래소 검색");                                                  // 형식 확인
             const std::vector<JSONValue>& pageItems{ root.FindMember(KEY_ITEMS).GetItems() };
             for (const JSONValue& item : pageItems)
             {

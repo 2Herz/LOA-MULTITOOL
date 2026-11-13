@@ -3,6 +3,7 @@ module LostArkMultiTool.Views.CombatSimulatorManager;  // 전투력 시뮬레이
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.APPExceptions;  // 앱 예외 모듈 가져오기
 import LostArkMultiTool.Core.BackgroundTask;  // 백그라운드 작업 모듈 가져오기
+import LostArkMultiTool.Core.CombatExtraComponent;  // 추가 장착 배율 요소 모듈 가져오기 (모르는 혼돈 코어 검사)
 import LostArkMultiTool.Core.CombatFactorComponent;  // 배율 요소 모듈 가져오기
 import LostArkMultiTool.Core.CombatPowerCalculator;  // 전투력 계산기 모듈 가져오기
 import LostArkMultiTool.Core.Input;  // 입력 모듈 가져오기
@@ -92,6 +93,24 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view FACTOR_ARK_GEM_TEXT{ L"아크 젬" };  // 아크 젬 배율 이름
         constexpr std::wstring_view FACTOR_ARK_PASSIVE_TEXT{ L"아크 패시브" };  // 아크 패시브 배율 이름
         constexpr std::wstring_view NO_FACTOR_CHANGE_TEXT{ L"변화 없음" };  // 배율 변화 없음 글자
+        constexpr std::wstring_view ERROR_RANGE_FORMAT{ L"   오차 범위 약 ±{:.2f}%" };  // 오차 범위 서식 (퍼센트)
+        constexpr std::wstring_view ERROR_RANGE_POWER_FORMAT{ L" (±{})" };  // 오차 범위 전투력 서식 (전투력 정보가 있을 때만 덧붙임)
+        constexpr std::wstring_view CHAOS_FALLBACK_NOTE{ L"처음 보는 혼돈 코어 이름은 같은 종류 혼돈 코어의 평균값으로 계산해요." };  // 모르는 혼돈 코어 평균 대체 안내
+        constexpr std::string_view UNCERTAINTY_GEAR{ "GEAR" };  // 오차 표 키: 장비 재련
+        constexpr std::string_view UNCERTAINTY_WEAPON_QUALITY{ "WEAPON_QUALITY" };  // 오차 표 키: 무기 품질 (장비 재련에 가장 가까운 값)
+        constexpr std::string_view UNCERTAINTY_GEM{ "GEM" };  // 오차 표 키: 보석
+        constexpr std::string_view UNCERTAINTY_VAMBRACE{ "VAMBRACE" };  // 오차 표 키: 완갑
+        constexpr std::string_view UNCERTAINTY_ACCESSORY{ "ACCESSORY" };  // 오차 표 키: 악세서리
+        constexpr std::string_view UNCERTAINTY_BRACELET{ "BRACELET" };  // 오차 표 키: 팔찌
+        constexpr std::string_view UNCERTAINTY_BOOK{ "ENGRAVING_BOOK" };  // 오차 표 키: 각인서
+        constexpr std::string_view UNCERTAINTY_STONE{ "STONE" };  // 오차 표 키: 스톤
+        constexpr std::string_view UNCERTAINTY_AVATAR{ "AVATAR" };  // 오차 표 키: 아바타
+        constexpr std::string_view UNCERTAINTY_ARK_CORE{ "ARK_CORE" };  // 오차 표 키: 아크 그리드 코어
+        constexpr std::string_view UNCERTAINTY_ARK_GEM{ "ARK_GEM" };  // 오차 표 키: 아크 그리드 젬
+        constexpr std::string_view UNCERTAINTY_ARK_PASSIVE{ "ARK_PASSIVE" };  // 오차 표 키: 아크 패시브
+        constexpr std::string_view UNCERTAINTY_ARK_PASSIVE_PARTIAL{ "ARK_PASSIVE_PARTIAL" };  // 오차 표 키: 랭크가 모두 6이 아닌 아크 패시브
+        constexpr std::string_view UNCERTAINTY_COMBO{ "COMBO_SURCHARGE" };  // 오차 표 키: 각인서 · 스톤 동시 변경 가산
+        constexpr std::size_t COMBO_MIN_CHANGES{ 2 };  // 각인서 · 스톤이 이만큼 이상 동시에 바뀌면 가산 오차 적용
         constexpr std::wstring_view VAMBRACE_PART_TEXT{ L"완갑" };  // 장비 표 완갑 부위 이름
         constexpr std::wstring_view VAMBRACE_ITEM_FORMAT{ L"완갑 ({})" };  // 장비 표 완갑 아이템 이름 서식 (등급)
         constexpr std::wstring_view VAMBRACE_ITEM_CHANGE_FORMAT{ L"완갑 ({} → {})" };  // 목표 등급이 다를 때 서식 (현재 → 목표)
@@ -169,6 +188,81 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         [[nodiscard]] std::size_t GetGemIndividualIndex() noexcept  // "개별 설정" 선택지 번호
         {
             return ToGemIndex(MAX_GEM_LEVEL) + 1;  // 최대 레벨 선택지 바로 다음
+        }
+
+        // 계통 오차 표에서 키로 오차(%) 조회 (표에 없으면 0)
+        [[nodiscard]] double GetUncertainty(std::string_view key) noexcept  // 계통 오차(%) 조회
+        {
+            const Models::CombatCoefficientData::KeyedValue* found{ Models::CombatCoefficientData::FindKeyed(Models::CombatCoefficientData::GetUncertainties(), key) };  // 오차 표에서 키 검색
+            return found != nullptr ? found->m_value : 0.0;  // 찾았으면 값, 없으면 0
+        }
+
+        // 바뀐 각인서 · 스톤 줄 개수 (같은 칸끼리 비교)
+        [[nodiscard]] std::size_t CountEngravingChanges(const Models::ExtraState& current, const Models::ExtraState& target) noexcept  // 바뀐 각인서 · 스톤 줄 수 계산
+        {
+            std::size_t count{};  // 바뀐 줄 수
+            for (std::size_t index{}; index < Models::BOOK_COUNT; ++index) count += current.m_books[index] != target.m_books[index] ? 1U : 0U;  // 각인서 칸 비교
+            for (std::size_t index{}; index < Models::STONE_LINE_COUNT; ++index) count += current.m_stone[index] != target.m_stone[index] ? 1U : 0U;  // 스톤 줄 비교
+            return count;  // 바뀐 줄 수 반환
+        }
+
+        // 아크 패시브 세 트리의 랭크가 모두 최대(6)인지 (아니면 일부만 랭크가 찬 부캐)
+        [[nodiscard]] bool IsPassiveFullRank(const Models::ExtraState& state) noexcept  // 패시브 트리 랭크 만렙 여부
+        {
+            return std::ranges::all_of(state.m_passive.m_treeRanks, [](int rank) { return rank == Models::MAX_PASSIVE_RANK; });  // 모든 트리 랭크가 최대인지
+        }
+
+        // 바뀐 계통의 오차(%) 선형 합 (변화 없는 계통은 더하지 않음, 하나도 안 바뀌면 0)
+        [[nodiscard]] double EstimateErrorPercent(const Core::CombatPowerResult& result, const Models::CombatState& current, const Models::CombatState& target)  // 예상 오차(%) 계산
+        {
+            const Models::ExtraState& before{ current.m_extra };  // 현재 추가 장착 상태
+            const Models::ExtraState& after{ target.m_extra };  // 목표 추가 장착 상태
+            const bool bookChanged{ !std::ranges::equal(before.m_books, after.m_books) };  // 각인서가 바뀌었는지
+            const bool stoneChanged{ !std::ranges::equal(before.m_stone, after.m_stone) };  // 스톤이 바뀌었는지
+            double total{};  // 오차 합계 (%)
+            for (const Core::CombatFactorResult& factor : result.m_factors)  // 요소별 배율 순회
+            {
+                if (std::abs(factor.m_factor - NO_CHANGE_FACTOR) <= CHANGE_EPSILON) continue;  // 바뀌지 않은 계통은 건너뜀
+                switch (factor.m_kind)  // 계통별 오차 더하기
+                {
+                    case Core::CombatFactorKind::FACTOR_GEAR:
+                        total += GetUncertainty(UNCERTAINTY_GEAR);  // 장비 재련
+                        break;
+                    case Core::CombatFactorKind::FACTOR_WEAPON_QUALITY:
+                        total += GetUncertainty(UNCERTAINTY_WEAPON_QUALITY);  // 무기 품질
+                        break;
+                    case Core::CombatFactorKind::FACTOR_GEM:
+                        total += GetUncertainty(UNCERTAINTY_GEM);  // 보석
+                        break;
+                    case Core::CombatFactorKind::FACTOR_VAMBRACE:
+                        total += GetUncertainty(UNCERTAINTY_VAMBRACE);  // 완갑
+                        break;
+                    case Core::CombatFactorKind::FACTOR_ACCESSORY:
+                        total += GetUncertainty(UNCERTAINTY_ACCESSORY);  // 악세서리
+                        break;
+                    case Core::CombatFactorKind::FACTOR_BRACELET:
+                        total += GetUncertainty(UNCERTAINTY_BRACELET);  // 팔찌
+                        break;
+                    case Core::CombatFactorKind::FACTOR_ENGRAVING:
+                        if (stoneChanged) total += GetUncertainty(UNCERTAINTY_STONE);  // 스톤이 바뀌었으면 스톤 오차
+                        if (bookChanged || !stoneChanged) total += GetUncertainty(UNCERTAINTY_BOOK);  // 각인서가 바뀌었거나 원인을 모르면 각인서 오차
+                        break;
+                    case Core::CombatFactorKind::FACTOR_AVATAR:
+                        total += GetUncertainty(UNCERTAINTY_AVATAR);  // 아바타
+                        break;
+                    case Core::CombatFactorKind::FACTOR_ARK_CORE:
+                        total += GetUncertainty(UNCERTAINTY_ARK_CORE);  // 아크 그리드 코어
+                        break;
+                    case Core::CombatFactorKind::FACTOR_ARK_GEM:
+                        total += GetUncertainty(UNCERTAINTY_ARK_GEM);  // 아크 그리드 젬 (아크 그리드 오차 사용)
+                        break;
+                    case Core::CombatFactorKind::FACTOR_ARK_PASSIVE:
+                        total += GetUncertainty(IsPassiveFullRank(before) && IsPassiveFullRank(after) ? UNCERTAINTY_ARK_PASSIVE : UNCERTAINTY_ARK_PASSIVE_PARTIAL);  // 랭크가 모두 6이 아니면 큰 오차
+                        break;
+                }
+            }
+            if (CountEngravingChanges(before, after) >= COMBO_MIN_CHANGES) total += GetUncertainty(UNCERTAINTY_COMBO);  // 각인서 · 스톤을 두 줄 이상 함께 바꾸면 가산 오차
+            return total;  // 오차 합계 반환
         }
 
         [[nodiscard]] std::wstring_view GetFactorName(Core::CombatFactorKind kind) noexcept  // 배율 요소 종류 → 화면 이름
@@ -804,6 +898,20 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             hasFactor = true;  // 항목 있음 표시
         }
         if (!hasFactor) text.m_factors += NO_FACTOR_CHANGE_TEXT;  // 항목이 없으면 "변화 없음" 표시
+
+        // 오차 범위: 바뀐 계통의 오차를 더한 값 (하나도 안 바뀌었으면 숨김)
+        const double errorPercent{ EstimateErrorPercent(result, m_current, m_target) };  // 예상 오차 (%)
+        if (errorPercent > 0.0)  // 오차가 있을 때만 표시
+        {
+            text.m_factors += std::format(ERROR_RANGE_FORMAT, errorPercent);  // "오차 범위 약 ±N%" 덧붙임
+            if (m_armory->m_combatPower.has_value())  // API 전투력이 있으면 전투력 단위 오차도 표시
+            {
+                text.m_factors += std::format(ERROR_RANGE_POWER_FORMAT, Core::NumberFormat::FormatNumber(currentPower * errorPercent / PERCENT_SCALE, POWER_DECIMALS));  // "(±N)" 덧붙임
+            }
+        }
+
+        // 모르는 혼돈 코어 이름을 평균값으로 계산했으면 안내 (현재 또는 목표에 있을 때만)
+        if (Core::HasUnknownChaosCore(m_current.m_extra) || Core::HasUnknownChaosCore(m_target.m_extra)) text.m_note = std::wstring{ CHAOS_FALLBACK_NOTE };  // 평균 대체 안내 문구
         m_view->ShowResult(text);  // 결과 반영
     }
 

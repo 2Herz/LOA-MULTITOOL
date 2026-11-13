@@ -99,7 +99,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         bool m_isUp{};  // 예상 전투력이 현재보다 높은지
         bool m_isDown{};  // 예상 전투력이 현재보다 낮은지
         std::wstring m_itemLevel;                // "예상 아이템 레벨  1,764.17 → 1,770.00"
-        std::wstring m_factors;                  // "배율  장비 ×1.0300 · 무기 품질 ×1.0000 · 보석 ×1.0100"
+        std::wstring m_factors;                  // "배율  장비 ×1.0300 · 무기 품질 ×1.0000 · 보석 ×1.0100   오차 범위 약 ±0.12% (±3.60)"
+        std::wstring m_note;                     // 안내 문구 뒤에 덧붙일 추가 안내 (비어 있으면 없음)
     };
 
     // 전투력 시뮬레이터 화면 구성 (로펙형)

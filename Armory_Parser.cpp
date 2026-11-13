@@ -1,6 +1,7 @@
 module LostArkMultiTool.Services.ArmoryParser;  // 무기고 해석기 모듈 구현 파일
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Core.APIFormatMonitor;  // API 형식 변경 신고 가져오기
 import LostArkMultiTool.Models.CharacterArmory;  // 캐릭터 무기고 모델 가져오기
 import LostArkMultiTool.Models.CombatCoefficientData;  // 계수 데이터 모듈 가져오기
 import LostArkMultiTool.Models.CombatExtraState;  // 추가 장착 상태 모델 가져오기
@@ -649,6 +650,11 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         {
             throw std::runtime_error{ std::string{ NOT_FOUND_MESSAGE } };  // 캐릭터를 찾을 수 없다는 오류
         }
+        // 캐릭터를 찾은 응답인데 꼭 있어야 할 묶음이 없으면 형식 변경으로 신고 (값이 조용히 0이 되지 않게)
+        if (profile.FindMember(KEY_COMBAT_POWER).GetType() == JSONType::NULL_VALUE)  // 전투력 필드가 사라짐
+            Core::APIFormatMonitor::Report("무기고", "ArmoryProfile.CombatPower 없음");  // 신고 (실행 중 한 번)
+        if (root.FindMember(KEY_EQUIPMENT).GetType() != JSONType::ARRAY_VALUE)  // 장비 목록이 배열이 아님
+            Core::APIFormatMonitor::Report("무기고", "ArmoryEquipment 배열 없음");  // 신고
 
         Models::CharacterArmory armory;  // 해석 결과
         armory.m_characterName = profile.FindMember(KEY_CHARACTER_NAME).GetString();  // 캐릭터 이름
