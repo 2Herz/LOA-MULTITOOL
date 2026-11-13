@@ -65,6 +65,7 @@ export namespace LostArkMultiTool::Views
         void PopulateGridData();        // 지금 시즌의 주차별 점수 + 통계 + 그래프
         void UpdateStatCells();
         void UpdateChart();
+        void UpdateOverview();          // 통계 카드 4장 + 캐릭터별 목록 (저장된 주차 기록에서 계산한 값만)
         void TrySave();
 
         // ===== 시즌 기간 (주차 자동 추가 · 입력 잠금 · 이번 주차 포커스) =====

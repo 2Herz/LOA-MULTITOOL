@@ -49,6 +49,7 @@ export namespace LostArkMultiTool::Views
         void StartRefresh(bool isAuto);                             // 시세 갱신 (백그라운드)
         void SetAutoRefresh(bool isEnabled);
         void SelectCharacter();
+        void ResetInput();   // [입력 초기화] (고른 캐릭터의 수량을 확인 후 모두 0으로)
         void EditQuantity(MaterialTier tier, std::size_t materialIndex, double quantity);
 
         // ===== 백그라운드 작업이 끝났을 때 (화면 스레드에서) =====
@@ -83,4 +84,4 @@ export namespace LostArkMultiTool::Views
         bool m_isAutoRefreshEnabled{};
         bool m_isAutoRefreshRun{};   // 지금 진행 중인 시세 갱신이 자동 갱신인지 (완료 · 오류 알림 방식이 다름)
     };
-}
+}

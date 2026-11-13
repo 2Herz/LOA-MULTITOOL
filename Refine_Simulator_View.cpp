@@ -5,6 +5,7 @@ import LostArkMultiTool.Core.APPConstants;
 import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.Platform;
 import LostArkMultiTool.Core.Renderer;
+import LostArkMultiTool.Views.PageLayout;
 import LostArkMultiTool.Views.Theme;
 import LostArkMultiTool.Views.UI.Button;
 import LostArkMultiTool.Views.UI.CheckBox;
@@ -51,15 +52,26 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view TARGET_MODE_TEXT{ L"목표 기준" };
         constexpr std::wstring_view TARGET_LEVEL_TEXT{ L"목표 아이템 레벨" };
         constexpr std::wstring_view TARGET_LEVEL_PLACEHOLDER{ L"1750" };
-        constexpr std::wstring_view SETUP_PANEL_TITLE{ L"시작 → 목표 (부위 표: 장비 칸을 누르면 에기르 ↔ 세르카, 숫자 칸은 직접 입력)" };
-        constexpr std::wstring_view MATERIAL_PANEL_TITLE{ L"재료 가격 / 귀속 설정 (거래 칸을 누르면 귀속 → 비용에서 빠짐)" };
-        constexpr std::wstring_view ROUTE_PANEL_TITLE{ L"재련 경로" };
+        constexpr std::wstring_view CALCULATE_TEXT{ L"계산" };   // 계산 버튼 글자
+        constexpr std::wstring_view CALCULATE_BUSY_TEXT{ L"계산 중..." };   // 계산 중 버튼 글자
+        constexpr std::wstring_view SETUP_EYEBROW{ L"HONING TARGET" };   // 시작 → 목표 카드 영문 소제목
+        constexpr std::wstring_view SETUP_TITLE{ L"시작 → 목표" };   // 시작 → 목표 카드 제목
+        constexpr std::wstring_view SETUP_FOOTER_TEXT{ L"장비 칸을 누르면 에기르 ↔ 세르카, 숫자 칸은 직접 입력" };   // 부위 표 아래 안내
+        constexpr std::wstring_view MATERIAL_EYEBROW{ L"MATERIAL COST" };   // 재료 카드 영문 소제목
+        constexpr std::wstring_view MATERIAL_TITLE{ L"재료 가격 · 귀속 설정" };   // 재료 카드 제목
+        constexpr std::wstring_view MATERIAL_FOOTER_TEXT{ L"거래 칸을 누르면 귀속 → 비용에서 빠짐" };   // 재료 표 아래 안내
+        constexpr std::wstring_view ROUTE_EYEBROW{ L"HONING PATH" };   // 경로 카드 영문 소제목
+        constexpr std::wstring_view ROUTE_TITLE{ L"재련 경로" };   // 경로 카드 제목
+        constexpr std::wstring_view LEVEL_BADGE_TEXT{ L"Lv" };   // 달성 아이템 레벨 배지 글자
         constexpr std::size_t TARGET_LEVEL_MAX_LENGTH{ 4 };
         constexpr std::size_t NAME_MAX_LENGTH{ 20 };   // 캐릭터 이름 최대 글자 수 (전투력 시뮬레이터와 같음)
 
         // ===== 배치 (DIP) =====
         constexpr float PAGE_PADDING{ 16.0f };
         constexpr float SECTION_GAP{ 16.0f };
+        constexpr float CALCULATE_BUTTON_WIDTH{ 92.0f };   // 계산 버튼 너비 ("계산 중..."이 들어가는 크기)
+        constexpr float HEADER_RIGHT_LEFT_OFFSET{ 190.0f };   // 카드 머리말 오른쪽 글자가 시작할 수 있는 가장 왼쪽 (제목 오른쪽)
+        constexpr float SLOT_ROW_HEIGHT{ 34.0f };   // 부위 표 행 높이 (세로 공간 절약)
         constexpr float GROUP_GAP{ 12.0f };
         constexpr float LABEL_GAP{ 6.0f };
         constexpr float REFRESH_BUTTON_WIDTH{ 110.0f };
@@ -73,14 +85,12 @@ namespace LostArkMultiTool::Views
         constexpr float TARGET_LEVEL_LABEL_WIDTH{ 104.0f };
         constexpr float TARGET_LEVEL_BOX_WIDTH{ 72.0f };
         constexpr float MATERIAL_PANEL_RATIO{ 0.42f };   // 아래 영역에서 재료 상자 너비 비율
-        constexpr float PANEL_PADDING{ 10.0f };
-        constexpr float PANEL_TITLE_LEFT{ 12.0f };
         constexpr float MIN_GRID_HEIGHT{ 120.0f };
 
         constexpr Core::TextStyle BAR_TEXT_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };
         constexpr Core::TextStyle SETTING_LABEL_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::LEADING };
-        constexpr Core::TextStyle TOTAL_TEXT_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::BOLD, Core::TextAlign::LEADING };
-        constexpr Core::TextStyle PANEL_TITLE_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::LEADING };
+        constexpr Core::TextStyle TOTAL_TEXT_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::BOLD, Core::TextAlign::TRAILING };
+        constexpr Core::TextStyle HEADER_RIGHT_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::TRAILING };   // 카드 머리말 오른쪽 글자
 
         // 강화 · 상급 칸: 숫자만
         [[nodiscard]] bool IsDigitCharacter(wchar_t character) noexcept
@@ -141,15 +151,26 @@ namespace LostArkMultiTool::Views
         , m_targetModeBox{ m_host.Emplace<UI::ComboBox>() }
         , m_targetLevelLabel{ m_host.Emplace<UI::Label>(std::wstring{ TARGET_LEVEL_TEXT }, SETTING_LABEL_STYLE, Theme::TEXT_COLOR) }
         , m_targetLevelBox{ m_host.Emplace<UI::TextBox>(platform, std::wstring{ TARGET_LEVEL_PLACEHOLDER }) }
-        , m_summaryLabel{ m_host.Emplace<UI::Label>(std::wstring{}, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
+        , m_calculateButton{ m_host.Emplace<UI::Button>(std::wstring{ CALCULATE_TEXT }, UI::ButtonStyle::BUTTON_PRIMARY, nullptr) }   // 계산 버튼 생성
+        , m_summaryLabel{ m_host.Emplace<UI::Label>(std::wstring{}, HEADER_RIGHT_STYLE, Theme::TEXT_COLOR) }
         , m_slotGrid{ m_host.Emplace<UI::Grid>(platform, MakeColumns(SLOT_HEADERS, SLOT_WEIGHTS, ToColumn(RefineSlotColumn::COLUMN_SLOT), ToColumn(RefineSlotColumn::COLUMN_COST)), 0) }
         , m_materialGrid{ m_host.Emplace<UI::Grid>(platform, MakeColumns(MATERIAL_HEADERS, MATERIAL_WEIGHTS, ToColumn(RefineMaterialColumn::COLUMN_NAME), ToColumn(RefineMaterialColumn::COLUMN_NAME)), 0) }
         , m_totalLabel{ m_host.Emplace<UI::Label>(std::wstring{}, TOTAL_TEXT_STYLE, Theme::HIGHLIGHT_TEXT_COLOR) }
         , m_routeGrid{ m_host.Emplace<UI::Grid>(platform, MakeColumns(ROUTE_HEADERS, ROUTE_WEIGHTS, ROUTE_COL_DESCRIPTION, ROUTE_COL_DESCRIPTION), 0) }
-        , m_setupPanel{ Core::RectF{}, std::wstring{ SETUP_PANEL_TITLE } }
-        , m_materialPanel{ Core::RectF{}, std::wstring{ MATERIAL_PANEL_TITLE } }
-        , m_routePanel{ Core::RectF{}, std::wstring{ ROUTE_PANEL_TITLE } }
+        , m_setupPanel{ Core::RectF{}, std::wstring{ SETUP_EYEBROW }, std::wstring{ SETUP_TITLE } }
+        , m_materialPanel{ Core::RectF{}, std::wstring{ MATERIAL_EYEBROW }, std::wstring{ MATERIAL_TITLE } }
+        , m_routePanel{ Core::RectF{}, std::wstring{ ROUTE_EYEBROW }, std::wstring{ ROUTE_TITLE } }
     {
+        m_calculateButton.SetOnClick([this]   // 계산 버튼을 누르면 매니저에 알림
+        {
+            if (const auto onCalculate{ m_onCalculate }) onCalculate();
+        });
+
+        // 표 행 높이: 새 디자인 (부위 표는 세로 공간 때문에 조금 낮게)
+        m_slotGrid.SetRowHeight(SLOT_ROW_HEIGHT);
+        m_materialGrid.SetRowHeight(PageLayout::GRID_ROW_HEIGHT);
+        m_routeGrid.SetRowHeight(PageLayout::GRID_ROW_HEIGHT);
+
         m_refreshButton.SetOnClick([this]
         {
             if (const auto onRefresh{ m_onRefresh }) onRefresh();
@@ -230,6 +251,11 @@ namespace LostArkMultiTool::Views
         m_onLookup = std::move(onLookup);   // 조회 알림 연결
     }
 
+    void RefineSimulatorView::SetOnCalculate(std::function<void()> onCalculate)
+    {
+        m_onCalculate = std::move(onCalculate);   // 계산 알림 연결
+    }
+
     void RefineSimulatorView::SetOnTargetModeSelected(std::function<void(std::size_t modeIndex)> onTargetModeSelected)
     {
         m_onTargetModeSelected = std::move(onTargetModeSelected);
@@ -301,6 +327,12 @@ namespace LostArkMultiTool::Views
         m_lookupButton.SetText(std::wstring{ isBusy ? LOOKUP_BUSY_TEXT : LOOKUP_TEXT });   // 조회 중이면 "조회 중..." 글자로 바꿈
     }
 
+    void RefineSimulatorView::SetCalculateBusy(bool isBusy)
+    {
+        m_calculateButton.SetEnabled(!isBusy);   // 계산 중에는 버튼 비활성
+        m_calculateButton.SetText(std::wstring{ isBusy ? CALCULATE_BUSY_TEXT : CALCULATE_TEXT });   // 계산 중이면 "계산 중..." 글자로 바꿈
+    }
+
     void RefineSimulatorView::SetTargetModeItems(std::vector<std::wstring> items)
     {
         m_targetModeBox.SetItems(std::move(items));
@@ -348,11 +380,12 @@ namespace LostArkMultiTool::Views
             } };
 
             setCell(RefineSlotColumn::COLUMN_SLOT, slot.m_slotName, UI::GridCellStyle{ Theme::LABEL_BACK_COLOR, Theme::HEADER_TEXT_COLOR, Core::FontWeight::BOLD }, false);
-            setCell(RefineSlotColumn::COLUMN_START_TIER, slot.m_startTier, UI::GridCellStyle{ Theme::CELL_BACK_COLOR, GetTierColor(slot.m_isStartSerca), Core::FontWeight::BOLD }, false);
+            setCell(RefineSlotColumn::COLUMN_START_TIER, slot.m_startTier, UI::GridCellStyle{ Theme::CELL_BACK_COLOR, GetTierColor(slot.m_isStartSerca), Core::FontWeight::BOLD, UI::GridDecoration::DECORATION_CHIP, std::wstring{}, GetTierColor(slot.m_isStartSerca) }, false);   // 장비 단계 칩
             setCell(RefineSlotColumn::COLUMN_START_ENHANCEMENT, slot.m_startEnhancement, editableStyle, true);
             setCell(RefineSlotColumn::COLUMN_START_ADVANCED, slot.m_startAdvanced, slot.m_isStartAdvancedEditable ? editableStyle : readonlyStyle, slot.m_isStartAdvancedEditable);
 
-            const UI::GridCellStyle targetTierStyle{ slot.m_isTargetEditable ? Theme::CELL_BACK_COLOR : Theme::READONLY_BACK_COLOR, GetTierColor(slot.m_isTargetSerca), Core::FontWeight::BOLD };
+            const UI::GridCellStyle targetTierStyle{ slot.m_isTargetEditable ? Theme::CELL_BACK_COLOR : Theme::READONLY_BACK_COLOR, GetTierColor(slot.m_isTargetSerca), Core::FontWeight::BOLD,
+                UI::GridDecoration::DECORATION_CHIP, std::wstring{}, GetTierColor(slot.m_isTargetSerca) };   // 목표 장비 단계 칩
             const UI::GridCellStyle targetStyle{ slot.m_isTargetEditable ? editableStyle : UI::GridCellStyle{ Theme::READONLY_BACK_COLOR, Theme::TEXT_COLOR } };
             const bool isTargetAdvancedEditable{ slot.m_isTargetEditable && slot.m_isTargetAdvancedEditable };
             setCell(RefineSlotColumn::COLUMN_TARGET_TIER, slot.m_targetTier, targetTierStyle, false);
@@ -385,7 +418,8 @@ namespace LostArkMultiTool::Views
             setCell(RefineMaterialColumn::COLUMN_PRICE, material.m_price,
                 material.m_isPriceEditable ? UI::GridCellStyle{ Theme::CELL_BACK_COLOR, Theme::TEXT_COLOR } : readonlyStyle, material.m_isPriceEditable);
             setCell(RefineMaterialColumn::COLUMN_TRADE, material.m_trade,
-                UI::GridCellStyle{ Theme::CELL_BACK_COLOR, material.m_isBound ? Theme::CAUTION_TEXT_COLOR : Theme::NOTICE_SUCCESS_COLOR, Core::FontWeight::BOLD }, false);
+                UI::GridCellStyle{ Theme::CELL_BACK_COLOR, material.m_isBound ? Theme::CAUTION_TEXT_COLOR : Theme::NOTICE_SUCCESS_COLOR, Core::FontWeight::BOLD,
+                    UI::GridDecoration::DECORATION_CHIP, std::wstring{}, material.m_isBound ? Theme::CAUTION_TEXT_COLOR : Theme::NOTICE_SUCCESS_COLOR }, false);   // 거래 · 귀속 칩
             setCell(RefineMaterialColumn::COLUMN_AMOUNT, material.m_amount, readonlyStyle, false);
             setCell(RefineMaterialColumn::COLUMN_COST, material.m_cost, UI::GridCellStyle{ Theme::READONLY_BACK_COLOR, Theme::HIGHLIGHT_TEXT_COLOR }, false);
         }
@@ -396,12 +430,14 @@ namespace LostArkMultiTool::Views
     {
         m_totalLabel.SetText(std::move(totalText));
 
+        const bool hasReachedRow{ std::ranges::any_of(rows, [](const RefineRouteRow& route) { return route.m_isReached; }) };   // 목표를 넘긴 행이 있는지
         m_routeGrid.SetRowCount(rows.size());
         for (std::size_t row{}; row < rows.size(); ++row)
         {
             const RefineRouteRow& route{ rows[row] };
-            const Core::Color backColor{ route.m_isReached ? Theme::REACHED_BACK_COLOR : Theme::CELL_BACK_COLOR };
-            const Core::Color textColor{ route.m_isInherit ? Theme::TOTAL_TEXT_COLOR : (route.m_isReached ? Theme::REACHED_TEXT_COLOR : Theme::TEXT_COLOR) };
+            const bool isHighlighted{ route.m_isReached || (!hasReachedRow && row + 1 == rows.size()) };   // 도달 행(없으면 마지막 걸음)을 강조
+            const Core::Color backColor{ isHighlighted ? Theme::REACHED_BACK_COLOR : Theme::CELL_BACK_COLOR };
+            const Core::Color textColor{ route.m_isInherit ? Theme::TOTAL_TEXT_COLOR : (isHighlighted ? Theme::REACHED_TEXT_COLOR : Theme::TEXT_COLOR) };
 
             m_routeGrid.SetCellText(row, ROUTE_COL_ORDER, route.m_order);
             m_routeGrid.SetCellText(row, ROUTE_COL_DESCRIPTION, route.m_description);
@@ -411,8 +447,15 @@ namespace LostArkMultiTool::Views
             for (std::size_t column{}; column < ROUTE_COLUMN_COUNT; ++column)
             {
                 const bool isStrong{ column == ROUTE_COL_DESCRIPTION || column == ROUTE_COL_CUMULATIVE };
-                m_routeGrid.SetCellStyle(row, column, UI::GridCellStyle{ backColor,
-                    column == ROUTE_COL_CUMULATIVE ? Theme::HIGHLIGHT_TEXT_COLOR : textColor, isStrong ? Core::FontWeight::BOLD : Core::FontWeight::NORMAL });
+                UI::GridCellStyle style{ backColor,
+                    column == ROUTE_COL_CUMULATIVE ? Theme::HIGHLIGHT_TEXT_COLOR : textColor, isStrong ? Core::FontWeight::BOLD : Core::FontWeight::NORMAL };
+                if (column == ROUTE_COL_ITEM_LEVEL)   // 달성 아이템 레벨 앞에 Lv 배지
+                {
+                    style.m_decoration = UI::GridDecoration::DECORATION_BADGE;
+                    style.m_badgeText = std::wstring{ LEVEL_BADGE_TEXT };
+                    style.m_accentColor = Theme::ACCENT_COLOR;
+                }
+                m_routeGrid.SetCellStyle(row, column, style);
             }
         }
     }
@@ -474,9 +517,9 @@ namespace LostArkMultiTool::Views
         placeRow(x, barTop, m_autoRefreshBox, AUTO_REFRESH_WIDTH, SECTION_GAP);
         m_statusLabel.SetBounds(Core::RectF{ x, barTop, std::max(x, right), barBottom });
 
-        // 시작 → 목표 상자: 설정 줄 + 부위 표 (행이 모두 보이는 높이)
-        const float setupTop{ barBottom + SECTION_GAP };
-        const float setupHeight{ Theme::PANEL_TITLE_HEIGHT + Theme::CONTROL_HEIGHT + GROUP_GAP + m_slotGrid.GetPreferredHeight() + PANEL_PADDING };
+        // 시작 → 목표 카드: 머리말 + 설정 줄 + 부위 표 + 안내 줄 (행이 모두 보이는 높이)
+        const float setupTop{ barBottom + PageLayout::CARD_GAP };
+        const float setupHeight{ PageLayout::CARD_HEADER_HEIGHT + GROUP_GAP + Theme::CONTROL_HEIGHT + GROUP_GAP + m_slotGrid.GetPreferredHeight() + PageLayout::TABLE_FOOTER_HEIGHT };
         const Core::RectF setupInner{ LayoutPanel(m_setupPanel, Core::RectF{ left, setupTop, right, setupTop + setupHeight }) };
 
         x = setupInner.m_left;
@@ -489,22 +532,25 @@ namespace LostArkMultiTool::Views
         placeRow(x, settingTop, m_targetModeBox, TARGET_MODE_BOX_WIDTH, SECTION_GAP);
         placeRow(x, settingTop, m_targetLevelLabel, TARGET_LEVEL_LABEL_WIDTH, LABEL_GAP);
         placeRow(x, settingTop, m_targetLevelBox, TARGET_LEVEL_BOX_WIDTH, SECTION_GAP);
-        m_summaryLabel.SetBounds(Core::RectF{ x, settingTop, std::max(x, setupInner.m_right), settingTop + Theme::CONTROL_HEIGHT });
+        placeRow(x, settingTop, m_calculateButton, CALCULATE_BUTTON_WIDTH, SECTION_GAP);   // 계산 버튼 배치
+        m_summaryLabel.SetBounds(Core::RectF{ m_setupPanel.m_bounds.m_left + HEADER_RIGHT_LEFT_OFFSET, m_setupPanel.m_bounds.m_top,
+            m_setupPanel.m_bounds.m_right - PageLayout::CARD_PADDING, m_setupPanel.m_bounds.m_top + PageLayout::CARD_HEADER_HEIGHT });   // 요약은 카드 머리말 오른쪽에
 
         const float slotTop{ settingTop + Theme::CONTROL_HEIGHT + GROUP_GAP };
         m_slotGrid.SetBounds(Core::RectF{ setupInner.m_left, slotTop, setupInner.m_right, std::max(slotTop, setupInner.m_bottom) });
 
-        // 아래: 재료 상자 | 경로 상자
-        const float bodyTop{ m_setupPanel.m_bounds.m_bottom + SECTION_GAP };
+        // 아래: 재료 카드 | 경로 카드
+        const float bodyTop{ m_setupPanel.m_bounds.m_bottom + PageLayout::CARD_GAP };
         const float bodyBottom{ std::max(bodyTop + MIN_GRID_HEIGHT, contentArea.m_bottom - PAGE_PADDING) };
-        const float middle{ left + (right - left - SECTION_GAP) * MATERIAL_PANEL_RATIO };
+        const float middle{ left + (right - left - PageLayout::CARD_GAP) * MATERIAL_PANEL_RATIO };
         m_materialGrid.SetBounds(LayoutPanel(m_materialPanel, Core::RectF{ left, bodyTop, middle, bodyBottom }));
 
-        const Core::RectF routeInner{ LayoutPanel(m_routePanel, Core::RectF{ middle + SECTION_GAP, bodyTop, right, bodyBottom }) };
-        m_totalLabel.SetBounds(Core::RectF{ routeInner.m_left, routeInner.m_top, routeInner.m_right, routeInner.m_top + Theme::CONTROL_HEIGHT });
-        const float routeTop{ routeInner.m_top + Theme::CONTROL_HEIGHT + GROUP_GAP };
-        m_routeGrid.SetBounds(Core::RectF{ routeInner.m_left, routeTop, routeInner.m_right, std::max(routeTop, routeInner.m_bottom) });
+        const Core::RectF routeInner{ LayoutPanel(m_routePanel, Core::RectF{ middle + PageLayout::CARD_GAP, bodyTop, right, bodyBottom }) };
+        m_totalLabel.SetBounds(Core::RectF{ m_routePanel.m_bounds.m_left + HEADER_RIGHT_LEFT_OFFSET, m_routePanel.m_bounds.m_top,
+            m_routePanel.m_bounds.m_right - PageLayout::CARD_PADDING, m_routePanel.m_bounds.m_top + PageLayout::CARD_HEADER_HEIGHT });   // 총 골드는 카드 머리말 오른쪽에
+        m_routeGrid.SetBounds(Core::RectF{ routeInner.m_left, routeInner.m_top, routeInner.m_right, std::max(routeInner.m_top, routeInner.m_bottom + PageLayout::TABLE_FOOTER_HEIGHT - GROUP_GAP) });   // 경로 표는 아래 안내 줄 없이 카드 끝까지
     }
+
 
     void RefineSimulatorView::RequestLookup()
     {
@@ -512,24 +558,29 @@ namespace LostArkMultiTool::Views
         if (const auto onLookup{ m_onLookup }) onLookup(m_nameBox.GetText());   // 등록된 콜백이 있으면 이름을 알림
     }
 
+    // 카드 본문 영역: 머리말 · 위 여백 · 아래 안내 줄 자리를 뺀 안쪽
     Core::RectF RefineSimulatorView::LayoutPanel(Panel& panel, const Core::RectF& bounds) const
     {
         panel.m_bounds = bounds;
-        return Core::RectF{ bounds.m_left + PANEL_PADDING, bounds.m_top + Theme::PANEL_TITLE_HEIGHT,
-            bounds.m_right - PANEL_PADDING, std::max(bounds.m_top + Theme::PANEL_TITLE_HEIGHT, bounds.m_bottom - PANEL_PADDING) };
+        const float top{ bounds.m_top + PageLayout::CARD_HEADER_HEIGHT + GROUP_GAP };   // 머리말 + 위 여백 아래
+        return Core::RectF{ bounds.m_left + PageLayout::CARD_PADDING, top,
+            bounds.m_right - PageLayout::CARD_PADDING, std::max(top, bounds.m_bottom - PageLayout::TABLE_FOOTER_HEIGHT) };
     }
 
-    // 묶음 상자: 둥근 테두리 + 왼쪽 위 제목
+    // 카드: 피그마 머리말(영문 소제목 + 제목) + 표 아래 안내 줄 (경로 카드는 안내 줄 없음)
     void RefineSimulatorView::RenderPanels(Core::Renderer& renderer) const
     {
         for (const Panel* panel : { &m_setupPanel, &m_materialPanel, &m_routePanel })
         {
-            renderer.FillRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // 카드 바탕 (배경보다 살짝 밝게)
-            renderer.DrawRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리
-
-            const Core::RectF titleRect{ panel->m_bounds.m_left + PANEL_TITLE_LEFT, panel->m_bounds.m_top,
-                panel->m_bounds.m_right - PANEL_TITLE_LEFT, panel->m_bounds.m_top + Theme::PANEL_TITLE_HEIGHT };
-            renderer.DrawString(panel->m_title, titleRect, Theme::HEADER_TEXT_COLOR, PANEL_TITLE_STYLE);
+            PageLayout::DrawCardWithHeader(renderer, panel->m_bounds, panel->m_eyebrow, panel->m_title);   // 카드 + 머리말
         }
+
+        const auto drawFooter{ [&renderer](const Panel& panel, std::wstring_view text)
+        {
+            PageLayout::DrawTableFooter(renderer, Core::RectF{ panel.m_bounds.m_left, panel.m_bounds.m_bottom - PageLayout::TABLE_FOOTER_HEIGHT,
+                panel.m_bounds.m_right, panel.m_bounds.m_bottom }, text, std::wstring_view{});   // 카드 맨 아래 안내 줄
+        } };
+        drawFooter(m_setupPanel, SETUP_FOOTER_TEXT);   // 부위 표 사용법
+        drawFooter(m_materialPanel, MATERIAL_FOOTER_TEXT);   // 재료 표 사용법
     }
 }

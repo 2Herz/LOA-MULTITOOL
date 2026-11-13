@@ -50,6 +50,7 @@ export namespace LostArkMultiTool::Views
 
         void Show(int showCommand);
         void RequestClose();   // 닫기 요청 (메시지 루프에서 처리 → WM_QUIT)
+        void SetTitle(std::wstring_view title);   // 제목 표시줄 글자 (현재 탭 이름과 동기화)
 
         // 쌓인 메시지를 모두 처리 (창이 닫혀 WM_QUIT를 받으면 false)
         [[nodiscard]] bool ProcessMessages();

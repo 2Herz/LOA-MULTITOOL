@@ -10,6 +10,7 @@ import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.Singleton;
 import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Core.ToolManager;
+import LostArkMultiTool.Models.EngravingQuote;
 import LostArkMultiTool.Models.MarketItem;
 import LostArkMultiTool.Views.EngravingFinderView;
 
@@ -52,6 +53,7 @@ export namespace LostArkMultiTool::Views
 
         // ===== 화면 갱신 =====
         void RefreshTable();    // 검색어로 거르고 정렬해서 표에 채움 + 상태 글자
+        [[nodiscard]] EngravingStats BuildStats(const std::vector<Models::EngravingQuote>& quotes) const;   // 통계 카드 값 계산
         void ShowAutoError(std::wstring_view title, const std::wstring& message);
 
         // ===== 일별 최저가 기록 · 그래프 =====

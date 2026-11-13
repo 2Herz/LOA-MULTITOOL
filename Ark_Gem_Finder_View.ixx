@@ -10,7 +10,6 @@ import LostArkMultiTool.Views.UI.CheckBox;
 import LostArkMultiTool.Views.UI.ComboBox;
 import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Grid;
-import LostArkMultiTool.Views.UI.Label;
 import LostArkMultiTool.Views.UI.LineChart;
 import LostArkMultiTool.Views.UI.TextBox;
 
@@ -27,6 +26,7 @@ export namespace LostArkMultiTool::Views
         double m_recentPrice{};
         std::optional<double> m_dayChangeRate;    // 전일 평균가 대비 변동률(%)
         std::string m_key;                        // 일별 기록을 찾는 키 (UTF-8 젬 이름, 화면에는 표시하지 않음)
+        std::vector<double> m_trend;              // 일별 최저가 기록 (오래된 날 → 최근, 추이 선 · 2개 미만이면 그리지 않음)
     };
 
     // 귀속 젬 계산기 표 한 행 (젬 하나의 등급별 수량 · 단가 · 합계)
@@ -37,7 +37,7 @@ export namespace LostArkMultiTool::Views
         double m_value{};                                                       // 수량 × 단가의 합
     };
 
-    // 젬 시세 검색기 화면 구성 (위: 왼쪽 질서 · 오른쪽 혼돈 시세 표, 아래: 귀속 젬 계산기 = 원정대 동기화 · 캐릭터 선택 + 표)
+    // 젬 시세 검색기 화면 구성 (통계 카드 · 검색/분류/정렬 줄 · LIVE MARKET 표 하나, 아래: 귀속 젬 계산기 카드 + 그래프 카드 둘)
     // 부품 배치 · 표시 형식만 알고, 조회 · 자동 갱신 일정은 ArkGemFinderManager가 맡음
     class ArkGemFinderView
     {
@@ -55,20 +55,20 @@ export namespace LostArkMultiTool::Views
         void SetOnQuantityEdited(std::function<void(std::size_t gemIndex, std::size_t gradeIndex, const std::wstring& text)> onQuantityEdited);
         void SetOnSyncRoster(std::function<void(const std::wstring& mainCharacterName)> onSyncRoster);   // [원정대 동기화] · 이름 칸 Enter
         void SetOnCharacterSelected(std::function<void()> onCharacterSelected);                           // 캐릭터 선택을 바꿈
-        // 시세 표(질서 · 혼돈)에서 행을 골랐음 (isOrder = 질서의 젬 표인지, row = 고른 행, 그래프 대상)
+        // 시세 표에서 행을 골랐음 (isOrder = 질서의 젬인지, row = 그 분류 목록 안 번호, 그래프 대상)
         void SetOnPriceRowSelected(std::function<void(bool isOrder, std::size_t row)> onPriceRowSelected);
 
-        // ===== 상단 바 =====
+        // ===== 필터 줄 =====
         void SetAutoRefreshChecked(bool isChecked) noexcept;   // 코드에서 바꿈 (알림 없음)
         [[nodiscard]] bool IsAutoRefreshChecked() const noexcept;
-        void SetRefreshEnabled(bool isEnabled) noexcept;       // 조회 중에는 [시세 갱신] 비활성
-        void SetStatusText(std::wstring text);
+        void SetRefreshEnabled(bool isEnabled);                // 조회 중에는 [시세 갱신] 비활성 + "조회 중..."
+        void SetStatusText(std::wstring text);                 // 표 머리말 · 아래 줄 오른쪽 글자 (마지막 갱신 · 조회 중)
 
         // ===== 시세 표 =====
         void ShowOrder(const std::vector<ArkGemRow>& rows);   // 질서의 젬
         void ShowChaos(const std::vector<ArkGemRow>& rows);    // 혼돈의 젬
-        void SelectOrderRow(std::optional<std::size_t> row);    // 질서 표 선택을 코드에서 바꿈 (알림 없음, 다른 표 선택은 그대로)
-        void SelectChaosRow(std::optional<std::size_t> row);    // 혼돈 표 선택을 코드에서 바꿈 (알림 없음)
+        void SelectOrderRow(std::optional<std::size_t> row);    // 질서 젬 선택을 코드에서 바꿈 (알림 없음, 값이 없으면 질서 젬 선택만 해제)
+        void SelectChaosRow(std::optional<std::size_t> row);    // 혼돈 젬 선택을 코드에서 바꿈 (알림 없음)
         void SetPriceChart(std::wstring title, std::vector<UI::ChartPoint> points);   // 오른쪽 위: 고른 젬의 일별 최저가
 
         // ===== 귀속 젬 계산기 =====
@@ -92,28 +92,33 @@ export namespace LostArkMultiTool::Views
         void RestoreFocus();
 
     private:
-        // 묶음 상자 (테두리 + 제목)
-        struct Panel
+        // 표에 올릴 젬 하나 (분류 + 시세)
+        struct Entry
         {
-            Core::RectF m_bounds;
-            std::wstring m_title;
+            bool m_isOrder{};            // 질서의 젬인지 (false = 혼돈)
+            std::size_t m_kindIndex{};   // 매니저가 넘긴 그 분류 목록에서의 번호 (그래프 대상 찾기용)
+            ArkGemRow m_row;
         };
 
-        static void FillGrid(UI::Grid& grid, const std::vector<ArkGemRow>& rows);
+        void ApplyFilter();                                  // 검색어 · 분류 · 정렬에 맞게 표 다시 채우기
+        void FillGrid(const std::vector<const Entry*>& entries);
+        void ClearSearch();                                  // 검색어 지우고 입력칸으로 포커스
+        void HandlePriceRowSelected();                       // 표에서 행을 고르면 그 젬을 매니저에 알림
+        void ReselectRow();                                  // 기억해 둔 젬이 보이는 표에 있으면 그 행을 선택
         void InitializeBoundGemGrid();
-        void HandlePriceRowSelected(bool isOrder);   // 한쪽 표에서 행을 고르면 다른 쪽 선택을 풀고 알림
+        void DrawStatCards(Core::Renderer& renderer) const;
         void Layout(const Core::RectF& contentArea);
-        [[nodiscard]] Core::RectF LayoutPanel(Panel& panel, const Core::RectF& bounds) const;   // 테두리 · 제목 자리를 뺀 안쪽 영역
-        void RenderPanels(Core::Renderer& renderer) const;
 
         UI::ControlHost m_host;
 
         // 부품은 m_host가 소유 (참조는 배치 · 값 설정용, 추가 순서 = Tab 이동 순서)
-        UI::Button& m_refreshButton;
+        UI::TextBox& m_searchBox;
+        UI::Button& m_clearButton;
+        UI::ComboBox& m_kindBox;
+        UI::ComboBox& m_sortBox;
         UI::CheckBox& m_autoRefreshBox;
-        UI::Label& m_statusLabel;
-        UI::Grid& m_orderGrid;
-        UI::Grid& m_chaosGrid;
+        UI::Button& m_refreshButton;
+        UI::Grid& m_marketGrid;
         UI::TextBox& m_nameBox;          // 대표 캐릭터 이름
         UI::Button& m_syncButton;        // [원정대 동기화]
         UI::ComboBox& m_characterBox;    // 캐릭터 선택 (★ 원정대 전체 ★ + 캐릭터)
@@ -121,13 +126,24 @@ export namespace LostArkMultiTool::Views
         UI::LineChart& m_chart;          // 원정대 귀속 젬 총 가치 그래프
         UI::LineChart& m_priceChart;     // 고른 젬의 일별 최저가 그래프
 
-        Panel m_orderPanel;
-        Panel m_chaosPanel;
-        Panel m_boundGemPanel;
-        Panel m_chartPanel;
-        Panel m_priceChartPanel;
+        std::vector<Entry> m_orderEntries;        // 서비스가 정한 순서 그대로
+        std::vector<Entry> m_chaosEntries;
+        std::vector<const Entry*> m_shownEntries; // 지금 표 행 순서대로 (두 목록 안을 가리킴)
+        std::optional<std::pair<bool, std::size_t>> m_selectedGem;   // 고른 젬 (질서 여부, 분류 안 번호) → 걸러 내도 기억
+        double m_rosterValue{};                   // 원정대 귀속 젬 총 가치 (통계 카드)
+        std::wstring m_statusText;
+
+        // 마지막 배치 (Render에서 카드를 그림)
         Core::RectF m_layoutArea;
         bool m_hasLayout{};
+        std::vector<Core::RectF> m_statRects;
+        Core::RectF m_filterRect;
+        Core::RectF m_marketRect;
+        Core::RectF m_emptyRect;
+        Core::RectF m_footerRect;
+        Core::RectF m_calculatorRect;
+        Core::RectF m_priceChartRect;
+        Core::RectF m_chartRect;
         bool m_isQuantityEditable{ true };   // 수량 칸 편집 가능 여부 (원정대 전체를 고르면 false)
 
         std::function<void()> m_onRefresh;

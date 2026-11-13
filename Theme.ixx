@@ -106,6 +106,10 @@ export namespace LostArkMultiTool::Views::Theme
         }
     }
 
+    // ===== 추이 선 · 등락 (새 디자인 표의 작은 그래프) =====
+    inline constexpr Core::Color SPARKLINE_UP_COLOR{ MakeColor(45, 212, 191) };     // 상승 (청록)
+    inline constexpr Core::Color SPARKLINE_DOWN_COLOR{ MakeColor(244, 104, 122) };  // 하락 (분홍빛 빨강)
+
     // ===== 아이템 등급 글자색 (게임 등급 색 → 강화책 · 젬 · 유각 이름, 보석 레벨) =====
     inline constexpr Core::Color GRADE_NORMAL_COLOR{ MakeColor(220, 220, 220) };    // 일반
     inline constexpr Core::Color GRADE_UNCOMMON_COLOR{ MakeColor(141, 198, 63) };   // 고급
@@ -146,7 +150,7 @@ export namespace LostArkMultiTool::Views::Theme
     inline constexpr float CORNER_RADIUS{ 4.0f };        // 버튼 · 입력칸 모서리
     inline constexpr float PANEL_CORNER_RADIUS{ 8.0f };  // 대화상자 · 알림 모서리
     inline constexpr float BORDER_WIDTH{ 1.0f };
-    inline constexpr float FOCUS_BORDER_WIDTH{ 1.5f };
+    inline constexpr float FOCUS_BORDER_WIDTH{ 2.0f };   // 키보드 포커스 테두리 (새 디자인: 더 굵게)
     inline constexpr float CONTROL_HEIGHT{ 32.0f };      // 버튼 · 입력칸 기본 높이
     inline constexpr float GRID_HEADER_HEIGHT{ 34.0f };  // 표 머리글 행
     inline constexpr float GRID_ROW_HEIGHT{ 30.0f };     // 표 한 행 (원본 26px → 편집 칸이 들어가도록 여유 있게)

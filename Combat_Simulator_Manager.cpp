@@ -70,12 +70,14 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view NOT_SEARCHED_TEXT{ L"캐릭터 이름을 넣고 [조회]를 누르면 무기고를 불러와요." };  // 조회 전 안내 글자
         constexpr std::wstring_view SEARCH_ERROR_FORMAT{ L"조회하지 못했어요: {}" };  // 조회 실패 서식
 
-        constexpr std::wstring_view CURRENT_POWER_FORMAT{ L"현재 전투력 (API)   {}" };  // 현재 전투력 서식
-        constexpr std::wstring_view PREDICTED_POWER_FORMAT{ L"예상 전투력   {}" };  // 예상 전투력 서식
-        constexpr std::wstring_view PREDICTED_FACTOR_FORMAT{ L"예상 배율   ×{:.4f}" };  // 예상 배율 서식
-        constexpr std::wstring_view CHANGE_FORMAT{ L"증감   {}{} ({}{:.2f}%)" };  // 증감 서식
+        constexpr std::wstring_view CURRENT_POWER_FORMAT{ L"{}" };  // 현재 전투력 서식
+        constexpr std::wstring_view PREDICTED_POWER_FORMAT{ L"{}" };  // 예상 전투력 서식
+        constexpr std::wstring_view PREDICTED_FACTOR_FORMAT{ L"×{:.4f}" };  // 예상 배율 서식
+        constexpr std::wstring_view CHANGE_FORMAT{ L"{}{} ({}{:.2f}%)" };  // 증감 서식
+        constexpr std::wstring_view PREDICTED_FACTOR_LABEL{ L"예상 배율" };  // 전투력 정보가 없을 때 예상 값 이름표
+        constexpr std::wstring_view SEARCH_DONE_FORMAT{ L"'{}' 조회를 마쳤어요." };  // 조회 완료 토스트 서식
         constexpr std::wstring_view NO_POWER_CHANGE_TEXT{ L"API 전투력 정보가 없어서 배율만 보여 줘요." };  // 전투력 정보 없음 증감 안내
-        constexpr std::wstring_view ITEM_LEVEL_FORMAT{ L"예상 아이템 레벨   {} → {}" };  // 예상 아이템 레벨 서식
+        constexpr std::wstring_view ITEM_LEVEL_FORMAT{ L"{} → {}" };  // 예상 아이템 레벨 서식
         constexpr std::wstring_view FACTOR_PREFIX{ L"배율  " };  // 배율 내역 머리글
         constexpr std::wstring_view FACTOR_ITEM_FORMAT{ L"{} ×{:.4f}" };  // 배율 항목 서식
         constexpr std::wstring_view FACTOR_SEPARATOR{ L" · " };  // 배율 항목 구분 글자
@@ -449,6 +451,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         try  // 조회 결과 적용 시도
         {
             ApplyArmory(m_armoryTask.TakeResult());   // 백그라운드에서 난 예외는 여기서 다시 던져짐
+            if (m_armory.has_value()) m_context->m_notifier.ShowToast(std::format(SEARCH_DONE_FORMAT, ToWideMessage(m_armory->m_characterName)), Core::NoticeKind::NOTICE_SUCCESS);  // 조회 완료 토스트
         }
         catch (const Core::APIKeyInvalidException& error)  // API 키 오류
         {
@@ -880,6 +883,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         {
             text.m_currentPower = std::format(CURRENT_POWER_FORMAT, NO_POWER_TEXT);  // 현재 전투력 "정보 없음" 글자
             text.m_predictedPower = std::format(PREDICTED_FACTOR_FORMAT, result.m_totalFactor);  // 예상 배율만 표시
+            text.m_predictedLabel = std::wstring{ PREDICTED_FACTOR_LABEL };  // 이름표도 "예상 배율"로
             text.m_change = std::wstring{ NO_POWER_CHANGE_TEXT };  // 배율만 보여 준다는 안내
         }
         text.m_isUp = result.m_totalFactor > NO_CHANGE_FACTOR + CHANGE_EPSILON;  // 전체 배율이 올랐는지

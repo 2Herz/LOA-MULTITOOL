@@ -93,12 +93,13 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
     // 결과 상자 글자
     struct CombatResultText
     {
-        std::wstring m_currentPower;             // "현재 전투력 (API)  1,234.56"
-        std::wstring m_predictedPower;           // "예상 전투력  1,300.00"
-        std::wstring m_change;                   // "증감  +65.44 (+5.30%)"
+        std::wstring m_currentPower;             // "1,234.56" (이름표는 화면이 그림)
+        std::wstring m_predictedPower;           // "1,300.00" (전투력 정보가 없으면 "×1.0300")
+        std::wstring m_predictedLabel;           // 예상 값 이름표 (비어 있으면 "예상 전투력", 배율만 보일 때 "예상 배율")
+        std::wstring m_change;                   // "+65.44 (+5.30%)"
         bool m_isUp{};  // 예상 전투력이 현재보다 높은지
         bool m_isDown{};  // 예상 전투력이 현재보다 낮은지
-        std::wstring m_itemLevel;                // "예상 아이템 레벨  1,764.17 → 1,770.00"
+        std::wstring m_itemLevel;                // "1,764.17 → 1,770.00"
         std::wstring m_factors;                  // "배율  장비 ×1.0300 · 무기 품질 ×1.0000 · 보석 ×1.0100   오차 범위 약 ±0.12% (±3.60)"
         std::wstring m_note;                     // 안내 문구 뒤에 덧붙일 추가 안내 (비어 있으면 없음)
     };
@@ -160,6 +161,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         {
             Core::RectF m_bounds;  // 상자 영역
             std::wstring m_title;  // 상자 제목
+            std::wstring m_eyebrow;  // 청록 영문 소제목 (예: EQUIPMENT)
+            std::wstring m_hint;     // 머리말 오른쪽 작은 안내
         };
 
         // 목록형 카드 하나 (제목 상자 + 선택 상자 + 선택한 행 안내 + 표)
@@ -178,6 +181,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         void OnCardChoice(std::size_t cardIndex);     // 선택 상자에서 고름
         [[nodiscard]] Core::RectF LayoutPanel(Panel& panel, const Core::RectF& bounds) const;   // 테두리 · 제목 자리를 뺀 안쪽 영역
         void RenderPanels(Core::Renderer& renderer) const;  // 상자 테두리 · 제목 그리기
+        void RenderCaptions(Core::Renderer& renderer) const;  // 결과 이름표 · 화살표 그리기
         void RequestSearch();  // 조회 요청 보내기
 
         UI::ControlHost m_host;  // 부품 호스트 (부품 소유 · 포커스 관리)
@@ -201,6 +205,12 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         UI::Label& m_itemLevelLabel;  // 아이템 레벨 글자
         UI::Label& m_factorLabel;  // 배율 내역 글자
         UI::Label& m_noteLabel;  // 안내 글자
+
+        // 맨 위 카드의 결과 이름표 칸 (Layout이 계산, RenderCaptions가 그림)
+        static constexpr std::size_t CAPTION_COUNT{ 4 };   // 현재 · 예상 · 증감 · 아이템 레벨
+        std::array<Core::RectF, CAPTION_COUNT> m_captionBounds;   // 이름표 칸
+        Core::RectF m_arrowBounds;   // 현재 → 예상 사이 화살표 칸
+        std::wstring m_predictedCaption;   // 예상 값 이름표 글자
 
         Panel m_barPanel;      // 맨 위 결과 바
         Panel m_gearPanel;

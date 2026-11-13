@@ -415,6 +415,12 @@
     <ClCompile Include="API_Format_Monitor.ixx">
       <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>
+    <ClCompile Include="Page_Layout.cpp">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Page_Layout.ixx">
+      <Filter>1. 코어\1. 기반\4. 시간</Filter>
+    </ClCompile>
     <ClCompile Include="Local_Time.cpp">
       <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>

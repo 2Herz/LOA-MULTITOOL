@@ -5,6 +5,7 @@ import LostArkMultiTool.Core.Input;  // 입력 모듈 가져오기
 import LostArkMultiTool.Models.CombatCoefficientData;  // 계수 데이터 모듈 가져오기 (계수 기준 날짜)
 import LostArkMultiTool.Core.Platform;  // 플랫폼 모듈 가져오기
 import LostArkMultiTool.Core.Renderer;  // 렌더러 모듈 가져오기
+import LostArkMultiTool.Views.PageLayout;  // 새 디자인 공통 카드 가져오기
 import LostArkMultiTool.Views.Theme;  // 테마(색 · 글꼴 크기) 모듈 가져오기
 import LostArkMultiTool.Views.UI.Button;  // 버튼 부품 가져오기
 import LostArkMultiTool.Views.UI.ComboBox;  // 선택 상자 부품 가져오기
@@ -38,7 +39,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::array<std::wstring_view, LIST_COLUMN_COUNT> LIST_HEADERS{ L"항목", L"현재", L"목표" };  // 목록형 표 머리글
         constexpr std::array<float, LIST_COLUMN_COUNT> LIST_WEIGHTS{ 1.2f, 1.6f, 1.6f };  // 목록형 표 열 너비 비율
         constexpr std::array<std::wstring_view, CARD_COUNT> CARD_TITLES{  // 카드 제목 목록
-            L"악세서리 연마 옵션 5종", L"아크 그리드 (코어 6 · 젬 효과)", L"팔찌 · 어빌리티 스톤 · 각인서", L"아크 패시브 · 아바타" };
+            L"악세서리 연마 옵션", L"아크 그리드", L"팔찌 · 어빌리티 스톤 · 각인서", L"아크 패시브 · 아바타" };
+        constexpr std::array<std::wstring_view, CARD_COUNT> CARD_EYEBROWS{ L"ACCESSORY", L"ARK GRID", L"BRACELET", L"ARK PASSIVE" };  // 카드 영문 소제목 (악세서리 · 아크 그리드 · 팔찌 · 패시브)
+        constexpr std::array<std::wstring_view, CARD_COUNT> CARD_HINTS{ L"연마 옵션 5종", L"코어 6 · 젬 효과", L"현재 → 목표", L"현재 → 목표" };  // 카드 머리말 오른쪽 안내
 
         // 카드가 놓이는 칸 (열, 행) — 위 줄: 장비 재련 | 악세서리 | 아크 그리드, 아래 줄: 보석 · 품질 | 팔찌 · 스톤 · 각인서 | 아크 패시브 · 아바타
         struct CardCell  // 카드가 놓이는 칸 (열 · 행)
@@ -60,8 +63,17 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view INITIAL_STATUS_TEXT{ L"캐릭터 이름을 넣고 [조회]를 누르면 무기고를 불러와요." };  // 처음 상태 글자
         constexpr std::wstring_view QUALITY_PLACEHOLDER{ L"100" };  // 무기 품질 입력 칸 안내 글자
         constexpr std::wstring_view GEM_TARGET_TEXT{ L"모든 보석 목표 레벨" };  // 보석 전체 목표 안내 글자
-        constexpr std::wstring_view GEAR_PANEL_TITLE{ L"장비 재련 · 완갑 (목표 칸에 숫자를 넣어요)" };  // 장비 재련 상자 제목
+        constexpr std::wstring_view GEAR_PANEL_EYEBROW{ L"EQUIPMENT" };  // 장비 재련 카드 영문 소제목
+        constexpr std::wstring_view GEAR_PANEL_TITLE{ L"장비 재련 · 완갑" };  // 장비 재련 상자 제목
+        constexpr std::wstring_view GEAR_PANEL_HINT{ L"목표 칸에 숫자 입력" };  // 장비 재련 머리말 오른쪽 안내
+        constexpr std::wstring_view OPTION_PANEL_EYEBROW{ L"GEMS" };  // 보석 카드 영문 소제목
         constexpr std::wstring_view OPTION_PANEL_TITLE{ L"보석 · 무기 품질" };  // 보석 · 품질 상자 제목
+        constexpr std::wstring_view OPTION_PANEL_HINT{ L"현재 → 목표" };  // 보석 머리말 오른쪽 안내
+        constexpr std::wstring_view CAPTION_CURRENT{ L"현재 전투력 (API)" };  // 현재 전투력 이름표
+        constexpr std::wstring_view CAPTION_PREDICTED{ L"예상 전투력" };  // 예상 전투력 이름표
+        constexpr std::wstring_view CAPTION_CHANGE{ L"증감" };  // 증감 이름표
+        constexpr std::wstring_view CAPTION_ITEM_LEVEL{ L"예상 아이템 레벨" };  // 예상 아이템 레벨 이름표
+        constexpr std::wstring_view ARROW_TEXT{ L"→" };  // 현재 → 예상 화살표
         constexpr std::wstring_view NOTE_TEXT{ L"※ lopec 측정 기반 추정치예요. 근사: 스톤 1번 줄 없음(불안정) · 스톤과 같은 이름의 각인서(약 ±4%) · 깨달음 포인트 구성(최대로 가정) · 완갑(에스더/일반 두 가지 표)" };  // 추정치 안내 문구
         constexpr std::wstring_view COEFFICIENT_NOTE_FORMAT{ L" 계수 기준: {} · {}" };  // 계수 기준 안내 서식 (측정 날짜 · 측정 근거)
         constexpr std::wstring_view NOTE_EXTRA_SEPARATOR{ L" " };  // 안내 문구와 추가 안내 사이 구분 글자
@@ -100,22 +112,29 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr float PANEL_PADDING{ 10.0f };  // 상자 안쪽 여백
         constexpr float PANEL_TITLE_LEFT{ 12.0f };  // 상자 제목의 왼쪽 위치
         constexpr float BAR_PADDING{ 10.0f };  // 결과 바 안쪽 여백
-        constexpr float MIN_CARD_HEIGHT{ 150.0f };  // 카드 최소 높이
+        constexpr float MIN_CARD_HEIGHT{ 230.0f };  // 카드 최소 높이 (머리말이 커져서 키움)
+        constexpr float CAPTION_HEIGHT{ 16.0f };  // 결과 이름표 줄 높이
+        constexpr float VALUE_HEIGHT{ 32.0f };  // 결과 큰 값 줄 높이
+        constexpr float FACTOR_LINE_HEIGHT{ 20.0f };  // 배율 내역 줄 높이
+        constexpr float RESULT_FRACTION_ARROW{ 0.04f };  // 현재 → 예상 화살표 칸 너비 비율
+        constexpr float HALF{ 0.5f };  // 가운데 계산
         constexpr float ROW_GAP{ 4.0f };  // 행 사이 간격
         constexpr float HINT_LINE_COUNT{ 2.0f };       // 선택한 행 안내 자리 (두 줄)
         constexpr float HINT_LINE_HEIGHT{ 17.0f };  // 선택한 행 안내 한 줄 높이
         constexpr float NOTE_LINE_COUNT{ 2.0f };       // 안내 문구 자리 (두 줄)
         constexpr float NOTE_LINE_HEIGHT{ 17.0f };  // 안내 문구 한 줄 높이
-        constexpr float RESULT_FRACTION_CURRENT{ 0.22f };     // 결과 줄에서 칸마다 차지하는 너비 비율
-        constexpr float RESULT_FRACTION_PREDICTED{ 0.30f };  // 결과 줄에서 예상 전투력 칸 너비 비율
-        constexpr float RESULT_FRACTION_CHANGE{ 0.24f };  // 결과 줄에서 증감 칸 너비 비율
+        constexpr float RESULT_FRACTION_CURRENT{ 0.20f };     // 결과 줄에서 칸마다 차지하는 너비 비율
+        constexpr float RESULT_FRACTION_PREDICTED{ 0.22f };  // 결과 줄에서 예상 전투력 칸 너비 비율
+        constexpr float RESULT_FRACTION_CHANGE{ 0.22f };  // 결과 줄에서 증감 칸 너비 비율
 
         constexpr Core::TextStyle BAR_TEXT_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };  // 결과 바 글자 모양
         constexpr Core::TextStyle SETTING_LABEL_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::LEADING };  // 설정 안내 글자 모양 (굵게)
         constexpr Core::TextStyle RESULT_TEXT_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };  // 결과 글자 모양
-        constexpr Core::TextStyle PREDICTED_TEXT_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::BOLD, Core::TextAlign::LEADING };  // 예상 전투력 글자 모양 (크고 굵게)
+        constexpr Core::TextStyle POWER_TEXT_STYLE{ Theme::FONT_SIZE_TITLE, Core::FontWeight::BOLD, Core::TextAlign::LEADING };  // 현재 · 예상 전투력 글자 모양 (크고 굵게)
+        constexpr Core::TextStyle SUB_VALUE_STYLE{ Theme::FONT_SIZE_CHART_TITLE, Core::FontWeight::BOLD, Core::TextAlign::LEADING };  // 증감 · 아이템 레벨 글자 모양 (중간)
+        constexpr Core::TextStyle CAPTION_STYLE{ Theme::FONT_SIZE_SMALL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };  // 결과 이름표 글자 모양 (작은 회색)
+        constexpr Core::TextStyle ARROW_STYLE{ Theme::FONT_SIZE_TITLE, Core::FontWeight::BOLD, Core::TextAlign::CENTER };  // 화살표 글자 모양
         constexpr Core::TextStyle NOTE_TEXT_STYLE{ Theme::FONT_SIZE_SMALL, Core::FontWeight::NORMAL, Core::TextAlign::LEADING };  // 안내 문구 글자 모양 (작게)
-        constexpr Core::TextStyle PANEL_TITLE_STYLE{ Theme::FONT_SIZE_NORMAL, Core::FontWeight::BOLD, Core::TextAlign::LEADING };  // 상자 제목 글자 모양 (굵게)
 
         // 재련 · 품질 · 목록 숫자 칸: 숫자만
         [[nodiscard]] bool IsDigitCharacter(wchar_t character) noexcept  // 숫자 글자 판별
@@ -193,20 +212,25 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         , m_gemTargetLabel{ m_host.Emplace<UI::Label>(std::wstring{ GEM_TARGET_TEXT }, SETTING_LABEL_STYLE, Theme::TEXT_COLOR) }  // 보석 전체 목표 안내 글자 생성
         , m_gemTargetBox{ m_host.Emplace<UI::ComboBox>() }  // 보석 전체 목표 선택 상자 생성
         , m_gemGrid{ m_host.Emplace<UI::Grid>(platform, MakeGemColumns(), 0) }  // 보석 표 생성
-        , m_currentPowerLabel{ m_host.Emplace<UI::Label>(std::wstring{}, RESULT_TEXT_STYLE, Theme::TEXT_COLOR) }  // 현재 전투력 글자 생성
-        , m_predictedPowerLabel{ m_host.Emplace<UI::Label>(std::wstring{}, PREDICTED_TEXT_STYLE, Theme::HIGHLIGHT_TEXT_COLOR) }  // 예상 전투력 글자 생성 (강조색)
-        , m_changeLabel{ m_host.Emplace<UI::Label>(std::wstring{}, RESULT_TEXT_STYLE, Theme::TEXT_COLOR) }  // 증감 글자 생성
-        , m_itemLevelLabel{ m_host.Emplace<UI::Label>(std::wstring{}, RESULT_TEXT_STYLE, Theme::TEXT_COLOR) }  // 아이템 레벨 글자 생성
+        , m_currentPowerLabel{ m_host.Emplace<UI::Label>(std::wstring{}, POWER_TEXT_STYLE, Theme::HEADER_TEXT_COLOR) }  // 현재 전투력 글자 생성 (크게)
+        , m_predictedPowerLabel{ m_host.Emplace<UI::Label>(std::wstring{}, POWER_TEXT_STYLE, Theme::HIGHLIGHT_TEXT_COLOR) }  // 예상 전투력 글자 생성 (금색 강조)
+        , m_changeLabel{ m_host.Emplace<UI::Label>(std::wstring{}, SUB_VALUE_STYLE, Theme::TEXT_COLOR) }  // 증감 글자 생성
+        , m_itemLevelLabel{ m_host.Emplace<UI::Label>(std::wstring{}, SUB_VALUE_STYLE, Theme::TEXT_COLOR) }  // 아이템 레벨 글자 생성
         , m_factorLabel{ m_host.Emplace<UI::Label>(std::wstring{}, RESULT_TEXT_STYLE, Theme::MUTED_TEXT_COLOR) }  // 배율 내역 글자 생성 (흐린 색)
         , m_noteLabel{ m_host.Emplace<UI::Label>(BuildNoteText({}), NOTE_TEXT_STYLE, Theme::MUTED_TEXT_COLOR) }  // 추정치 안내 글자 생성
+        , m_predictedCaption{ CAPTION_PREDICTED }  // 예상 값 이름표 초기화
         , m_barPanel{ Core::RectF{}, std::wstring{} }  // 결과 바 상자 초기화
-        , m_gearPanel{ Core::RectF{}, std::wstring{ GEAR_PANEL_TITLE } }  // 장비 재련 상자 초기화
-        , m_optionPanel{ Core::RectF{}, std::wstring{ OPTION_PANEL_TITLE } }  // 보석 · 품질 상자 초기화
+        , m_gearPanel{ Core::RectF{}, std::wstring{ GEAR_PANEL_TITLE }, std::wstring{ GEAR_PANEL_EYEBROW }, std::wstring{ GEAR_PANEL_HINT } }  // 장비 재련 상자 초기화
+        , m_optionPanel{ Core::RectF{}, std::wstring{ OPTION_PANEL_TITLE }, std::wstring{ OPTION_PANEL_EYEBROW }, std::wstring{ OPTION_PANEL_HINT } }  // 보석 · 품질 상자 초기화
     {
         // 조회: 버튼 · 이름 칸 Enter (이름 정리 · 요청은 매니저가)
         m_nameBox.SetMaxLength(NAME_MAX_LENGTH);  // 이름 입력 칸 최대 글자 수 설정
         m_nameBox.SetOnSubmit([this] { RequestSearch(); });  // 이름 칸에서 Enter를 누르면 조회 요청
         m_searchButton.SetOnClick([this] { RequestSearch(); });  // 조회 버튼을 누르면 조회 요청
+
+        // 입력 표는 칸 구분을 위해 세로선을 켬
+        m_gearGrid.SetShowVerticalLines(true);  // 장비 표 세로선
+        m_gemGrid.SetShowVerticalLines(true);  // 보석 표 세로선
 
         // 장비 표: 목표 숫자 칸만 편집
         m_gearGrid.SetEditInput(false, IsDigitCharacter);  // 장비 표는 숫자만 입력 받음
@@ -244,11 +268,12 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         for (std::size_t index{}; index < CARD_COUNT; ++index)  // 카드마다 부품 만들기
         {
             ListCard& card{ m_cards[index] };  // 카드 참조
-            card.m_panel = Panel{ Core::RectF{}, std::wstring{ CARD_TITLES[index] } };  // 카드 상자 초기화
+            card.m_panel = Panel{ Core::RectF{}, std::wstring{ CARD_TITLES[index] }, std::wstring{ CARD_EYEBROWS[index] }, std::wstring{ CARD_HINTS[index] } };  // 카드 상자 초기화
             card.m_combo = &m_host.Emplace<UI::ComboBox>();  // 선택 상자 생성
             card.m_hint = &m_host.Emplace<UI::Label>(std::wstring{ HINT_DEFAULT_TEXT }, NOTE_TEXT_STYLE, Theme::MUTED_TEXT_COLOR);  // 선택한 행 안내 글자 생성
             card.m_grid = &m_host.Emplace<UI::Grid>(platform, MakeListColumns(), 0);  // 목록 표 생성
 
+            card.m_grid->SetShowVerticalLines(true);  // 목록 표 세로선
             card.m_combo->SetEnabled(false);  // 처음에는 선택 상자 비활성
             card.m_combo->SetOnSelectionChanged([this, index] { OnCardChoice(index); });  // 선택 상자에서 고르면 카드 선택 처리
 
@@ -484,6 +509,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     {
         m_currentPowerLabel.SetText(result.m_currentPower);  // 현재 전투력 글자 반영
         m_predictedPowerLabel.SetText(result.m_predictedPower);  // 예상 전투력 글자 반영
+        m_predictedCaption = result.m_predictedLabel.empty() ? std::wstring{ CAPTION_PREDICTED } : result.m_predictedLabel;  // 예상 값 이름표 (배율만 보일 때는 "예상 배율")
         m_changeLabel.SetText(result.m_change);  // 증감 글자 반영
         m_changeLabel.SetColor(result.m_isUp ? Theme::UP_TEXT_COLOR : (result.m_isDown ? Theme::DOWN_TEXT_COLOR : Theme::TEXT_COLOR));  // 증가면 상승색, 감소면 하락색, 같으면 기본색
         m_itemLevelLabel.SetText(result.m_itemLevel);  // 아이템 레벨 글자 반영
@@ -500,6 +526,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     {
         Layout(contentArea);  // 배치 계산 (영역이 같으면 건너뜀)
         RenderPanels(renderer);  // 상자 테두리 · 제목 그리기
+        RenderCaptions(renderer);  // 결과 이름표 · 화살표 그리기
         m_host.Render(renderer);  // 부품 그리기
     }
 
@@ -536,11 +563,14 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_layoutArea = contentArea;  // 영역 기억
         m_hasLayout = true;  // 배치 계산 완료 표시
 
-        const float left{ contentArea.m_left + PAGE_PADDING };  // 화면 왼쪽
-        const float right{ std::max(contentArea.m_right - PAGE_PADDING, left) };  // 화면 오른쪽 (왼쪽보다 작아지지 않게)
-        const float barTop{ contentArea.m_top + PAGE_PADDING };  // 결과 바 위쪽
-        const float innerLeft{ left + BAR_PADDING };  // 결과 바 안쪽 왼쪽
-        const float innerRight{ std::max(right - BAR_PADDING, innerLeft) };  // 결과 바 안쪽 오른쪽
+        // 가운데 정렬 열 (바깥 여백 안쪽)
+        const Core::RectF column{ PageLayout::GetPageColumn(Core::RectF{ contentArea.m_left + PAGE_PADDING, contentArea.m_top + PAGE_PADDING,
+            std::max(contentArea.m_right - PAGE_PADDING, contentArea.m_left + PAGE_PADDING), contentArea.m_bottom - PAGE_PADDING }) };  // 본문 열
+        const float left{ column.m_left };  // 화면 왼쪽
+        const float right{ std::max(column.m_right, left) };  // 화면 오른쪽 (왼쪽보다 작아지지 않게)
+        const float barTop{ column.m_top };  // 결과 카드 위쪽
+        const float innerLeft{ left + PageLayout::CARD_PADDING };  // 결과 카드 안쪽 왼쪽
+        const float innerRight{ std::max(right - PageLayout::CARD_PADDING, innerLeft) };  // 결과 카드 안쪽 오른쪽
 
         // 줄 하나에 왼쪽부터 차례로 배치
         const auto placeRow{ [](float& x, float top, UI::Control& control, float width, float gapAfter)  // 부품 하나를 가로로 놓고 x를 옮기는 람다
@@ -549,31 +579,44 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             x += width + gapAfter;  // 다음 부품 위치로 이동
         } };
 
-        // 결과 바 첫 줄: 캐릭터 이름 [입력칸] [조회] 상태
-        float y{ barTop + BAR_PADDING };  // 첫 줄 높이
+        // 결과 카드 첫 줄: 캐릭터 이름 [입력칸] [조회] 상태
+        float y{ barTop + PageLayout::CARD_PADDING };  // 첫 줄 높이
         float x{ innerLeft };  // 가로 위치 시작
         placeRow(x, y, m_nameLabel, NAME_LABEL_WIDTH, LABEL_GAP);  // 이름 안내 글자 배치
         placeRow(x, y, m_nameBox, NAME_BOX_WIDTH, GROUP_GAP);  // 이름 입력 칸 배치
         placeRow(x, y, m_searchButton, SEARCH_BUTTON_WIDTH, SECTION_GAP);  // 조회 버튼 배치
         m_statusLabel.SetBounds(Core::RectF{ x, y, std::max(x, innerRight), y + Theme::CONTROL_HEIGHT });  // 상태 글자는 남은 너비 전체
-        y += Theme::CONTROL_HEIGHT + ROW_GAP;  // 다음 줄로 이동
+        y += Theme::CONTROL_HEIGHT + SECTION_GAP;  // 다음 줄로 이동
 
-        // 둘째 줄: 현재 전투력 → 예상 전투력 · 증감 · 아이템 레벨
+        // 둘째 줄: 이름표(작은 회색) 아래 큰 값 — 현재 전투력 → 예상 전투력 · 증감 · 예상 아이템 레벨
         const float innerWidth{ innerRight - innerLeft };  // 결과 줄 안쪽 너비
         const float currentWidth{ innerWidth * RESULT_FRACTION_CURRENT };  // 현재 전투력 칸 너비
+        const float arrowWidth{ innerWidth * RESULT_FRACTION_ARROW };  // 화살표 칸 너비
         const float predictedWidth{ innerWidth * RESULT_FRACTION_PREDICTED };  // 예상 전투력 칸 너비
         const float changeWidth{ innerWidth * RESULT_FRACTION_CHANGE };  // 증감 칸 너비
+        const float valueTop{ y + CAPTION_HEIGHT };  // 큰 값 줄 위쪽
+        const auto placeValue{ [valueTop](float& valueX, UI::Control& control, float width)  // 큰 값 부품 하나를 놓고 x를 옮기는 람다
+        {
+            control.SetBounds(Core::RectF{ valueX, valueTop, valueX + width, valueTop + VALUE_HEIGHT });  // 큰 값 줄 영역 설정
+            valueX += width;  // 다음 칸으로 이동
+        } };
         x = innerLeft;  // 가로 위치 처음으로
-        placeRow(x, y, m_currentPowerLabel, currentWidth, 0.0f);  // 현재 전투력 배치
-        placeRow(x, y, m_predictedPowerLabel, predictedWidth, 0.0f);  // 예상 전투력 배치
-        placeRow(x, y, m_changeLabel, changeWidth, 0.0f);  // 증감 배치
-        m_itemLevelLabel.SetBounds(Core::RectF{ x, y, std::max(x, innerRight), y + Theme::CONTROL_HEIGHT });  // 아이템 레벨은 남은 너비 전체
-        y += Theme::CONTROL_HEIGHT + ROW_GAP;  // 다음 줄로 이동
+        m_captionBounds[0] = Core::RectF{ x, y, x + currentWidth, valueTop };  // 현재 전투력 이름표 칸
+        placeValue(x, m_currentPowerLabel, currentWidth);  // 현재 전투력 배치
+        m_arrowBounds = Core::RectF{ x, valueTop, x + arrowWidth, valueTop + VALUE_HEIGHT };  // 화살표 칸
+        x += arrowWidth;  // 화살표 칸만큼 이동
+        m_captionBounds[1] = Core::RectF{ x, y, x + predictedWidth, valueTop };  // 예상 전투력 이름표 칸
+        placeValue(x, m_predictedPowerLabel, predictedWidth);  // 예상 전투력 배치
+        m_captionBounds[2] = Core::RectF{ x, y, x + changeWidth, valueTop };  // 증감 이름표 칸
+        placeValue(x, m_changeLabel, changeWidth);  // 증감 배치
+        m_captionBounds[3] = Core::RectF{ x, y, std::max(x, innerRight), valueTop };  // 아이템 레벨 이름표 칸
+        m_itemLevelLabel.SetBounds(Core::RectF{ x, valueTop, std::max(x, innerRight), valueTop + VALUE_HEIGHT });  // 아이템 레벨은 남은 너비 전체
+        y = valueTop + VALUE_HEIGHT + ROW_GAP;  // 다음 줄로 이동
 
-        // 셋째 줄: 배율 내역
-        m_factorLabel.SetBounds(Core::RectF{ innerLeft, y, innerRight, y + Theme::CONTROL_HEIGHT });  // 배율 내역 배치
-        y += Theme::CONTROL_HEIGHT + BAR_PADDING;  // 아래쪽 여백 반영
-        m_barPanel.m_bounds = Core::RectF{ left, barTop, right, y };  // 결과 바 상자 영역 확정
+        // 셋째 줄: 배율 내역 (오차 범위 포함)
+        m_factorLabel.SetBounds(Core::RectF{ innerLeft, y, innerRight, y + FACTOR_LINE_HEIGHT });  // 배율 내역 배치
+        y += FACTOR_LINE_HEIGHT + PageLayout::CARD_PADDING;  // 아래쪽 여백 반영
+        m_barPanel.m_bounds = Core::RectF{ left, barTop, right, y };  // 결과 카드 영역 확정
 
         // 맨 아래 안내 문구
         const float noteHeight{ NOTE_LINE_HEIGHT * NOTE_LINE_COUNT };  // 안내 문구 높이
@@ -624,25 +667,28 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     Core::RectF CombatSimulatorView::LayoutPanel(Panel& panel, const Core::RectF& bounds) const
     {
         panel.m_bounds = bounds;  // 상자 영역 기록
-        return Core::RectF{ bounds.m_left + PANEL_PADDING, bounds.m_top + Theme::PANEL_TITLE_HEIGHT,  // 테두리 · 제목 자리를 뺀 안쪽 영역 반환
-            std::max(bounds.m_right - PANEL_PADDING, bounds.m_left + PANEL_PADDING), std::max(bounds.m_top + Theme::PANEL_TITLE_HEIGHT, bounds.m_bottom - PANEL_PADDING) };
+        return Core::RectF{ bounds.m_left + PANEL_PADDING, bounds.m_top + PageLayout::CARD_HEADER_HEIGHT,  // 테두리 · 머리말 자리를 뺀 안쪽 영역 반환
+            std::max(bounds.m_right - PANEL_PADDING, bounds.m_left + PANEL_PADDING), std::max(bounds.m_top + PageLayout::CARD_HEADER_HEIGHT, bounds.m_bottom - PANEL_PADDING) };
     }
 
-    // 묶음 상자: 둥근 테두리 + 왼쪽 위 제목 (결과 바는 제목 없음)
+    // 카드: 결과 카드는 바탕만, 나머지는 청록 영문 소제목 + 제목 + 오른쪽 안내 머리말
     void CombatSimulatorView::RenderPanels(Core::Renderer& renderer) const
     {
-        std::vector<const Panel*> panels{ &m_barPanel, &m_gearPanel, &m_optionPanel };  // 그릴 상자 목록 (결과 바 · 장비 · 보석 상자)
+        std::vector<const Panel*> panels{ &m_barPanel, &m_gearPanel, &m_optionPanel };  // 그릴 상자 목록 (결과 카드 · 장비 · 보석 상자)
         for (const ListCard& card : m_cards) panels.push_back(&card.m_panel);  // 목록형 카드 상자 추가
 
         for (const Panel* panel : panels)  // 상자마다
         {
-            renderer.FillRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BACK_COLOR);   // 카드 바탕 (배경보다 살짝 밝게)
-            renderer.DrawRoundedRect(panel->m_bounds, Theme::PANEL_CORNER_RADIUS, Theme::CARD_BORDER_COLOR, Theme::BORDER_WIDTH);   // 카드 얇은 테두리
-            if (panel->m_title.empty()) continue;  // 제목이 없으면 건너뜀
-
-            const Core::RectF titleRect{ panel->m_bounds.m_left + PANEL_TITLE_LEFT, panel->m_bounds.m_top,  // 제목 영역
-                panel->m_bounds.m_right - PANEL_TITLE_LEFT, panel->m_bounds.m_top + Theme::PANEL_TITLE_HEIGHT };
-            renderer.DrawString(panel->m_title, titleRect, Theme::HEADER_TEXT_COLOR, PANEL_TITLE_STYLE);  // 제목 글자 그리기
+            if (panel->m_title.empty()) PageLayout::DrawCard(renderer, panel->m_bounds);  // 제목이 없으면 바탕 · 테두리만
+            else PageLayout::DrawCardWithHeader(renderer, panel->m_bounds, panel->m_eyebrow, panel->m_title, panel->m_hint);  // 머리말이 있는 카드
         }
+    }
+
+    // 결과 이름표(작은 회색)와 현재 → 예상 화살표
+    void CombatSimulatorView::RenderCaptions(Core::Renderer& renderer) const
+    {
+        const std::array<std::wstring_view, CAPTION_COUNT> captions{ CAPTION_CURRENT, m_predictedCaption, CAPTION_CHANGE, CAPTION_ITEM_LEVEL };  // 이름표 글자 목록
+        for (std::size_t index{}; index < CAPTION_COUNT; ++index) renderer.DrawString(captions[index], m_captionBounds[index], Theme::MUTED_TEXT_COLOR, CAPTION_STYLE);  // 이름표 그리기
+        renderer.DrawString(ARROW_TEXT, m_arrowBounds, Theme::MUTED_TEXT_COLOR, ARROW_STYLE);  // 화살표 그리기
     }
 }

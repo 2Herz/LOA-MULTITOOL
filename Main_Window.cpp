@@ -148,6 +148,7 @@ namespace LostArkMultiTool::Views
                 case 'C':       return Core::Key::KEY_C;
                 case 'V':       return Core::Key::KEY_V;
                 case 'X':       return Core::Key::KEY_X;
+                case 'K':       return Core::Key::KEY_K;
                 default:        break;
             }
 
@@ -991,6 +992,18 @@ namespace LostArkMultiTool::Views
                 return 0;
             }
 
+            // Alt와 함께 누른 키는 WM_SYSKEYDOWN으로 옴 → Alt+↑/↓만 화면으로 보내고 나머지(Alt+F4 등)는 기본 처리
+            case WM_SYSKEYDOWN:
+            {
+                const Core::Key key{ TranslateKey(wParam) };
+                if (key == Core::Key::KEY_UP || key == Core::Key::KEY_DOWN)
+                {
+                    Emit(Core::KeyEvent{ key, ::GetKeyState(VK_CONTROL) < 0, ::GetKeyState(VK_SHIFT) < 0, true });   // Alt 눌림
+                    return 0;
+                }
+                return ::DefWindowProcW(window, message, wParam, lParam);   // 시스템 메뉴 · Alt+F4
+            }
+
             case WM_CHAR:
             {
                 // 제어 문자(Ctrl+A · Backspace · Enter 등)는 KeyEvent로 따로 처리하므로 글자로 보내지 않음
@@ -1118,6 +1131,12 @@ namespace LostArkMultiTool::Views
     void MainWindow::RequestClose()
     {
         m_impl->RequestClose();
+    }
+
+    void MainWindow::SetTitle(std::wstring_view title)
+    {
+        const std::wstring text{ title };                                                  // 널 종료 문자열
+        ::SetWindowTextW(static_cast<HWND>(GetNativeHandle()), text.c_str());               // 제목 표시줄 · 작업 표시줄 글자
     }
 
     bool MainWindow::ProcessMessages()

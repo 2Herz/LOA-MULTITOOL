@@ -41,9 +41,11 @@ namespace LostArkMultiTool::Views
         // ===== 문구 =====
         constexpr std::wstring_view NOT_UPDATED_TEXT{ L"아직 조회하지 않았어요." };
         constexpr std::wstring_view REFRESHING_TEXT{ L"질서 · 혼돈의 젬 시세 조회 중..." };
-        constexpr std::wstring_view STATUS_FORMAT{ L"질서 {}종 · 혼돈 {}종 · 마지막 갱신 {}" };
+        constexpr std::wstring_view STATUS_FORMAT{ L"마지막 갱신 {}" };
         constexpr std::wstring_view BACKGROUND_STATUS_FORMAT{ L"젬: {}분마다 시세를 자동으로 갱신해요." };
         constexpr std::wstring_view AUTO_ERROR_FORMAT{ L"{}: {}" };
+        constexpr std::wstring_view REFRESH_DONE_TEXT{ L"젬 시세를 갱신했어요." };   // 직접 갱신을 눌렀을 때 완료 알림
+        constexpr std::size_t TREND_DAYS{ 14 };   // 표 추이 선에 쓰는 최근 기록 일수
 
         constexpr std::wstring_view NOTICE_TITLE{ L"알림" };
         constexpr std::wstring_view ERROR_TITLE{ L"오류" };
@@ -138,6 +140,16 @@ namespace LostArkMultiTool::Views
             {
                 return std::wstring{ UNKNOWN_ERROR_TEXT };
             }
+        }
+
+        // 일별 최저가 기록(날짜 오름차순) → 최근 TREND_DAYS일의 값 (추이 선용)
+        [[nodiscard]] std::vector<double> BuildTrend(const std::map<std::string, std::int64_t>& days)
+        {
+            std::vector<double> trend;
+            trend.reserve(days.size());
+            for (const auto& [dateKey, price] : days) trend.push_back(static_cast<double>(price));   // 날짜 순서 그대로
+            if (trend.size() > TREND_DAYS) trend.erase(trend.begin(), trend.end() - static_cast<std::ptrdiff_t>(TREND_DAYS));   // 최근 것만 남김
+            return trend;
         }
 
         // 시세 하나 → 표 한 행 (등락 = 직전 갱신 대비, 변동률 = 전일 평균가 대비)
@@ -365,9 +377,10 @@ namespace LostArkMultiTool::Views
             else m_context->m_notifier.ShowMessage(std::wstring{ ERROR_TITLE }, ToWideMessage(error.what()), Core::NoticeKind::NOTICE_ERROR, nullptr);
         }
 
+        if (isApplied) RecordPriceHistory();   // 새 시세의 젬별 최저가를 오늘 기록으로 (표 추이 선에 오늘 값이 들어가도록 먼저)
         RefreshTables();
-        if (isApplied) RecordPriceHistory();   // 새 시세의 젬별 최저가를 오늘 기록으로
         if (isApplied) RecordHistory();        // 새 시세로 계산한 원정대 총 가치를 오늘 기록으로
+        if (isApplied && !isAuto) m_context->m_notifier.ShowToast(std::wstring{ REFRESH_DONE_TEXT }, Core::NoticeKind::NOTICE_SUCCESS);   // 완료 토스트
 
         // 조회가 끝난 뒤에 키 재입력 안내
         if (keyError.has_value()) HandleAPIKeyError(*keyError);
@@ -400,7 +413,9 @@ namespace LostArkMultiTool::Views
         for (const Models::ArkGemQuote& quote : m_service->GetQuotes())
         {
             if (quote.m_item.m_gradeName != Core::APPConstants::EPIC_GRADE_NAME) continue;   // 시세 표는 영웅만 (다른 등급은 계산기 단가로만 사용)
-            (quote.m_kind == Models::ArkGemKind::GEM_ORDER ? orderRows : chaosRows).push_back(MakeRow(quote));
+            ArkGemRow row{ MakeRow(quote) };
+            row.m_trend = BuildTrend(m_priceHistoryRepository->GetHistory().GetDays(row.m_key));   // 일별 최저가 기록 → 추이 선
+            (quote.m_kind == Models::ArkGemKind::GEM_ORDER ? orderRows : chaosRows).push_back(std::move(row));
         }
         m_view->ShowOrder(orderRows);
         m_view->ShowChaos(chaosRows);
@@ -438,7 +453,7 @@ namespace LostArkMultiTool::Views
             m_view->SetStatusText(std::wstring{ NOT_UPDATED_TEXT });
             return;
         }
-        m_view->SetStatusText(std::format(STATUS_FORMAT, orderRows.size(), chaosRows.size(), Core::LocalTime::FormatClock(*lastUpdated)));
+        m_view->SetStatusText(std::format(STATUS_FORMAT, Core::LocalTime::FormatClock(*lastUpdated)));
     }
 
     // 젬 · 등급마다 시세 찾기 (이름은 띄어쓰기를 무시하고 비교) → 고른 대상의 수량 × 단가 + 원정대 총 가치

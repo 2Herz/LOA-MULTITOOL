@@ -210,6 +210,21 @@
 <script>
 const MODULES = [
  {
+  "file": "API_Format_Monitor.ixx",
+  "module": "LostArkMultiTool.Core.APIFormatMonitor",
+  "imports": [],
+  "cppImports": [
+   "LostArkMultiTool.Core.AppLogger",
+   "LostArkMultiTool.Core.TextEncoding"
+  ],
+  "lines": 16,
+  "cppLines": 47,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "API 응답 형식 변경 감시 (옵저버 대신 \"알림 우편함\" 방식)",
+  "types": []
+ },
+ {
   "file": "API_Key_Dialog.ixx",
   "module": "LostArkMultiTool.Views.APIKeyDialog",
   "imports": [
@@ -333,10 +348,11 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Core.NumberFormat",
    "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 107,
-  "cppLines": 492,
+  "lines": 122,
+  "cppLines": 588,
   "hasCpp": true,
   "filter": "4. 뷰\\9. 악세검색기",
   "desc": "악세 검색기 화면 구성",
@@ -396,6 +412,24 @@ const MODULES = [
   ]
  },
  {
+  "file": "App_Logger.ixx",
+  "module": "LostArkMultiTool.Core.AppLogger",
+  "imports": [
+   "LostArkMultiTool.Core.Singleton"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants"
+  ],
+  "lines": 46,
+  "cppLines": 135,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "로그 한 줄의 중요도 (파일에 [INFO] / [WARN] / [ERROR]로 남음)",
+  "types": [
+   "AppLogger"
+  ]
+ },
+ {
   "file": "Application.ixx",
   "module": "LostArkMultiTool.Views.Application",
   "imports": [
@@ -409,16 +443,20 @@ const MODULES = [
    "LostArkMultiTool.Core.ToolContext",
    "LostArkMultiTool.Core.ToolManager",
    "LostArkMultiTool.Models.ServerConfig",
+   "LostArkMultiTool.Services.UpdateInstaller",
    "LostArkMultiTool.Views.APIKeyDialog",
    "LostArkMultiTool.Views.DX11Renderer",
    "LostArkMultiTool.Views.MainWindow",
    "LostArkMultiTool.Views.UI.Button",
    "LostArkMultiTool.Views.UI.ControlHost",
    "LostArkMultiTool.Views.UI.Dialog",
-   "LostArkMultiTool.Views.UI.OverlayNotifier"
+   "LostArkMultiTool.Views.UI.OverlayNotifier",
+   "LostArkMultiTool.Views.UI.TextBox"
   ],
   "cppImports": [
+   "LostArkMultiTool.Core.APIFormatMonitor",
    "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Core.AppLogger",
    "LostArkMultiTool.Core.Notifier",
    "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Services.DPAPIKeyStore",
@@ -430,14 +468,15 @@ const MODULES = [
    "LostArkMultiTool.Views.CombatSimulatorManager",
    "LostArkMultiTool.Views.EngravingFinderManager",
    "LostArkMultiTool.Views.GemFinderManager",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.RefineBookFinderManager",
    "LostArkMultiTool.Views.RefineSimulatorManager",
    "LostArkMultiTool.Views.ServerCheckDialog",
    "LostArkMultiTool.Views.Theme",
    "LostArkMultiTool.Views.TrackerManager"
   ],
-  "lines": 123,
-  "cppLines": 969,
+  "lines": 142,
+  "cppLines": 1207,
   "hasCpp": true,
   "filter": "소스 파일\\1. 앱",
   "desc": "프로그램 본체 (xmind의 Main)",
@@ -454,6 +493,7 @@ const MODULES = [
    "LostArkMultiTool.Core.BoundGemRepository",
    "LostArkMultiTool.Core.Input",
    "LostArkMultiTool.Core.IntervalTimer",
+   "LostArkMultiTool.Core.PriceHistoryRepository",
    "LostArkMultiTool.Core.Renderer",
    "LostArkMultiTool.Core.Singleton",
    "LostArkMultiTool.Core.ToolContext",
@@ -474,13 +514,16 @@ const MODULES = [
    "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Models.ArkGemQuote",
    "LostArkMultiTool.Models.BoundGemData",
+   "LostArkMultiTool.Models.PriceHistory",
    "LostArkMultiTool.Models.RateLimitState",
    "LostArkMultiTool.Services.JSONBoundGemRepository",
+   "LostArkMultiTool.Services.JSONPriceHistoryRepository",
    "LostArkMultiTool.Services.MarketArkGemPriceService",
+   "LostArkMultiTool.Views.PriceHistoryChart",
    "LostArkMultiTool.Views.UI.LineChart"
   ],
-  "lines": 90,
-  "cppLines": 631,
+  "lines": 103,
+  "cppLines": 759,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\7. 젬 시세 검색기 매니저",
   "desc": "젬 시세 검색기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
@@ -501,7 +544,6 @@ const MODULES = [
    "LostArkMultiTool.Views.UI.ComboBox",
    "LostArkMultiTool.Views.UI.ControlHost",
    "LostArkMultiTool.Views.UI.Grid",
-   "LostArkMultiTool.Views.UI.Label",
    "LostArkMultiTool.Views.UI.LineChart",
    "LostArkMultiTool.Views.UI.TextBox"
   ],
@@ -509,10 +551,11 @@ const MODULES = [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Core.NumberFormat",
    "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 131,
-  "cppLines": 557,
+  "lines": 157,
+  "cppLines": 828,
   "hasCpp": true,
   "filter": "4. 뷰\\11. 젬검색기",
   "desc": "젬 표 한 행 (값이 0이면 \"-\"로 표시)",
@@ -520,7 +563,7 @@ const MODULES = [
    "ArkGemRow",
    "BoundGemRow",
    "ArkGemFinderView",
-   "Panel"
+   "Entry"
   ]
  },
  {
@@ -565,11 +608,12 @@ const MODULES = [
    "LostArkMultiTool.Services.JSONValue"
   ],
   "cppImports": [
+   "LostArkMultiTool.Core.APIFormatMonitor",
    "LostArkMultiTool.Models.CombatCoefficientData",
    "LostArkMultiTool.Models.CombatExtraState"
   ],
   "lines": 17,
-  "cppLines": 724,
+  "cppLines": 730,
   "hasCpp": true,
   "filter": "3. 서비스\\15. 전투력",
   "desc": "무기고 응답 해석 (API /armories/characters/{이름}?filters=profiles+equipment+gems)",
@@ -799,8 +843,8 @@ const MODULES = [
    "LostArkMultiTool.Services.JSONDataRepository",
    "LostArkMultiTool.Views.UI.LineChart"
   ],
-  "lines": 86,
-  "cppLines": 584,
+  "lines": 88,
+  "cppLines": 634,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\1. 귀속재료 계산기 매니저",
   "desc": "귀속재료 계산기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
@@ -826,10 +870,11 @@ const MODULES = [
   ],
   "cppImports": [
    "LostArkMultiTool.Core.NumberFormat",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 106,
-  "cppLines": 446,
+  "lines": 123,
+  "cppLines": 543,
   "hasCpp": true,
   "filter": "4. 뷰\\5. 계산기",
   "desc": "재료 등급 (표의 상위 · 하위 행)",
@@ -911,8 +956,8 @@ const MODULES = [
   "module": "LostArkMultiTool.Models.CombatCoefficientData",
   "imports": [],
   "cppImports": [],
-  "lines": 220,
-  "cppLines": 1482,
+  "lines": 225,
+  "cppLines": 1522,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",
   "desc": "전투력 시뮬레이터 계수 (lopec 측정 데이터를 분석한 data/CombatCoefficients.json)",
@@ -932,14 +977,14 @@ const MODULES = [
   "module": "LostArkMultiTool.Core.CombatExtraComponent",
   "imports": [
    "LostArkMultiTool.Core.CombatFactorComponent",
+   "LostArkMultiTool.Models.CombatExtraState",
    "LostArkMultiTool.Models.CombatState"
   ],
   "cppImports": [
-   "LostArkMultiTool.Models.CombatCoefficientData",
-   "LostArkMultiTool.Models.CombatExtraState"
+   "LostArkMultiTool.Models.CombatCoefficientData"
   ],
-  "lines": 76,
-  "cppLines": 425,
+  "lines": 80,
+  "cppLines": 465,
   "hasCpp": true,
   "filter": "1. 코어\\12. 전투력",
   "desc": "악세서리 연마 옵션: 슬롯마다 옵션 3줄의 ln을 합산 → 배율 = exp(목표 합 - 현재 합)",
@@ -1062,6 +1107,7 @@ const MODULES = [
   ],
   "cppImports": [
    "LostArkMultiTool.Core.APPExceptions",
+   "LostArkMultiTool.Core.CombatExtraComponent",
    "LostArkMultiTool.Core.CombatFactorComponent",
    "LostArkMultiTool.Core.LocalTime",
    "LostArkMultiTool.Core.MarketAPI",
@@ -1073,7 +1119,7 @@ const MODULES = [
    "LostArkMultiTool.Models.RateLimitState"
   ],
   "lines": 88,
-  "cppLines": 839,
+  "cppLines": 951,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\9. 전투력 시뮬레이터 매니저",
   "desc": "전투력 시뮬레이터 최상위 매니저 (캐릭터 무기고 조회 → 목표 재련 · 품질 · 보석 · 악세서리 · 팔찌 · 스톤/각인서 · 아바타 · 아크 그리드/패시브 · 완갑 → 예상 전투력)",
@@ -1119,11 +1165,13 @@ const MODULES = [
    "LostArkMultiTool.Views.UI.TextBox"
   ],
   "cppImports": [
+   "LostArkMultiTool.Models.CombatCoefficientData",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme",
    "LostArkMultiTool.Views.UI.Control"
   ],
-  "lines": 219,
-  "cppLines": 631,
+  "lines": 230,
+  "cppLines": 695,
   "hasCpp": true,
   "filter": "4. 뷰\\13. 전투력시뮬레이터",
   "desc": "장비 표 열 (매니저가 고친 칸을 구분할 때 사용)",
@@ -1211,6 +1259,21 @@ const MODULES = [
   "types": [
    "ControlHost"
   ]
+ },
+ {
+  "file": "Crash_Reporter.ixx",
+  "module": "LostArkMultiTool.Core.CrashReporter",
+  "imports": [],
+  "cppImports": [
+   "LostArkMultiTool.Core.AppLogger",
+   "LostArkMultiTool.Core.LocalTime"
+  ],
+  "lines": 15,
+  "cppLines": 88,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "처리하지 못한 예외 · 강제 종료(terminate) 때 크래시 덤프(.dmp)를 로그 폴더에 남기는 도구",
+  "types": []
  },
  {
   "file": "DPAPI_Key_Store.ixx",
@@ -1319,10 +1382,12 @@ const MODULES = [
    "LostArkMultiTool.Core.EngravingPriceService",
    "LostArkMultiTool.Core.Input",
    "LostArkMultiTool.Core.IntervalTimer",
+   "LostArkMultiTool.Core.PriceHistoryRepository",
    "LostArkMultiTool.Core.Renderer",
    "LostArkMultiTool.Core.Singleton",
    "LostArkMultiTool.Core.ToolContext",
    "LostArkMultiTool.Core.ToolManager",
+   "LostArkMultiTool.Models.EngravingQuote",
    "LostArkMultiTool.Models.MarketItem",
    "LostArkMultiTool.Views.EngravingFinderView"
   ],
@@ -1334,12 +1399,14 @@ const MODULES = [
    "LostArkMultiTool.Core.Notifier",
    "LostArkMultiTool.Core.Platform",
    "LostArkMultiTool.Core.TextEncoding",
-   "LostArkMultiTool.Models.EngravingQuote",
+   "LostArkMultiTool.Models.PriceHistory",
    "LostArkMultiTool.Models.RateLimitState",
-   "LostArkMultiTool.Services.MarketEngravingPriceService"
+   "LostArkMultiTool.Services.JSONPriceHistoryRepository",
+   "LostArkMultiTool.Services.MarketEngravingPriceService",
+   "LostArkMultiTool.Views.PriceHistoryChart"
   ],
-  "lines": 70,
-  "cppLines": 343,
+  "lines": 84,
+  "cppLines": 496,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\4. 유각 시세 검색기 매니저",
   "desc": "유각 시세 검색기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
@@ -1354,12 +1421,14 @@ const MODULES = [
    "LostArkMultiTool.Core.Input",
    "LostArkMultiTool.Core.Platform",
    "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.UI.Button",
    "LostArkMultiTool.Views.UI.CheckBox",
    "LostArkMultiTool.Views.UI.ComboBox",
    "LostArkMultiTool.Views.UI.ControlHost",
    "LostArkMultiTool.Views.UI.Grid",
    "LostArkMultiTool.Views.UI.Label",
+   "LostArkMultiTool.Views.UI.LineChart",
    "LostArkMultiTool.Views.UI.TextBox"
   ],
   "cppImports": [
@@ -1367,13 +1436,14 @@ const MODULES = [
    "LostArkMultiTool.Core.NumberFormat",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 99,
-  "cppLines": 329,
+  "lines": 131,
+  "cppLines": 484,
   "hasCpp": true,
   "filter": "4. 뷰\\8. 유각검색기",
   "desc": "시세 표 정렬 기준 (정렬 콤보 상자 항목 순서와 같음)",
   "types": [
    "EngravingRow",
+   "EngravingStats",
    "EngravingFinderView"
   ]
  },
@@ -1497,8 +1567,8 @@ const MODULES = [
    "LostArkMultiTool.Services.JSONGemDataRepository",
    "LostArkMultiTool.Views.UI.LineChart"
   ],
-  "lines": 94,
-  "cppLines": 666,
+  "lines": 95,
+  "cppLines": 814,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\2. 보석 최저가 검색기 매니저",
   "desc": "보석 최저가 검색기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
@@ -1515,6 +1585,7 @@ const MODULES = [
    "LostArkMultiTool.Core.Renderer",
    "LostArkMultiTool.Models.GemCatalog",
    "LostArkMultiTool.Models.GemQuote",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.UI.Button",
    "LostArkMultiTool.Views.UI.CheckBox",
    "LostArkMultiTool.Views.UI.ComboBox",
@@ -1530,15 +1601,16 @@ const MODULES = [
    "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 154,
-  "cppLines": 648,
+  "lines": 203,
+  "cppLines": 881,
   "hasCpp": true,
   "filter": "4. 뷰\\6. 보석검색기",
   "desc": "알림 목록 한 행의 상태 (위에서부터 순서대로 판정, 원본 FillAlarmRow)",
   "types": [
    "AlarmRow",
-   "GemFinderView",
-   "Panel"
+   "GemRow",
+   "GemStats",
+   "GemFinderView"
   ]
  },
  {
@@ -1589,11 +1661,12 @@ const MODULES = [
   ],
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Core.AppLogger",
    "LostArkMultiTool.Services.JSONValue",
    "LostArkMultiTool.Services.WinHTTPClient"
   ],
   "lines": 16,
-  "cppLines": 73,
+  "cppLines": 129,
   "hasCpp": true,
   "filter": "3. 서비스\\6. 패치관리",
   "desc": "GitHub Gist에 올린 설정 파일(raw)을 읽는 원격 설정 확인 (점검 스위치 · 최신 버전 · 공지)",
@@ -1613,8 +1686,8 @@ const MODULES = [
    "LostArkMultiTool.Views.UI.TextBox"
   ],
   "cppImports": [],
-  "lines": 173,
-  "cppLines": 675,
+  "lines": 192,
+  "cppLines": 761,
   "hasCpp": true,
   "filter": "4. 뷰\\4. UI\\10. 그리드",
   "desc": "표의 열 하나",
@@ -1698,7 +1771,7 @@ const MODULES = [
   "module": "LostArkMultiTool.Core.Input",
   "imports": [],
   "cppImports": [],
-  "lines": 114,
+  "lines": 116,
   "cppLines": 0,
   "hasCpp": false,
   "filter": "1. 코어\\2. 입력",
@@ -1859,6 +1932,28 @@ const MODULES = [
   ]
  },
  {
+  "file": "JSON_Price_History_Repository.ixx",
+  "module": "LostArkMultiTool.Services.JSONPriceHistoryRepository",
+  "imports": [
+   "LostArkMultiTool.Core.PriceHistoryRepository",
+   "LostArkMultiTool.Models.PriceHistory",
+   "LostArkMultiTool.Services.JSONFileStore"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Core.LocalTime",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "lines": 35,
+  "cppLines": 121,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "일별 최저가 기록 저장 파일 이름 (사용자 데이터 폴더 기준, 멀티툴 전용 새 파일)",
+  "types": [
+   "JSONPriceHistoryRepository"
+  ]
+ },
+ {
   "file": "JSON_Value.ixx",
   "module": "LostArkMultiTool.Services.JSONValue",
   "imports": [],
@@ -1936,8 +2031,8 @@ const MODULES = [
    "LostArkMultiTool.Core.Renderer"
   ],
   "cppImports": [],
-  "lines": 83,
-  "cppLines": 1212,
+  "lines": 84,
+  "cppLines": 1231,
   "hasCpp": true,
   "filter": "4. 뷰\\2. 메인윈도우",
   "desc": "트레이 아이콘 메뉴에서 고른 항목 (원본 트레이 메뉴: 열기 · API 키 변경 · 종료)",
@@ -2148,6 +2243,24 @@ const MODULES = [
   ]
  },
  {
+  "file": "Page_Layout.ixx",
+  "module": "LostArkMultiTool.Views.PageLayout",
+  "imports": [
+   "LostArkMultiTool.Core.Renderer"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 58,
+  "cppLines": 154,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "새 디자인(피그마) 공통 화면 틀: 가운데 정렬 본문 열 · 카드 · 카드 머리말 · 통계 카드 · 표 아래 줄 · 추이 선",
+  "types": [
+   "StatCard"
+  ]
+ },
+ {
   "file": "Placeholder_View.ixx",
   "module": "LostArkMultiTool.Views.PlaceholderView",
   "imports": [
@@ -2209,6 +2322,52 @@ const MODULES = [
   "desc": "재료 단가 (현재 / 직전 갱신)",
   "types": [
    "PriceData"
+  ]
+ },
+ {
+  "file": "Price_History.ixx",
+  "module": "LostArkMultiTool.Models.PriceHistory",
+  "imports": [],
+  "cppImports": [],
+  "lines": 32,
+  "cppLines": 66,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "품목별 일별 최저가 기록 (유각 · 젬 시세 검색기 공용, 보석 검색기의 GemData 기록과 같은 형태)",
+  "types": [
+   "PriceHistory"
+  ]
+ },
+ {
+  "file": "Price_History_Chart.ixx",
+  "module": "LostArkMultiTool.Views.PriceHistoryChart",
+  "imports": [
+   "LostArkMultiTool.Views.UI.LineChart"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.TextEncoding"
+  ],
+  "lines": 11,
+  "cppLines": 39,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "일별 최저가 기록 → 그래프 점 목록 (x축 글자 = \"MM/dd\", 유각 · 젬 시세 검색기 공용)",
+  "types": []
+ },
+ {
+  "file": "Price_History_Repository.ixx",
+  "module": "LostArkMultiTool.Core.PriceHistoryRepository",
+  "imports": [
+   "LostArkMultiTool.Models.PriceHistory"
+  ],
+  "cppImports": [],
+  "lines": 24,
+  "cppLines": 7,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "일별 최저가 기록 저장소 인터페이스 (실제 구현은 JSON 저장소, 보석 검색기의 GemDataRepository와 같은 구조)",
+  "types": [
+   "PriceHistoryRepository"
   ]
  },
  {
@@ -2275,7 +2434,7 @@ const MODULES = [
    "LostArkMultiTool.Services.MarketRefineBookPriceService"
   ],
   "lines": 69,
-  "cppLines": 301,
+  "cppLines": 305,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\6. 강화책 검색기 매니저",
   "desc": "강화책 검색기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
@@ -2292,24 +2451,26 @@ const MODULES = [
    "LostArkMultiTool.Core.Renderer",
    "LostArkMultiTool.Views.UI.Button",
    "LostArkMultiTool.Views.UI.CheckBox",
+   "LostArkMultiTool.Views.UI.ComboBox",
    "LostArkMultiTool.Views.UI.ControlHost",
    "LostArkMultiTool.Views.UI.Grid",
-   "LostArkMultiTool.Views.UI.Label"
+   "LostArkMultiTool.Views.UI.TextBox"
   ],
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Core.NumberFormat",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 91,
-  "cppLines": 282,
+  "lines": 104,
+  "cppLines": 461,
   "hasCpp": true,
   "filter": "4. 뷰\\10. 강화책검색기",
   "desc": "강화책 표 한 행 (값이 0이면 \"-\"로 표시)",
   "types": [
    "RefineBookRow",
    "RefineBookFinderView",
-   "Panel"
+   "Entry"
   ]
  },
  {
@@ -2454,8 +2615,8 @@ const MODULES = [
    "LostArkMultiTool.Services.MarketRefineSimulationService",
    "LostArkMultiTool.Services.RefineCalculator"
   ],
-  "lines": 114,
-  "cppLines": 1122,
+  "lines": 116,
+  "cppLines": 1156,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\8. 재련 시뮬레이터 매니저",
   "desc": "재련 시뮬레이터 최상위 매니저 (로아업 통합 재련 형식: 일반 재련 + 상급 재련 + 계승을 한 번에)",
@@ -2481,11 +2642,12 @@ const MODULES = [
   ],
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme",
    "LostArkMultiTool.Views.UI.Control"
   ],
-  "lines": 193,
-  "cppLines": 536,
+  "lines": 198,
+  "cppLines": 587,
   "hasCpp": true,
   "filter": "4. 뷰\\12. 재련시뮬레이터",
   "desc": "부위 표 열 (매니저가 누른 칸 · 고친 칸을 구분할 때 사용)",
@@ -2610,6 +2772,22 @@ const MODULES = [
   ]
  },
  {
+  "file": "Self_Test.ixx",
+  "module": "LostArkMultiTool.Core.SelfTest",
+  "imports": [],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Models.CombatCoefficientData",
+   "LostArkMultiTool.Models.RefineData"
+  ],
+  "lines": 15,
+  "cppLines": 187,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
+  "types": []
+ },
+ {
   "file": "Server_Check_Dialog.ixx",
   "module": "LostArkMultiTool.Views.ServerCheckDialog",
   "imports": [
@@ -2636,8 +2814,8 @@ const MODULES = [
   "module": "LostArkMultiTool.Models.ServerConfig",
   "imports": [],
   "cppImports": [],
-  "lines": 30,
-  "cppLines": 39,
+  "lines": 36,
+  "cppLines": 52,
   "hasCpp": true,
   "filter": "2. 모델\\3. 서버",
   "desc": "원격 설정 (Gist AppConfig.json) — 읽기 전용 값 객체",
@@ -2718,7 +2896,7 @@ const MODULES = [
    "LostArkMultiTool.Core.Renderer"
   ],
   "cppImports": [],
-  "lines": 154,
+  "lines": 158,
   "cppLines": 0,
   "hasCpp": false,
   "filter": "4. 뷰\\3. 테마",
@@ -2805,6 +2983,7 @@ const MODULES = [
    "LostArkMultiTool.Core.LocalTime",
    "LostArkMultiTool.Core.MarketAPI",
    "LostArkMultiTool.Core.Notifier",
+   "LostArkMultiTool.Core.NumberFormat",
    "LostArkMultiTool.Core.Platform",
    "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Models.GrowthData",
@@ -2812,10 +2991,12 @@ const MODULES = [
    "LostArkMultiTool.Services.GrowthCalculationService",
    "LostArkMultiTool.Services.JSONGrowthDataRepository",
    "LostArkMultiTool.Services.RosterChangeService",
+   "LostArkMultiTool.Views.PageLayout",
+   "LostArkMultiTool.Views.Theme",
    "LostArkMultiTool.Views.UI.LineChart"
   ],
-  "lines": 103,
-  "cppLines": 771,
+  "lines": 104,
+  "cppLines": 916,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\3. 낙원력 트래커 매니저",
   "desc": "낙원력 트래커 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
@@ -2830,6 +3011,7 @@ const MODULES = [
    "LostArkMultiTool.Core.Input",
    "LostArkMultiTool.Core.Platform",
    "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.UI.Button",
    "LostArkMultiTool.Views.UI.ComboBox",
    "LostArkMultiTool.Views.UI.ControlHost",
@@ -2842,14 +3024,32 @@ const MODULES = [
    "LostArkMultiTool.Core.NumberFormat",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 122,
-  "cppLines": 432,
+  "lines": 158,
+  "cppLines": 663,
   "hasCpp": true,
   "filter": "4. 뷰\\7. 낙원력트래커",
   "desc": "주차 하나의 통계 칸 (총합 · 평균 · 전주대비 · 첫주대비, 첫 주차는 증감률 없음)",
   "types": [
    "WeekStats",
+   "RosterEntry",
    "TrackerView"
+  ]
+ },
+ {
+  "file": "Update_Installer.ixx",
+  "module": "LostArkMultiTool.Services.UpdateInstaller",
+  "imports": [],
+  "cppImports": [
+   "LostArkMultiTool.Core.AppLogger",
+   "LostArkMultiTool.Services.WinHTTPClient"
+  ],
+  "lines": 29,
+  "cppLines": 224,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "원격 설정이 알려 준 새 버전 배포 파일 (GitHub Releases zip)",
+  "types": [
+   "UpdatePackage"
   ]
  },
  {
@@ -2914,6 +3114,7 @@ const MODULES = [
    "LostArkMultiTool.Services.WinHTTPClient"
   ],
   "cppImports": [
+   "LostArkMultiTool.Core.APIFormatMonitor",
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Core.APPExceptions",
    "LostArkMultiTool.Core.LocalTime",
@@ -2921,7 +3122,7 @@ const MODULES = [
    "LostArkMultiTool.Services.ArmoryParser"
   ],
   "lines": 60,
-  "cppLines": 671,
+  "cppLines": 682,
   "hasCpp": true,
   "filter": "3. 서비스\\3. API",
   "desc": "로스트아크 Open API 통신 (거래소 시세 · 거래소 목록 · 원정대 목록 · 경매장 보석 최저가)",

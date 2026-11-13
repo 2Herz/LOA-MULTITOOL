@@ -39,6 +39,7 @@ export namespace LostArkMultiTool::Views
         void SetOnRefresh(std::function<void()> onRefresh);
         void SetOnAutoRefreshChanged(std::function<void(bool isEnabled)> onAutoRefreshChanged);
         void SetOnCharacterSelected(std::function<void()> onCharacterSelected);
+        void SetOnResetInput(std::function<void()> onResetInput);   // [입력 초기화] (확인은 CalculatorManager가 물음)
         void SetOnQuantityEdited(std::function<void(MaterialTier tier, std::size_t materialIndex, double quantity)> onQuantityEdited);
 
         // ===== 캐릭터 목록 =====
@@ -62,6 +63,8 @@ export namespace LostArkMultiTool::Views
         void SetRefreshBusy(bool isBusy);
         void SetSyncBusy(bool isBusy);
         void SetAutoRefreshChecked(bool isChecked) noexcept;
+        void SetSyncStatus(std::wstring text);             // 상단 카드 오른쪽 상태 글자 (예: "마지막 동기화 11:42", 비우면 숨김)
+        void SetTotalAsset(std::optional<double> total);   // 총자산 변동 카드 오른쪽 "총자산 N G" (nullopt = 기록 없음)
 
         // ===== 프레임 =====
         void Update(double deltaSeconds);
@@ -91,16 +94,29 @@ export namespace LostArkMultiTool::Views
         UI::ComboBox& m_characterBox;
         UI::CheckBox& m_autoRefreshBox;
         UI::Button& m_refreshButton;
+        UI::Button& m_resetButton;     // [입력 초기화]
         UI::Grid& m_grid;
         UI::LineChart& m_chart;
 
         Core::RectF m_layoutArea;
         bool m_hasLayout{};
 
+        // 카드 영역 (Layout에서 계산, Render에서 그림)
+        Core::RectF m_topCardRect;         // 대표 캐릭터 · 캐릭터 선택 카드
+        Core::RectF m_inventoryRect;       // MATERIAL INVENTORY 카드
+        Core::RectF m_historyRect;         // ASSET HISTORY 카드
+        Core::RectF m_nameLabelRect;       // "대표 캐릭터 이름" 작은 글자 자리
+        Core::RectF m_characterLabelRect;  // "캐릭터" 작은 글자 자리
+        Core::RectF m_statusRect;          // 동기화 상태 글자 자리
+        Core::RectF m_chipRect;            // "자동 저장됨" 칩 자리
+        std::wstring m_syncStatus;         // 동기화 상태 글자
+        std::wstring m_totalAssetText;     // 총자산 글자 (빈 글자 = 기록 없음)
+
         std::function<void(const std::wstring&)> m_onSyncRoster;
         std::function<void()> m_onRefresh;
         std::function<void(bool)> m_onAutoRefreshChanged;
         std::function<void()> m_onCharacterSelected;
+        std::function<void()> m_onResetInput;
         std::function<void(MaterialTier, std::size_t, double)> m_onQuantityEdited;
     };
-}
+}

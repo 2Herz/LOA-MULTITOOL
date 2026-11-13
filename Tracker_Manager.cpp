@@ -11,6 +11,7 @@ import LostArkMultiTool.Core.IntervalTimer;
 import LostArkMultiTool.Core.LocalTime;
 import LostArkMultiTool.Core.MarketAPI;
 import LostArkMultiTool.Core.Notifier;
+import LostArkMultiTool.Core.NumberFormat;
 import LostArkMultiTool.Core.Platform;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.RosterService;
@@ -23,6 +24,8 @@ import LostArkMultiTool.Models.WeeklyRecord;
 import LostArkMultiTool.Services.GrowthCalculationService;
 import LostArkMultiTool.Services.JSONGrowthDataRepository;
 import LostArkMultiTool.Services.RosterChangeService;
+import LostArkMultiTool.Views.PageLayout;
+import LostArkMultiTool.Views.Theme;
 import LostArkMultiTool.Views.TrackerView;
 import LostArkMultiTool.Views.UI.LineChart;
 
@@ -40,7 +43,30 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view CHART_LABEL_FORMAT{ L"{}주" };               // 그래프 x축
         constexpr std::wstring_view CHARACTER_HEADER_FORMAT{ L"{}\n(Lv.{})" };   // 현재 원정대 열: 직업 + 레벨 (원본과 같음)
         constexpr std::wstring_view PAST_CHARACTER_HEADER_FORMAT{ L"{}\n(원정대 제외)" };   // 원정대에서 빠졌지만 기록이 있는 캐릭터
-        constexpr std::wstring_view CHART_TITLE_FORMAT{ L"{} · 원정대 평균 낙원력 추이" };
+        constexpr std::wstring_view CHART_TITLE_FORMAT{ L"{} · 주차별 평균 낙원력" };
+
+        // ===== 통계 카드 · 목록 (새 디자인) =====
+        constexpr std::size_t ROSTER_TREND_WEEKS{ 12 };                    // 목록 추이 선에 쓰는 최근 기록 수
+        constexpr int AVERAGE_DECIMALS{ 0 };
+        constexpr int CARD_RATE_DECIMALS{ 1 };
+        constexpr std::wstring_view NO_VALUE_TEXT{ L"-" };                 // 기록이 없을 때 큰 값
+        constexpr std::wstring_view NO_RECORD_TEXT{ L"기록 없음" };
+        constexpr std::wstring_view PLUS_TEXT{ L"+" };
+        constexpr std::wstring_view PERCENT_TEXT{ L"%" };
+        constexpr std::wstring_view CARD_AVERAGE_ICON{ L"▤" };
+        constexpr std::wstring_view CARD_GROWTH_ICON{ L"↗" };
+        constexpr std::wstring_view CARD_COUNT_ICON{ L"◎" };
+        constexpr std::wstring_view CARD_BEST_ICON{ L"★" };
+        constexpr std::wstring_view CARD_AVERAGE_LABEL{ L"원정대 평균 낙원력" };
+        constexpr std::wstring_view CARD_GROWTH_LABEL{ L"주차 총합 증감" };
+        constexpr std::wstring_view CARD_COUNT_LABEL{ L"원정대 캐릭터" };
+        constexpr std::wstring_view CARD_BEST_LABEL{ L"시즌 최고 평균" };
+        constexpr std::wstring_view CARD_VS_PREVIOUS_FORMAT{ L"{}주차 · 전주 대비" };   // 증감 카드 작은 글자
+        constexpr std::wstring_view CARD_WEEK_FORMAT{ L"{}주차" };
+        constexpr std::wstring_view CARD_COUNT_FORMAT{ L"{}개" };
+        constexpr std::wstring_view CARD_RECORDED_FORMAT{ L"기록 {}주차" };
+        constexpr std::wstring_view ROSTER_DETAIL_FORMAT{ L"{} · Lv.{}" };
+        constexpr std::wstring_view ROSTER_PAST_TEXT{ L"원정대 제외" };
         constexpr std::wstring_view CHART_EMPTY_FORMAT{ L"{} · 아직 기록이 없어요 · 주차 칸에 낙원력을 입력해 주세요" };
 
         constexpr std::wstring_view LOAD_WARNING_TITLE{ L"저장 파일 안내" };   // 손상 복구 · 원본 낙원력 트래커 기록 가져오기
@@ -167,6 +193,7 @@ namespace LostArkMultiTool::Views
         m_view->SetOnEditPeriod([this] { EditPeriod(); });
         m_view->SetOnUnlockWeek([this] { UnlockWeek(); });
         m_view->SetOnSeasonSelected([this] { SelectSeason(); });
+        m_view->SetOnChartRangeChanged([this] { UpdateChart(); });   // 그래프 기간(4 · 8 · 12주)이 바뀌면 다시 그림
         m_view->SetOnScoreEdited([this](std::size_t weekIndex, std::size_t characterIndex, std::optional<double> score)
         {
             EditScore(weekIndex, characterIndex, score);
@@ -546,6 +573,7 @@ namespace LostArkMultiTool::Views
 
         UpdateStatCells();
         UpdateChart();
+        UpdateOverview();
         TrySave();
     }
 
@@ -614,6 +642,7 @@ namespace LostArkMultiTool::Views
 
         UpdateStatCells();
         UpdateChart();
+        UpdateOverview();
     }
 
     // 통계 칸만 다시 계산 (첫 주차는 증감률 없음, 원본 UpdateStatCells)
@@ -654,9 +683,125 @@ namespace LostArkMultiTool::Views
             points.push_back(UI::ChartPoint{ std::format(CHART_LABEL_FORMAT, record.GetWeekNumber()), average });
         }
 
+        // 고른 기간(최근 4 · 8 · 12주)만 남김 (기록된 주차 기준, 전체면 그대로)
+        if (const std::optional<std::size_t> weekLimit{ m_view->GetChartWeekLimit() }; weekLimit.has_value() && points.size() > *weekLimit)
+        {
+            points.erase(points.begin(), points.end() - static_cast<std::ptrdiff_t>(*weekLimit));
+        }
+
         const std::wstring seasonName{ ToWide(season.GetDisplayName()) };
         std::wstring title{ points.empty() ? std::format(CHART_EMPTY_FORMAT, seasonName) : std::format(CHART_TITLE_FORMAT, seasonName) };
         m_view->SetChart(std::move(title), std::move(points));
+    }
+
+    // 통계 카드 4장 + 캐릭터별 목록 (지금 시즌에 저장된 기록에서만 계산 → 기록이 없으면 "-" · "기록 없음")
+    void TrackerManager::UpdateOverview()
+    {
+        const Models::GrowthData& data{ m_repository->GetData() };
+        const std::vector<Models::WeeklyRecord>& records{ GetCurrentSeason().GetRecords() };
+
+        // 평균이 기록된 주차 번호 (오래된 것부터)
+        std::vector<std::size_t> recorded;
+        for (std::size_t weekIndex{}; weekIndex < records.size(); ++weekIndex)
+        {
+            if (m_calculator->GetAverage(records[weekIndex]) > UNRECORDED_SCORE) recorded.push_back(weekIndex);
+        }
+
+        // "+384,520" / "-1,200" 숫자 글자 (0 이하는 부호 없이 FormatNumber가 "-"를 붙임)
+        const auto formatSigned{ [](double value, int decimals)
+        {
+            return std::wstring{ value > 0.0 ? PLUS_TEXT : std::wstring_view{} } + Core::NumberFormat::FormatNumber(value, decimals);
+        } };
+        // 증감 글자 색 (상승 청록 · 하락 분홍 · 변동 없음 회색)
+        const auto pickColor{ [](double value)
+        {
+            if (value > 0.0) return Theme::SPARKLINE_UP_COLOR;
+            return value < 0.0 ? Theme::SPARKLINE_DOWN_COLOR : Theme::MUTED_TEXT_COLOR;
+        } };
+
+        PageLayout::StatCard averageCard{ std::wstring{ CARD_AVERAGE_ICON }, Theme::ACCENT_COLOR, std::wstring{ CARD_AVERAGE_LABEL },
+            std::wstring{ NO_VALUE_TEXT }, std::wstring{ NO_RECORD_TEXT }, Theme::MUTED_TEXT_COLOR };
+        PageLayout::StatCard growthCard{ std::wstring{ CARD_GROWTH_ICON }, Theme::GEM_CHART_LINE_COLOR, std::wstring{ CARD_GROWTH_LABEL },
+            std::wstring{ NO_VALUE_TEXT }, std::wstring{ NO_RECORD_TEXT }, Theme::MUTED_TEXT_COLOR };
+        PageLayout::StatCard countCard{ std::wstring{ CARD_COUNT_ICON }, Theme::HIGHLIGHT_TEXT_COLOR, std::wstring{ CARD_COUNT_LABEL },
+            std::format(CARD_COUNT_FORMAT, data.GetCharacters().size()), std::format(CARD_RECORDED_FORMAT, recorded.size()), Theme::MUTED_TEXT_COLOR };
+        PageLayout::StatCard bestCard{ std::wstring{ CARD_BEST_ICON }, Theme::DOWN_TEXT_COLOR, std::wstring{ CARD_BEST_LABEL },
+            std::wstring{ NO_VALUE_TEXT }, std::wstring{ NO_RECORD_TEXT }, Theme::MUTED_TEXT_COLOR };
+
+        if (!recorded.empty())
+        {
+            const Models::WeeklyRecord& latest{ records[recorded.back()] };
+            const double latestAverage{ std::round(m_calculator->GetAverage(latest)) };
+            averageCard.m_value = Core::NumberFormat::FormatNumber(latestAverage, AVERAGE_DECIMALS);
+            averageCard.m_sub = std::format(CARD_WEEK_FORMAT, latest.GetWeekNumber());
+
+            // 시즌 최고 평균 (가장 높은 주차)
+            std::size_t bestIndex{ recorded.front() };
+            for (const std::size_t weekIndex : recorded)
+            {
+                if (m_calculator->GetAverage(records[weekIndex]) > m_calculator->GetAverage(records[bestIndex])) bestIndex = weekIndex;
+            }
+            bestCard.m_value = Core::NumberFormat::FormatNumber(std::round(m_calculator->GetAverage(records[bestIndex])), AVERAGE_DECIMALS);
+            bestCard.m_sub = std::format(CARD_WEEK_FORMAT, records[bestIndex].GetWeekNumber());
+
+            if (recorded.size() >= 2)   // 직전 기록된 주차와 비교
+            {
+                const Models::WeeklyRecord& previous{ records[recorded[recorded.size() - 2]] };
+                const double rate{ m_calculator->GetChangeRate(m_calculator->GetAverage(latest), m_calculator->GetAverage(previous)) };
+                averageCard.m_sub = formatSigned(rate, CARD_RATE_DECIMALS) + std::wstring{ PERCENT_TEXT };
+                averageCard.m_subColor = pickColor(rate);
+
+                const double totalChange{ m_calculator->GetTotal(latest) - m_calculator->GetTotal(previous) };
+                growthCard.m_value = formatSigned(totalChange, AVERAGE_DECIMALS);
+                growthCard.m_sub = std::format(CARD_VS_PREVIOUS_FORMAT, latest.GetWeekNumber());
+                growthCard.m_subColor = pickColor(totalChange);
+            }
+            else
+            {
+                growthCard.m_sub = std::wstring{ NO_RECORD_TEXT };   // 비교할 지난 기록이 아직 없음
+            }
+        }
+        m_view->SetStatCards(std::vector<PageLayout::StatCard>{ std::move(averageCard), std::move(growthCard), std::move(countCard), std::move(bestCard) });
+
+        // 캐릭터별 목록: 현재 원정대 + 이 시즌에 기록이 있는 원정대 제외 캐릭터 (m_columnCharacterNames 순서)
+        const std::vector<Models::CharacterInfo>& roster{ data.GetCharacters() };
+        std::vector<RosterEntry> entries;
+        entries.reserve(m_columnCharacterNames.size());
+        for (std::size_t index{}; index < m_columnCharacterNames.size(); ++index)
+        {
+            const std::string& name{ m_columnCharacterNames[index] };
+
+            RosterEntry entry;
+            entry.m_name = ToWide(name);
+            if (index < roster.size())   // 현재 원정대: 직업 · 레벨
+            {
+                const std::optional<std::string>& className{ roster[index].GetCharacterClassName() };
+                const std::wstring level{ Core::NumberFormat::FormatNumber(roster[index].GetNumericItemLevel(), CARD_RATE_DECIMALS) };
+                entry.m_detail = className.has_value() && !className->empty() ? std::format(ROSTER_DETAIL_FORMAT, ToWide(*className), level) : std::format(L"Lv.{}", level);
+            }
+            else
+            {
+                entry.m_detail = std::wstring{ ROSTER_PAST_TEXT };
+            }
+
+            // 기록된(0보다 큰) 낙원력만 오래된 순으로 → 최근 값 · 직전 대비 · 추이 선
+            for (const Models::WeeklyRecord& record : records)
+            {
+                if (const double score{ record.GetScore(name) }; score > UNRECORDED_SCORE) entry.m_history.push_back(score);
+            }
+            if (!entry.m_history.empty()) entry.m_score = entry.m_history.back();
+            if (entry.m_history.size() >= 2)
+            {
+                entry.m_changeRate = m_calculator->GetChangeRate(entry.m_history.back(), entry.m_history[entry.m_history.size() - 2]);
+            }
+            if (entry.m_history.size() > ROSTER_TREND_WEEKS)
+            {
+                entry.m_history.erase(entry.m_history.begin(), entry.m_history.end() - static_cast<std::ptrdiff_t>(ROSTER_TREND_WEEKS));
+            }
+            entries.push_back(std::move(entry));
+        }
+        std::ranges::stable_sort(entries, std::ranges::greater{}, &RosterEntry::m_score);   // 낙원력 높은 순
+        m_view->SetRoster(std::move(entries));
     }
 
     // 저장 실패 시 안내 (화면의 값은 유지 → 다음 저장 때 다시 시도, 원본 TrySave)

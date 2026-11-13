@@ -29,6 +29,7 @@ import LostArkMultiTool.Views.DX11Renderer;
 import LostArkMultiTool.Views.EngravingFinderManager;
 import LostArkMultiTool.Views.GemFinderManager;
 import LostArkMultiTool.Views.MainWindow;
+import LostArkMultiTool.Views.PageLayout;
 import LostArkMultiTool.Views.RefineBookFinderManager;
 import LostArkMultiTool.Views.RefineSimulatorManager;
 import LostArkMultiTool.Views.ServerCheckDialog;
@@ -38,6 +39,7 @@ import LostArkMultiTool.Views.UI.Button;
 import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Dialog;
 import LostArkMultiTool.Views.UI.OverlayNotifier;
+import LostArkMultiTool.Views.UI.TextBox;
 
 namespace LostArkMultiTool::Views
 {
@@ -63,10 +65,13 @@ namespace LostArkMultiTool::Views
         constexpr float LOGO_TITLE_HEIGHT{ 16.0f };      // 로고 "LOA KIT" 줄 높이
         constexpr float LOGO_SUBTITLE_HEIGHT{ 14.0f };   // 로고 "로스트아크 멀티툴" 줄 높이
         constexpr float LOGO_ICON_RADIUS{ 6.0f };        // 로고 아이콘 모서리
-        constexpr float SECTION_LABEL_TOP{ 70.0f };      // "TOOLS" 구역 이름 위치
+        constexpr float SEARCH_BOX_TOP{ 68.0f };         // 도구 검색칸 위치 (로고 아래)
+        constexpr float SEARCH_BOX_HEIGHT{ 32.0f };      // 도구 검색칸 높이
+        constexpr float SECTION_LABEL_TOP{ 110.0f };     // "TOOLS" 구역 이름 위치
         constexpr float SECTION_LABEL_HEIGHT{ 20.0f };   // "TOOLS" 줄 높이
         constexpr float SECTION_LABEL_LEFT{ 16.0f };     // "TOOLS" 왼쪽 위치
-        constexpr float NAV_TOP{ 94.0f };                // 첫 메뉴 항목 위치
+        constexpr float NAV_TOP{ 134.0f };               // 첫 메뉴 항목 위치
+        constexpr float NO_RESULT_HEIGHT{ 40.0f };       // 검색 결과 없음 안내 줄 높이
         constexpr float NAV_ITEM_HEIGHT{ 36.0f };        // 메뉴 항목 하나 높이
         constexpr float NAV_ITEM_GAP{ 2.0f };            // 메뉴 항목 사이 간격
         constexpr float NAV_ITEM_RADIUS{ 6.0f };         // 메뉴 항목 바탕 모서리
@@ -162,6 +167,13 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view VERSION_PREFIX_TEXT{ L"v" };                // 버전 앞 글자
         constexpr std::wstring_view API_STATUS_READY_TEXT{ L"LOA API · 키 등록됨" };     // API 키가 저장되어 있음
         constexpr std::wstring_view API_STATUS_MISSING_TEXT{ L"LOA API · 키 미등록" };   // API 키가 없음
+        constexpr std::wstring_view TOOL_SEARCH_PLACEHOLDER{ L"⌕  도구 검색   Ctrl+K" };   // 도구 검색칸 안내 글자
+        constexpr std::wstring_view TOOL_SEARCH_EMPTY_TEXT{ L"검색 결과가 없어요" };     // 맞는 도구가 없을 때
+        constexpr std::wstring_view TOP_API_READY_TEXT{ L"● API 연결됨" };              // 위 막대 오른쪽 상태 (키 있음)
+        constexpr std::wstring_view TOP_API_MISSING_TEXT{ L"● API 키 미등록" };          // 위 막대 오른쪽 상태 (키 없음)
+        constexpr std::wstring_view TITLE_SEPARATOR_TEXT{ L" - " };                      // 제목 표시줄 "앱 - 탭"
+        constexpr std::string_view LAST_TOOL_FILE_NAME{ "LastTool.txt" };                // 마지막으로 쓴 도구 번호 (사용자 데이터 폴더)
+        constexpr float TOP_STATUS_WIDTH{ 240.0f };                                       // 위 막대 오른쪽 상태 · 버전 칸 너비
 
         constexpr std::size_t TAB_TEXT_COUNT{ 9 };   // 탭별 아이콘 · 머리말 문구 수 (Application::TOOL_COUNT와 같은지 RenderPageHeader에서 검사)
 
@@ -293,6 +305,16 @@ namespace LostArkMultiTool::Views
         m_toolContext = std::make_unique<Core::ToolContext>(Core::ToolContext{ *m_window, *m_notifier, *m_marketAPI,
             [this] { OpenAPIKeyDialog(APIKeyDialogMode::API_KEY_CHANGE); } });
 
+        // 왼쪽 메뉴 도구 검색칸 (입력하면 바로 메뉴 목록이 걸러짐, Enter = 첫 결과로 이동)
+        m_toolSearchBox = &m_headerHost.Emplace<UI::TextBox>(*m_window, std::wstring{ TOOL_SEARCH_PLACEHOLDER });
+        m_toolSearchBox->SetOnTextChanged([this] { ApplyToolFilter(); });                         // 입력마다 목록 갱신
+        m_toolSearchBox->SetOnSubmit([this]
+        {
+            if (!m_visibleTools.empty()) SelectTool(m_visibleTools.front());                     // 첫 결과 도구로
+            LeaveToolSearch(false);                                                               // 탭 화면으로 포커스
+        });
+        for (std::size_t index{}; index < TOOL_COUNT; ++index) m_visibleTools.push_back(index); // 처음엔 전부 보임
+
         // 왼쪽 메뉴 아래 버튼 (키보드 포커스를 가져가지 않음 → 탭 화면 입력칸의 포커스 유지)
         m_apiKeyButton = &m_headerHost.Emplace<UI::Button>(std::wstring{ API_KEY_BUTTON_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY,
             [this] { OpenAPIKeyDialog(APIKeyDialogMode::API_KEY_CHANGE); });
@@ -329,7 +351,9 @@ namespace LostArkMultiTool::Views
     int Application::Run(int showCommand)
     {
         InitializeTools();
+        LoadLastTool();                  // 마지막으로 쓴 도구부터 (없으면 첫 탭)
         GetActiveTool().OnActivated();
+        SyncWindowTitle();               // 제목 표시줄에 탭 이름
         m_window->Show(showCommand);
 
         // 서버 상태부터 확인 (원본 ServerCheckForm) → 점검이면 안내 후 종료, 아니면 API 키 확인 · 업데이트 안내
@@ -631,6 +655,90 @@ namespace LostArkMultiTool::Views
         GetActiveTool().OnActivated();
 
         m_contentFade = FULL_FADE;   // 새 탭 내용이 배경에서 서서히 나타나게
+        SyncWindowTitle();           // 제목 표시줄 동기화
+        SaveLastTool();              // 다음 실행 때 이 도구부터
+    }
+
+    void Application::SelectAdjacentTool(bool isNext)
+    {
+        if (m_visibleTools.empty()) return;                                                      // 보이는 도구 없음
+        const auto found{ std::ranges::find(m_visibleTools, m_activeIndex) };                    // 지금 도구의 목록 위치
+        std::size_t position{ found == m_visibleTools.end() ? 0 : static_cast<std::size_t>(found - m_visibleTools.begin()) };   // 목록에 없으면 처음
+        const std::size_t count{ m_visibleTools.size() };                                        // 보이는 도구 수
+        if (found != m_visibleTools.end()) position = isNext ? (position + 1) % count : (position + count - 1) % count;   // 끝에서 처음으로 순환
+        SelectTool(m_visibleTools[position]);                                                    // 이동
+    }
+
+    void Application::ApplyToolFilter()
+    {
+        std::wstring query{ m_toolSearchBox->GetText() };                                        // 검색어
+        std::erase(query, L' ');                                                                 // 띄어쓰기 무시
+        m_visibleTools.clear();                                                                  // 다시 계산
+        for (std::size_t index{}; index < TOOL_COUNT; ++index)
+        {
+            std::wstring title{ m_tools[index].get().GetTabTitle() };                            // 도구 이름
+            std::erase(title, L' ');                                                             // 띄어쓰기 무시
+            if (query.empty() || title.find(query) != std::wstring::npos) m_visibleTools.push_back(index);   // 포함하면 보임
+        }
+        m_hoverIndex.reset();                                                                    // 위치가 바뀌었으니 마우스 표시 초기화
+    }
+
+    void Application::FocusToolSearch()
+    {
+        if (IsToolSearchFocused()) { m_toolSearchBox->SelectAll(); return; }                     // 이미 검색 중이면 전체 선택
+        GetActiveTool().OnDeactivated();                                                         // 탭 화면 입력 상태 내려놓기
+        m_headerHost.SetFocus(m_toolSearchBox);                                                  // 검색칸으로
+        m_toolSearchBox->SelectAll();                                                            // 바로 새 검색어 입력
+    }
+
+    void Application::LeaveToolSearch(bool isClearing)
+    {
+        if (isClearing) m_toolSearchBox->SetText(std::wstring{});                                 // Esc = 검색어 초기화
+        ApplyToolFilter();                                                                       // 목록 다시 계산
+        if (!IsToolSearchFocused()) return;                                                      // 이미 떠났음
+        m_headerHost.SetFocus(nullptr);                                                          // 검색칸 포커스 해제
+        GetActiveTool().OnActivated();                                                           // 탭 화면 포커스 되돌리기
+    }
+
+    bool Application::IsToolSearchFocused() const noexcept
+    {
+        return m_toolSearchBox != nullptr && m_headerHost.GetFocused() == m_toolSearchBox;      // 검색칸이 포커스를 가짐
+    }
+
+    void Application::LoadLastTool()
+    {
+        try
+        {
+            std::ifstream file{ Core::APPConstants::GetUserDataFilePath(LAST_TOOL_FILE_NAME) };  // 숫자 하나
+            std::size_t index{};                                                                 // 저장된 도구 번호
+            if (file >> index && index < TOOL_COUNT) m_activeIndex = index;                      // 범위 안이면 사용
+        }
+        catch (...)
+        {
+            m_activeIndex = 0;                                                                   // 읽기 실패 → 첫 탭
+        }
+        m_indicatorPosition = static_cast<float>(m_activeIndex);                                 // 선택 표시는 바로 그 자리
+    }
+
+    void Application::SaveLastTool() const noexcept
+    {
+        try
+        {
+            const std::filesystem::path path{ Core::APPConstants::GetUserDataFilePath(LAST_TOOL_FILE_NAME) };   // 저장 위치
+            std::error_code error;                                                               // 폴더 만들기 실패는 쓰기에서 드러남
+            std::filesystem::create_directories(path.parent_path(), error);                     // 첫 실행 대비
+            std::ofstream file{ path, std::ios::trunc };                                         // 덮어쓰기
+            file << m_activeIndex;                                                               // 숫자 하나
+        }
+        catch (...)
+        {
+            // 저장 실패는 다음 실행 때 첫 탭으로 열릴 뿐
+        }
+    }
+
+    void Application::SyncWindowTitle()
+    {
+        m_window->SetTitle(std::format(L"{}{}{}", BuildWindowTitle(), TITLE_SEPARATOR_TEXT, GetActiveTool().GetTabTitle()));   // "로스트아크 멀티툴 v1.6.0 - 탭"
     }
 
     void Application::OpenAPIKeyDialog(APIKeyDialogMode mode)
@@ -686,7 +794,28 @@ namespace LostArkMultiTool::Views
 
     bool Application::HandleShortcut(const Core::KeyEvent& event)
     {
+        // Alt+↑/↓: 도구 간 빠른 이동 (검색으로 걸러진 목록 안에서)
+        if (event.m_isAltDown && (event.m_key == Core::Key::KEY_UP || event.m_key == Core::Key::KEY_DOWN))
+        {
+            SelectAdjacentTool(event.m_key == Core::Key::KEY_DOWN);   // 아래 = 다음
+            return true;
+        }
+
+        // 검색칸에서 Esc = 검색어 초기화 후 탭 화면으로, ↓ = 탭 화면으로 (Enter는 검색칸이 처리)
+        if (IsToolSearchFocused() && event.m_key == Core::Key::KEY_ESCAPE)
+        {
+            LeaveToolSearch(true);
+            return true;
+        }
+
         if (!event.m_isCtrlDown) return false;
+
+        // Ctrl+K: 도구 검색칸으로 바로 포커스
+        if (event.m_key == Core::Key::KEY_K)
+        {
+            FocusToolSearch();
+            return true;
+        }
 
         // Ctrl+Tab: 다음 탭, Ctrl+Shift+Tab: 이전 탭 (끝에서 처음으로 돌아감)
         if (event.m_key == Core::Key::KEY_TAB)
@@ -747,7 +876,8 @@ namespace LostArkMultiTool::Views
             },
             [&](const auto&)
             {
-                static_cast<void>(tool.HandleInput(event));   // 키 · 글자 · 한글 조합
+                if (IsToolSearchFocused()) m_headerHost.HandleInput(event);   // 도구 검색칸 입력
+                else static_cast<void>(tool.HandleInput(event));              // 키 · 글자 · 한글 조합
             }
             }, event);
     }
@@ -764,6 +894,7 @@ namespace LostArkMultiTool::Views
 
             if (!isHeader)
             {
+                if (IsToolSearchFocused()) LeaveToolSearch(false);   // 검색칸에서 탭 화면으로
                 static_cast<void>(tool.HandleInput(event));
                 return;
             }
@@ -831,7 +962,8 @@ namespace LostArkMultiTool::Views
         SyncModalState();
 
         // 메뉴 선택 표시: 남은 거리의 일정 비율씩 다가감 (지수 감쇠 → 프레임 속도가 달라도 같은 빠르기)
-        const float targetPosition{ static_cast<float>(m_activeIndex) };
+        const auto activeIt{ std::ranges::find(m_visibleTools, m_activeIndex) };   // 보이는 목록에서 선택 도구 위치
+        const float targetPosition{ activeIt == m_visibleTools.end() ? m_indicatorPosition : static_cast<float>(activeIt - m_visibleTools.begin()) };   // 숨었으면 그대로
         const float followRatio{ static_cast<float>(1.0 - std::exp(-INDICATOR_SMOOTHING * deltaSeconds)) };
         m_indicatorPosition += (targetPosition - m_indicatorPosition) * followRatio;
         if (std::abs(targetPosition - m_indicatorPosition) < INDICATOR_SNAP_DISTANCE) m_indicatorPosition = targetPosition;
@@ -903,18 +1035,31 @@ namespace LostArkMultiTool::Views
         m_renderer->DrawString(SECTION_LABEL_TEXT, Core::RectF{ SECTION_LABEL_LEFT, SECTION_LABEL_TOP, SIDEBAR_WIDTH, SECTION_LABEL_TOP + SECTION_LABEL_HEIGHT },
             Theme::MUTED_TEXT_COLOR, SECTION_LABEL_STYLE);   // 구역 이름 (회색 작은 영문)
 
-        // ===== 선택 표시 (청록 바탕 + 왼쪽 막대, m_indicatorPosition을 따라 미끄러지듯 이동) =====
-        const Core::RectF firstRect{ GetTabRect(0) };   // 첫 항목 영역 (선택 표시 위치 계산 기준)
-        const float indicatorTop{ firstRect.m_top + m_indicatorPosition * (NAV_ITEM_HEIGHT + NAV_ITEM_GAP) };   // 선택 표시 위쪽
-        const Core::RectF indicatorRect{ firstRect.m_left, indicatorTop, firstRect.m_right, indicatorTop + NAV_ITEM_HEIGHT };   // 선택 표시 영역
-        m_renderer->FillRoundedRect(indicatorRect, NAV_ITEM_RADIUS, Core::WithAlpha(Theme::ACCENT_COLOR, Theme::NAV_ACTIVE_ALPHA));   // 청록 바탕
-        m_renderer->FillRect(Core::RectF{ indicatorRect.m_left, indicatorRect.m_top + NAV_ACCENT_INSET, indicatorRect.m_left + NAV_ACCENT_WIDTH,
-            indicatorRect.m_bottom - NAV_ACCENT_INSET }, Theme::ACCENT_COLOR);   // 왼쪽 청록 막대
-
-        // ===== 탭 항목 (아이콘 + 제목, 선택 항목은 "›") =====
-        for (std::size_t index{}; index < TOOL_COUNT; ++index)
+        // ===== 선택 표시 (청록 바탕 + 왼쪽 막대, m_indicatorPosition을 따라 미끄러지듯 이동, 검색으로 숨었으면 그리지 않음) =====
+        const bool isActiveVisible{ std::ranges::find(m_visibleTools, m_activeIndex) != m_visibleTools.end() };   // 선택 도구가 목록에 있는지
+        if (isActiveVisible)
         {
-            const Core::RectF tabRect{ GetTabRect(index) };   // 항목 영역
+            const Core::RectF firstRect{ GetTabRect(0) };   // 첫 항목 영역 (선택 표시 위치 계산 기준)
+            const float indicatorTop{ firstRect.m_top + m_indicatorPosition * (NAV_ITEM_HEIGHT + NAV_ITEM_GAP) };   // 선택 표시 위쪽
+            const Core::RectF indicatorRect{ firstRect.m_left, indicatorTop, firstRect.m_right, indicatorTop + NAV_ITEM_HEIGHT };   // 선택 표시 영역
+            m_renderer->FillRoundedRect(indicatorRect, NAV_ITEM_RADIUS, Core::WithAlpha(Theme::ACCENT_COLOR, Theme::NAV_ACTIVE_ALPHA));   // 청록 바탕
+            m_renderer->FillRect(Core::RectF{ indicatorRect.m_left, indicatorRect.m_top + NAV_ACCENT_INSET, indicatorRect.m_left + NAV_ACCENT_WIDTH,
+                indicatorRect.m_bottom - NAV_ACCENT_INSET }, Theme::ACCENT_COLOR);   // 왼쪽 청록 막대
+        }
+
+        // 검색 결과가 없으면 안내 (해결 방법: Esc로 검색어 지우기)
+        if (m_visibleTools.empty())
+        {
+            const Core::RectF firstRect{ GetTabRect(0) };   // 첫 항목 자리
+            m_renderer->DrawString(TOOL_SEARCH_EMPTY_TEXT, Core::RectF{ firstRect.m_left, firstRect.m_top, firstRect.m_right, firstRect.m_top + NO_RESULT_HEIGHT },
+                Theme::MUTED_TEXT_COLOR, INACTIVE_TAB_STYLE);   // 회색 안내
+        }
+
+        // ===== 탭 항목 (아이콘 + 제목, 선택 항목은 "›") — 검색어에 맞는 도구만 =====
+        for (std::size_t position{}; position < m_visibleTools.size(); ++position)
+        {
+            const std::size_t index{ m_visibleTools[position] };   // 도구 번호
+            const Core::RectF tabRect{ GetTabRect(position) };   // 항목 영역 (보이는 순서 기준)
             const bool isActive{ index == m_activeIndex };   // 선택한 탭인지
 
             if (!isActive && m_hoverIndex == index)
@@ -966,7 +1111,7 @@ namespace LostArkMultiTool::Views
 
         // 경로 표시: "멀티툴 › {탭 제목}"
         float left{ SIDEBAR_WIDTH + TOP_BAR_PADDING };   // 다음 글자를 그릴 왼쪽 위치
-        const float right{ std::max(left, width - TOP_BAR_PADDING - VERSION_TEXT_WIDTH) };   // 경로가 버전 글자를 가리지 않는 오른쪽 끝
+        const float right{ std::max(left, width - TOP_BAR_PADDING - TOP_STATUS_WIDTH) };   // 경로가 오른쪽 상태 글자를 가리지 않는 끝
         const float availableWidth{ right - left };   // 경로에 쓸 수 있는 너비
         const float rootWidth{ m_renderer->MeasureString(BREADCRUMB_ROOT_TEXT, BREADCRUMB_ROOT_STYLE, availableWidth).m_width };   // "멀티툴" 너비
         m_renderer->DrawString(BREADCRUMB_ROOT_TEXT, Core::RectF{ left, 0.0f, right, TOP_BAR_HEIGHT }, Theme::MUTED_TEXT_COLOR, BREADCRUMB_ROOT_STYLE);   // "멀티툴"
@@ -983,6 +1128,9 @@ namespace LostArkMultiTool::Views
         const std::wstring versionText{ std::wstring{ VERSION_PREFIX_TEXT } + Core::TextEncoding::UTF8ToWide(Core::APPConstants::APP_VERSION) };   // "v1.5.0"
         m_renderer->DrawString(versionText, Core::RectF{ width - TOP_BAR_PADDING - VERSION_TEXT_WIDTH, 0.0f, width - TOP_BAR_PADDING, TOP_BAR_HEIGHT },
             Theme::MUTED_TEXT_COLOR, VERSION_STYLE);   // 회색 버전 글자
+        m_renderer->DrawString(m_hasAPIKey ? TOP_API_READY_TEXT : TOP_API_MISSING_TEXT,
+            Core::RectF{ width - TOP_BAR_PADDING - TOP_STATUS_WIDTH, 0.0f, width - TOP_BAR_PADDING - VERSION_TEXT_WIDTH, TOP_BAR_HEIGHT },
+            m_hasAPIKey ? Theme::NOTICE_SUCCESS_COLOR : Theme::NOTICE_ERROR_COLOR, VERSION_STYLE);   // API 상태 (초록 · 빨강)
     }
 
     void Application::RenderPageHeader()
@@ -993,8 +1141,10 @@ namespace LostArkMultiTool::Views
         const float headerTop{ TOP_BAR_HEIGHT };   // 머리말 위쪽 (위 막대 바로 아래)
         m_renderer->FillRect(Core::RectF{ SIDEBAR_WIDTH, headerTop, width, headerTop + PAGE_HEADER_HEIGHT }, Theme::BACKGROUND_COLOR);   // 탭 내용이 넘쳐도 머리말이 깨끗하게
 
-        const float left{ SIDEBAR_WIDTH + PAGE_HEADER_LEFT };   // 머리말 글자 왼쪽
-        const float right{ std::max(left, width - PAGE_HEADER_LEFT) };   // 머리말 글자 오른쪽
+        const Core::RectF column{ PageLayout::GetPageColumn(Core::RectF{ SIDEBAR_WIDTH + PAGE_HEADER_LEFT, headerTop,
+            std::max(SIDEBAR_WIDTH + PAGE_HEADER_LEFT, width - PAGE_HEADER_LEFT), headerTop + PAGE_HEADER_HEIGHT }) };   // 본문과 같은 가운데 열
+        const float left{ column.m_left };   // 머리말 글자 왼쪽
+        const float right{ column.m_right };   // 머리말 글자 오른쪽
         m_renderer->DrawString(TAB_EYEBROWS[m_activeIndex], Core::RectF{ left, headerTop + PAGE_EYEBROW_TOP, right, headerTop + PAGE_EYEBROW_TOP + PAGE_EYEBROW_HEIGHT },
             Theme::ACCENT_COLOR, PAGE_EYEBROW_STYLE);   // 청록 영문 소제목
         m_renderer->DrawString(GetActiveTool().GetTabTitle(), Core::RectF{ left, headerTop + PAGE_TITLE_TOP, right, headerTop + PAGE_TITLE_TOP + PAGE_TITLE_HEIGHT },
@@ -1006,6 +1156,7 @@ namespace LostArkMultiTool::Views
     // "API 키 설정" 버튼을 왼쪽 메뉴 아래(상태 줄 바로 위)에 배치
     void Application::LayoutHeader()
     {
+        m_toolSearchBox->SetBounds(Core::RectF{ SIDEBAR_PADDING, SEARCH_BOX_TOP, SIDEBAR_WIDTH - SIDEBAR_PADDING, SEARCH_BOX_TOP + SEARCH_BOX_HEIGHT });   // 로고 아래 검색칸
         const float statusTop{ m_renderer->GetHeight() - SIDEBAR_BOTTOM_PADDING - API_STATUS_HEIGHT };   // 상태 줄 위쪽
         const float buttonTop{ statusTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 버튼 위쪽
         m_apiKeyButton->SetBounds(Core::RectF{ SIDEBAR_PADDING, buttonTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, buttonTop + API_BUTTON_HEIGHT });   // 메뉴 너비에 맞춤
@@ -1026,7 +1177,7 @@ namespace LostArkMultiTool::Views
         const float left{ SIDEBAR_WIDTH + CONTENT_INSET };   // 왼쪽 메뉴 오른쪽
         const float right{ std::max(left, m_renderer->GetWidth() - CONTENT_INSET) };   // 창 오른쪽 여백
         const float top{ TOP_BAR_HEIGHT + PAGE_HEADER_HEIGHT };   // 머리말 아래
-        return Core::RectF{ left, top, right, std::max(top, m_renderer->GetHeight()) };   // 창이 아주 작아도 뒤집히지 않게
+        return PageLayout::GetPageColumn(Core::RectF{ left, top, right, std::max(top, m_renderer->GetHeight()) });   // 넓은 창에서는 가운데 정렬 열 (창이 아주 작아도 뒤집히지 않게)
     }
 
     Core::RectF Application::GetScreenRect() const noexcept
@@ -1036,9 +1187,9 @@ namespace LostArkMultiTool::Views
 
     std::optional<std::size_t> Application::FindTabAt(float x, float y) const noexcept
     {
-        for (std::size_t index{}; index < TOOL_COUNT; ++index)
+        for (std::size_t position{}; position < m_visibleTools.size(); ++position)
         {
-            if (GetTabRect(index).Contains(x, y)) return index;
+            if (GetTabRect(position).Contains(x, y)) return m_visibleTools[position];   // 보이는 순서 → 도구 번호
         }
         return std::nullopt;
     }

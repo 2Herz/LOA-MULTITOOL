@@ -13,6 +13,19 @@ namespace LostArkMultiTool::Views::UI
     namespace
     {
         constexpr float CELL_PADDING{ 8.0f };            // 칸 안 글자 좌우 여백
+        constexpr float BADGE_SIZE_RATIO{ 0.62f };          // 배지 한 변 = 행 높이 × 비율
+        constexpr float BADGE_RADIUS{ 5.0f };               // 배지 모서리
+        constexpr float BADGE_GAP{ 10.0f };                 // 배지와 글자 사이
+        constexpr float BADGE_BACK_ALPHA{ 0.18f };          // 배지 바탕 = 강조색 연하게
+        constexpr float CHIP_PADDING_X{ 8.0f };             // 칩 좌우 안쪽 여백
+        constexpr float CHIP_HEIGHT_RATIO{ 0.56f };         // 칩 높이 = 행 높이 × 비율
+        constexpr float CHIP_RADIUS{ 4.0f };                // 칩 모서리
+        constexpr float CHIP_BACK_ALPHA{ 0.10f };           // 칩 바탕 투명도
+        constexpr float SPARKLINE_HEIGHT_RATIO{ 0.42f };    // 추이 선 높이 = 행 높이 × 비율
+        constexpr float SPARKLINE_MAX_WIDTH{ 64.0f };       // 추이 선 최대 너비
+        constexpr float SPARKLINE_STROKE{ 1.5f };           // 추이 선 두께
+        constexpr std::size_t MIN_SPARKLINE_POINTS{ 2 };    // 선을 그릴 최소 점 수
+        constexpr float HALF_RATIO{ 0.5f };                 // 가운데 계산
         constexpr float EDITOR_INSET{ 1.0f };            // 편집 입력칸을 칸 테두리 안쪽으로
         constexpr float HOVER_ALPHA{ 0.35f };            // 편집 가능한 칸에 마우스를 올렸을 때 강조 투명도
         constexpr float PIXEL_CENTER{ 0.5f };            // 1픽셀 선을 픽셀 가운데에 그려 번지지 않게
@@ -203,7 +216,7 @@ namespace LostArkMultiTool::Views::UI
 
     float Grid::GetPreferredHeight() const noexcept
     {
-        return m_headerHeight + Theme::GRID_ROW_HEIGHT * static_cast<float>(m_rowCount);
+        return m_headerHeight + m_rowHeight * static_cast<float>(m_rowCount);
     }
 
     bool Grid::IsFocusable() const noexcept
@@ -454,8 +467,8 @@ namespace LostArkMultiTool::Views::UI
     {
         const Core::RectF& bounds{ GetBounds() };
         const float visibleIndex{ static_cast<float>(row) - static_cast<float>(m_firstVisibleRow) };
-        const float top{ bounds.m_top + m_headerHeight + Theme::GRID_ROW_HEIGHT * visibleIndex };
-        return Core::RectF{ bounds.m_left + GetColumnEdge(column), top, bounds.m_left + GetColumnEdge(column + 1), top + Theme::GRID_ROW_HEIGHT };
+        const float top{ bounds.m_top + m_headerHeight + m_rowHeight * visibleIndex };
+        return Core::RectF{ bounds.m_left + GetColumnEdge(column), top, bounds.m_left + GetColumnEdge(column + 1), top + m_rowHeight };
     }
 
     Core::RectF Grid::GetRowsArea() const noexcept
@@ -469,7 +482,7 @@ namespace LostArkMultiTool::Views::UI
         const Core::RectF rowsArea{ GetRowsArea() };
         if (!GetBounds().Contains(x, y) || y < rowsArea.m_top) return std::nullopt;
 
-        const auto visibleIndex{ static_cast<std::size_t>((y - rowsArea.m_top) / Theme::GRID_ROW_HEIGHT) };
+        const auto visibleIndex{ static_cast<std::size_t>((y - rowsArea.m_top) / m_rowHeight) };
         if (visibleIndex >= GetVisibleRowCapacity()) return std::nullopt;
 
         const std::size_t row{ m_firstVisibleRow + visibleIndex };
@@ -491,7 +504,7 @@ namespace LostArkMultiTool::Views::UI
     {
         const float rowsHeight{ GetRowsArea().GetHeight() };
         if (rowsHeight <= 0.0f) return 0;
-        return static_cast<std::size_t>((rowsHeight + ROW_FIT_TOLERANCE) / Theme::GRID_ROW_HEIGHT);
+        return static_cast<std::size_t>((rowsHeight + ROW_FIT_TOLERANCE) / m_rowHeight);
     }
 
     std::size_t Grid::GetMaxFirstRow() const noexcept
@@ -590,6 +603,22 @@ namespace LostArkMultiTool::Views::UI
         return *m_selectedCell == position;
     }
 
+    void Grid::SetCellSparkline(std::size_t row, std::size_t column, std::vector<double> values)
+    {
+        if (row >= m_rowCount || column >= m_columns.size()) return;   // 범위 밖은 무시
+        GetCell(row, column).m_sparkline = std::move(values);          // 다음 프레임부터 그림
+    }
+
+    void Grid::SetRowHeight(float rowHeight) noexcept
+    {
+        m_rowHeight = std::max(rowHeight, Theme::GRID_ROW_HEIGHT);     // 기본보다 낮으면 편집 칸이 안 들어감
+    }
+
+    void Grid::SetShowVerticalLines(bool isShown) noexcept
+    {
+        m_isVerticalLineShown = isShown;                               // 열 경계 세로선
+    }
+
     void Grid::RenderHeader(Core::Renderer& renderer)
     {
         for (std::size_t column{}; column < m_columns.size(); ++column)
@@ -623,12 +652,69 @@ namespace LostArkMultiTool::Views::UI
                     renderer.FillRect(cellRect, Core::WithAlpha(Theme::SELECTION_BACK_COLOR, HOVER_ALPHA));
                 }
 
-                if (m_editingCell == position || cell.m_text.empty()) continue;   // 편집 중인 칸은 입력칸이 대신 그림
+                if (m_editingCell == position || (cell.m_text.empty() && cell.m_sparkline.empty() && cell.m_style.m_decoration == GridDecoration::DECORATION_NONE)) continue;   // 편집 중인 칸은 입력칸이 대신 그림 · 그릴 것 없는 빈 칸은 건너뜀 (추이 선만 있는 칸은 그림)
 
-                const Core::RectF textRect{ cellRect.m_left + CELL_PADDING, cellRect.m_top, cellRect.m_right - CELL_PADDING, cellRect.m_bottom };
-                const Core::TextStyle textStyle{ Theme::FONT_SIZE_NORMAL, cell.m_style.m_weight, m_columns[column].m_align };
-                renderer.DrawString(cell.m_text, textRect, isSelected ? Theme::SELECTION_TEXT_COLOR : cell.m_style.m_textColor, textStyle);
+                RenderCellContent(renderer, cell, cellRect, column, isSelected);   // 꾸밈 · 글자 · 추이 선
             }
+        }
+    }
+
+    // 칸 안 그리기: 배지(앞) · 칩(글자 감쌈) · 글자 · 추이 선(글자가 없을 때 칸 안, 있으면 글자 뒤)
+    void Grid::RenderCellContent(Core::Renderer& renderer, const Cell& cell, const Core::RectF& cellRect, std::size_t column, bool isSelected)
+    {
+        Core::RectF textRect{ cellRect.m_left + CELL_PADDING, cellRect.m_top, cellRect.m_right - CELL_PADDING, cellRect.m_bottom };   // 글자 영역
+        const Core::TextStyle textStyle{ Theme::FONT_SIZE_NORMAL, cell.m_style.m_weight, m_columns[column].m_align };              // 글자 모양
+        const Core::Color& textColor{ isSelected ? Theme::SELECTION_TEXT_COLOR : cell.m_style.m_textColor };                     // 글자 색
+        const float middleY{ (cellRect.m_top + cellRect.m_bottom) * HALF_RATIO };                                               // 세로 가운데
+
+        // 배지: 왼쪽에 둥근 사각형 + 짧은 글자, 본문 글자는 그 오른쪽부터
+        if (cell.m_style.m_decoration == GridDecoration::DECORATION_BADGE)
+        {
+            const float size{ m_rowHeight * BADGE_SIZE_RATIO };                                                              // 배지 한 변
+            const Core::RectF badgeRect{ textRect.m_left, middleY - size * HALF_RATIO, textRect.m_left + size, middleY + size * HALF_RATIO };   // 배지 영역
+            renderer.FillRoundedRect(badgeRect, BADGE_RADIUS, Core::WithAlpha(cell.m_style.m_accentColor, BADGE_BACK_ALPHA));   // 연한 바탕
+            renderer.DrawRoundedRect(badgeRect, BADGE_RADIUS, cell.m_style.m_accentColor, Theme::BORDER_WIDTH);               // 테두리
+            renderer.DrawString(cell.m_style.m_badgeText, badgeRect, cell.m_style.m_accentColor,
+                Core::TextStyle{ Theme::FONT_SIZE_SMALL, Core::FontWeight::BOLD, Core::TextAlign::CENTER });                 // 배지 글자
+            textRect.m_left = badgeRect.m_right + BADGE_GAP;                                                                 // 본문은 배지 오른쪽
+        }
+
+        // 칩: 글자 크기에 맞춘 둥근 테두리 (정렬 방향에 맞춰 위치)
+        if (cell.m_style.m_decoration == GridDecoration::DECORATION_CHIP && !cell.m_text.empty())
+        {
+            const Core::TextStyle chipStyle{ Theme::FONT_SIZE_SMALL, cell.m_style.m_weight, Core::TextAlign::CENTER };       // 칩 글자
+            const float textWidth{ renderer.MeasureString(cell.m_text, chipStyle, textRect.m_right - textRect.m_left).m_width };   // 글자 너비
+            const float chipWidth{ std::min(textWidth + CHIP_PADDING_X * 2.0f, textRect.m_right - textRect.m_left) };         // 칩 너비
+            const float chipHeight{ m_rowHeight * CHIP_HEIGHT_RATIO };                                                       // 칩 높이
+            float chipLeft{ textRect.m_left };                                                                               // 왼쪽 정렬 기본
+            if (m_columns[column].m_align == Core::TextAlign::TRAILING) chipLeft = textRect.m_right - chipWidth;            // 오른쪽 정렬
+            else if (m_columns[column].m_align == Core::TextAlign::CENTER) chipLeft = (textRect.m_left + textRect.m_right - chipWidth) * HALF_RATIO;   // 가운데
+            const Core::RectF chipRect{ chipLeft, middleY - chipHeight * HALF_RATIO, chipLeft + chipWidth, middleY + chipHeight * HALF_RATIO };   // 칩 영역
+            renderer.FillRoundedRect(chipRect, CHIP_RADIUS, Core::WithAlpha(cell.m_style.m_accentColor, CHIP_BACK_ALPHA));   // 연한 바탕
+            renderer.DrawRoundedRect(chipRect, CHIP_RADIUS, Core::WithAlpha(cell.m_style.m_accentColor, HALF_RATIO), Theme::BORDER_WIDTH);   // 테두리
+            renderer.DrawString(cell.m_text, chipRect, textColor, chipStyle);                                                // 칩 글자
+        }
+        else if (!cell.m_text.empty())
+        {
+            renderer.DrawString(cell.m_text, textRect, textColor, textStyle);                                                // 일반 글자
+        }
+
+        // 추이 선: 칸 왼쪽(정렬 기준)부터 최대 너비만큼, 값 범위를 칸 높이 비율에 맞춤
+        if (cell.m_sparkline.size() < MIN_SPARKLINE_POINTS) return;                                                         // 점이 부족
+        const auto [minIt, maxIt] { std::ranges::minmax_element(cell.m_sparkline) };                                       // 값 범위
+        const double range{ *maxIt - *minIt };                                                                              // 높이 환산 기준
+        const float width{ std::min(SPARKLINE_MAX_WIDTH, textRect.m_right - textRect.m_left) };                             // 그래프 너비
+        const float height{ m_rowHeight * SPARKLINE_HEIGHT_RATIO };                                                         // 그래프 높이
+        const float left{ textRect.m_left };                                                                                // 그래프 왼쪽
+        const float bottom{ middleY + height * HALF_RATIO };                                                                // 그래프 아래
+        const bool isRising{ cell.m_sparkline.back() >= cell.m_sparkline.front() };                                         // 상승 여부
+        const Core::Color& lineColor{ isRising ? Theme::SPARKLINE_UP_COLOR : Theme::SPARKLINE_DOWN_COLOR };                 // 상승 청록 · 하락 빨강
+        const float stepX{ width / static_cast<float>(cell.m_sparkline.size() - 1) };                                       // 점 간격
+        const auto toY{ [&](double value) { return range > 0.0 ? bottom - static_cast<float>((value - *minIt) / range) * height : middleY; } };   // 값 → y
+        for (std::size_t index{ 1 }; index < cell.m_sparkline.size(); ++index)                                              // 선분으로 연결
+        {
+            renderer.DrawLine(left + stepX * static_cast<float>(index - 1), toY(cell.m_sparkline[index - 1]),
+                left + stepX * static_cast<float>(index), toY(cell.m_sparkline[index]), lineColor, SPARKLINE_STROKE);   // 한 구간
         }
     }
 
@@ -637,9 +723,9 @@ namespace LostArkMultiTool::Views::UI
     {
         const Core::RectF& bounds{ GetBounds() };
         const std::size_t drawnRowCount{ std::min(m_rowCount - std::min(m_firstVisibleRow, m_rowCount), GetVisibleRowCapacity()) };
-        const float rowsBottom{ bounds.m_top + m_headerHeight + Theme::GRID_ROW_HEIGHT * static_cast<float>(drawnRowCount) };
+        const float rowsBottom{ bounds.m_top + m_headerHeight + m_rowHeight * static_cast<float>(drawnRowCount) };
 
-        for (std::size_t edge{ 1 }; edge < m_columns.size(); ++edge)
+        for (std::size_t edge{ 1 }; m_isVerticalLineShown && edge < m_columns.size(); ++edge)   // 세로선은 켰을 때만
         {
             const float x{ SnapToPixel(bounds.m_left + GetColumnEdge(edge)) };
             renderer.DrawLine(x, bounds.m_top, x, rowsBottom, Theme::GRID_LINE_COLOR, Theme::BORDER_WIDTH);
@@ -648,7 +734,7 @@ namespace LostArkMultiTool::Views::UI
         // 각 행의 위 경계 + 마지막 행의 아래 경계
         for (std::size_t index{}; index <= drawnRowCount; ++index)
         {
-            const float y{ SnapToPixel(bounds.m_top + m_headerHeight + Theme::GRID_ROW_HEIGHT * static_cast<float>(index)) };
+            const float y{ SnapToPixel(bounds.m_top + m_headerHeight + m_rowHeight * static_cast<float>(index)) };
             if (y > bounds.m_bottom) break;
             renderer.DrawLine(bounds.m_left, y, bounds.m_right, y, Theme::GRID_LINE_COLOR, Theme::BORDER_WIDTH);
         }

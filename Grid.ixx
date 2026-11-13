@@ -18,12 +18,23 @@ export namespace LostArkMultiTool::Views::UI
         Core::TextAlign m_align{ Core::TextAlign::TRAILING };   // 숫자 표라 기본은 오른쪽 정렬
     };
 
-    // 칸 하나의 색 · 굵기 (원본 DataGridViewCellStyle)
+    // 칸 꾸밈 (새 디자인: 이름 앞 둥근 배지 · 글자를 감싸는 칩)
+    enum class GridDecoration
+    {
+        DECORATION_NONE,    // 글자만
+        DECORATION_BADGE,   // 글자 앞에 둥근 사각형 배지 (m_badgeText, m_accentColor) — 예: 보석 레벨 "10"
+        DECORATION_CHIP     // 글자를 둥근 테두리 칩으로 감쌈 (m_accentColor 테두리) — 예: 분류 "겁화"
+    };
+
+    // 칸 하나의 색 · 굵기 (원본 DataGridViewCellStyle) + 선택 꾸밈
     struct GridCellStyle
     {
         Core::Color m_backColor;
         Core::Color m_textColor;
         Core::FontWeight m_weight{ Core::FontWeight::NORMAL };
+        GridDecoration m_decoration{ GridDecoration::DECORATION_NONE };   // 꾸밈 종류
+        std::wstring m_badgeText;                                          // 배지 안 글자 (DECORATION_BADGE)
+        Core::Color m_accentColor{};                                       // 배지 · 칩 색
     };
 
     // 선택 단위 (원본 DataGridViewSelectionMode)
@@ -60,6 +71,10 @@ export namespace LostArkMultiTool::Views::UI
         void SetCellEditText(std::size_t row, std::size_t column, std::wstring editText);   // 편집을 시작할 때 입력칸에 채울 글자 (예: "1,120 (▲120)" 칸 → "1,120")
         [[nodiscard]] const std::wstring& GetCellText(std::size_t row, std::size_t column) const;
         void SetCellStyle(std::size_t row, std::size_t column, const GridCellStyle& style);
+        // 칸 안에 작은 추이 선 그래프 (값이 2개 이상일 때, 처음보다 끝이 높으면 상승색 · 낮으면 하락색, 빈 벡터 = 지움)
+        void SetCellSparkline(std::size_t row, std::size_t column, std::vector<double> values);
+        void SetRowHeight(float rowHeight) noexcept;                 // 행 높이 (기본 Theme::GRID_ROW_HEIGHT)
+        void SetShowVerticalLines(bool isShown) noexcept;            // 열 경계 세로선 (새 디자인 기본 = 숨김, 입력 표는 켬)
         void SetCellEditable(std::size_t row, std::size_t column, bool isEditable);
 
         // 편집 입력 설정 (숫자 칸이면 IME를 끄고 숫자만 받음)
@@ -106,6 +121,7 @@ export namespace LostArkMultiTool::Views::UI
             GridCellStyle m_style;
             bool m_isEditable{};
             std::wstring m_editText;   // 비어 있으면 표시 글자(m_text)로 편집
+            std::vector<double> m_sparkline;   // 추이 선 그래프 값 (비어 있으면 그리지 않음)
         };
 
         struct CellPosition
@@ -147,6 +163,7 @@ export namespace LostArkMultiTool::Views::UI
         // ===== 그리기 =====
         void RenderHeader(Core::Renderer& renderer);
         void RenderCells(Core::Renderer& renderer);
+        void RenderCellContent(Core::Renderer& renderer, const Cell& cell, const Core::RectF& cellRect, std::size_t column, bool isSelected);   // 꾸밈 · 글자 · 추이 선
         void RenderGridLines(Core::Renderer& renderer) const;
         void RenderScrollBar(Core::Renderer& renderer) const;
 
@@ -156,6 +173,8 @@ export namespace LostArkMultiTool::Views::UI
         std::vector<Cell> m_cells;                 // 행 우선 순서 (row * 열 수 + column)
         float m_totalWeight{};                     // 모든 열의 너비 비율 합
         float m_headerHeight{ Theme::GRID_HEADER_HEIGHT };
+        float m_rowHeight{ Theme::GRID_ROW_HEIGHT };   // 행 높이
+        bool m_isVerticalLineShown{};                  // 열 경계 세로선 (기본 숨김)
         std::optional<CellPosition> m_selectedCell;
         std::optional<CellPosition> m_hoverCell;
         std::optional<CellPosition> m_editingCell;

@@ -74,6 +74,13 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view CHART_EMPTY_FORMAT{ L"{} — 아직 기록이 없어요" };
         constexpr std::wstring_view UNKNOWN_ERROR_TEXT{ L"(알 수 없는 오류)" };
         constexpr wchar_t LINE_BREAK{ L'\n' };
+        constexpr std::wstring_view REFRESH_DONE_TEXT{ L"보석 시세를 갱신했어요." };       // 수동 갱신이 끝났을 때 토스트
+        constexpr std::wstring_view ALARM_SAVED_FORMAT{ L"'{}' 알림을 저장했어요. (목표가 {})" };   // 알림 추가 · 변경 토스트
+        constexpr std::wstring_view ALARM_REMOVED_FORMAT{ L"'{}' 알림을 삭제했어요." };            // 알림 삭제 토스트
+        constexpr std::size_t TREND_DAY_COUNT{ 14 };                                          // 추이 선에 쓰는 최근 기록 일수
+        constexpr int YESTERDAY_OFFSET_DAYS{ -1 };                                            // 전일 = 게임 날짜(오전 6시 기준)의 하루 전
+        constexpr double PERCENT_FACTOR{ 100.0 };                                             // 비율 → 퍼센트
+        constexpr std::wstring_view SEARCH_IGNORED_CHARACTERS{ L" \t" };                       // 검색할 때 무시하는 글자 (띄어쓰기 차이)
 
         // ===== 날짜 키 "yyyy-MM-dd" → 그래프 글자 "MM/dd" =====
         constexpr std::size_t DATE_KEY_LENGTH{ 10 };
@@ -117,6 +124,68 @@ namespace LostArkMultiTool::Views
             return label;
         }
 
+        // 띄어쓰기를 뺀 글자 (검색어 · 이름 비교용)
+        [[nodiscard]] std::wstring RemoveSpaces(std::wstring_view text)
+        {
+            std::wstring compact;
+            compact.reserve(text.size());
+            for (const wchar_t character : text)
+            {
+                if (!SEARCH_IGNORED_CHARACTERS.contains(character)) compact.push_back(character);
+            }
+            return compact;
+        }
+
+        // 일별 최저가 기록 → 추이 선 값 (날짜순 마지막 TREND_DAY_COUNT일)
+        [[nodiscard]] std::vector<double> MakeTrend(const std::map<std::string, std::int64_t>& history)
+        {
+            std::vector<double> trend;                                          // 결과
+            const std::size_t skip{ history.size() > TREND_DAY_COUNT ? history.size() - TREND_DAY_COUNT : 0 };   // 오래된 날은 건너뜀
+            std::size_t index{};                                                // 지금까지 본 날 수
+            for (const auto& [dateKey, price] : history)
+            {
+                if (index++ < skip) continue;
+                trend.push_back(static_cast<double>(price));
+            }
+            return trend;
+        }
+
+        // 변동률이 없는 행은 정렬 방향과 상관없이 맨 아래로
+        [[nodiscard]] bool CompareChange(const GemRow& left, const GemRow& right, bool isDescending) noexcept
+        {
+            if (left.m_changeRate.has_value() != right.m_changeRate.has_value()) return left.m_changeRate.has_value();
+            if (!left.m_changeRate.has_value()) return false;
+            return isDescending ? *left.m_changeRate > *right.m_changeRate : *left.m_changeRate < *right.m_changeRate;
+        }
+
+        // 매물이 없는 행은 정렬 방향과 상관없이 맨 아래로
+        [[nodiscard]] bool ComparePrice(const GemRow& left, const GemRow& right, bool isDescending) noexcept
+        {
+            if (left.m_price.has_value() != right.m_price.has_value()) return left.m_price.has_value();
+            if (!left.m_price.has_value()) return false;
+            return isDescending ? *left.m_price > *right.m_price : *left.m_price < *right.m_price;
+        }
+
+        // 정렬 기준에 맞게 정렬 (같은 값이면 레벨 높은 순 → 종류 순, 갱신할 때마다 순서가 흔들리지 않게)
+        void SortRows(std::vector<GemRow>& rows, GemSortOrder order)
+        {
+            std::ranges::stable_sort(rows, [](const GemRow& left, const GemRow& right)
+            {
+                if (left.m_gem.m_level != right.m_gem.m_level) return left.m_gem.m_level > right.m_gem.m_level;
+                return left.m_gem.m_typeName < right.m_gem.m_typeName;
+            });
+            std::ranges::stable_sort(rows, [order](const GemRow& left, const GemRow& right)
+            {
+                switch (order)
+                {
+                    case GemSortOrder::SORT_PRICE_ASC:   return ComparePrice(left, right, false);
+                    case GemSortOrder::SORT_CHANGE_DESC: return CompareChange(left, right, true);
+                    case GemSortOrder::SORT_CHANGE_ASC:  return CompareChange(left, right, false);
+                    default:                             return ComparePrice(left, right, true);
+                }
+            });
+        }
+
         [[nodiscard]] std::wstring_view GetPauseText(Services::PauseReason reason) noexcept
         {
             return reason == Services::PauseReason::PAUSE_MAINTENANCE ? PAUSE_MAINTENANCE_TEXT : PAUSE_RATE_LIMIT_TEXT;
@@ -148,6 +217,7 @@ namespace LostArkMultiTool::Views
         m_view->SetOnRefresh([this] { RequestRefresh(Services::RefreshMode::REFRESH_FULL, false); });   // 수동 갱신은 항상 전체
         m_view->SetOnAutoRefreshChanged([this](bool isEnabled) { SetAutoRefresh(isEnabled, true); });
         m_view->SetOnIntervalChanged([this] { ChangeIntervals(); });
+        m_view->SetOnFilterChanged([this] { RefreshPriceGrid(); });   // 검색어 · 분류 · 정렬이 바뀌면 표를 바로 다시 채움
         m_view->SetOnPriceCellClicked([this](const Models::GemSelection& gem) { SelectGem(gem); });
         m_view->SetOnAlarmSelected([this](std::size_t alarmIndex) { SelectAlarm(alarmIndex); });
         m_view->SetOnAddAlarm([this] { AddAlarm(); });
@@ -358,6 +428,7 @@ namespace LostArkMultiTool::Views
             else
             {
                 m_lastAutoError.reset();   // 완전히 성공하면 오류 표시 기록 초기화
+                if (!isAuto) m_context->m_notifier.ShowToast(std::wstring{ REFRESH_DONE_TEXT }, Core::NoticeKind::NOTICE_SUCCESS);   // 수동 갱신 완료 피드백
             }
         }
         catch (const Core::APIKeyInvalidException& error)
@@ -460,6 +531,7 @@ namespace LostArkMultiTool::Views
         {
             m_service->SetAlarm(*gem, targetPrice);
             m_selectedAlarmKey = Models::GemCatalog::MakeKey(*gem);   // 방금 추가한 알림을 선택 상태로
+            m_context->m_notifier.ShowToast(std::format(ALARM_SAVED_FORMAT, ToDisplayName(*gem), FormatAmount(targetPrice)), Core::NoticeKind::NOTICE_SUCCESS);
         }
         catch (const std::exception& error)
         {
@@ -487,7 +559,7 @@ namespace LostArkMultiTool::Views
         }
 
         const std::wstring question{ std::format(REMOVE_ALARM_FORMAT, ToDisplayName(selected->GetGem()), FormatAmount(selected->GetTargetPrice())) };
-        m_context->m_notifier.AskYesNo(std::wstring{ REMOVE_ALARM_TITLE }, question, [this, gemKey = selected->GetGemKey()](bool isYes)
+        m_context->m_notifier.AskYesNo(std::wstring{ REMOVE_ALARM_TITLE }, question, [this, gemKey = selected->GetGemKey(), removedName = ToDisplayName(selected->GetGem())](bool isYes)
         {
             if (!isYes || !m_service) return;   // 답하기 전에 프로그램이 닫혔으면 무시
 
@@ -495,6 +567,7 @@ namespace LostArkMultiTool::Views
             {
                 m_service->RemoveAlarm(gemKey);
                 m_selectedAlarmKey.reset();
+                m_context->m_notifier.ShowToast(std::format(ALARM_REMOVED_FORMAT, removedName), Core::NoticeKind::NOTICE_SUCCESS);
             }
             catch (const std::exception& error)
             {
@@ -517,9 +590,84 @@ namespace LostArkMultiTool::Views
         UpdateRateLimitText();
     }
 
+    // 검색어(띄어쓰기 무시) · 분류로 거르고 정렬 기준대로 표 채우기 + 통계 카드 갱신
     void GemFinderManager::RefreshPriceGrid()
     {
-        for (const auto& entry : m_service->GetQuotes()) m_view->ShowQuote(entry.second);
+        if (!m_view) return;
+
+        const std::map<std::string, Models::GemQuote>& quotes{ m_service->GetQuotes() };
+        const std::wstring keyword{ RemoveSpaces(m_view->GetSearchText()) };
+        const std::optional<std::string> category{ m_view->GetCategoryTypeName() };
+        const std::string yesterdayKey{ Core::LocalTime::MakeDateKey(Core::LocalTime::AddDays(Core::LocalTime::GetGameToday(), YESTERDAY_OFFSET_DAYS)) };   // 전일 날짜 키
+
+        std::vector<GemRow> rows;
+        rows.reserve(quotes.size());
+        for (const auto& [key, quote] : quotes)
+        {
+            const Models::GemSelection& gem{ quote.GetGem() };
+            const Models::GemType* type{ Models::GemCatalog::FindType(gem.m_typeName) };
+            if (type == nullptr) continue;                                  // 조회 범위 밖 종류는 표에 없음
+            if (category.has_value() && gem.m_typeName != *category) continue;
+
+            std::wstring name{ Core::TextEncoding::UTF8ToWide(Models::GemCatalog::MakeItemName(*type, gem.m_level)) };
+            std::wstring typeText{ Core::TextEncoding::UTF8ToWide(gem.m_typeName) };
+            if (!keyword.empty() && !RemoveSpaces(name + typeText).contains(keyword)) continue;
+
+            // 전일 최저가 = 일별 기록의 어제 값, 변동률 = 현재가가 그 값보다 몇 % 높은지
+            const std::map<std::string, std::int64_t>& history{ m_service->GetHistory(key) };
+            std::optional<std::int64_t> yesterdayPrice;
+            if (const auto found{ history.find(yesterdayKey) }; found != history.end()) yesterdayPrice = found->second;
+            std::optional<double> changeRate;
+            if (quote.GetPrice().has_value() && yesterdayPrice.has_value() && *yesterdayPrice > 0)
+            {
+                changeRate = static_cast<double>(*quote.GetPrice() - *yesterdayPrice) / static_cast<double>(*yesterdayPrice) * PERCENT_FACTOR;
+            }
+
+            rows.push_back(GemRow{ gem, std::move(name), std::move(typeText), quote.GetPrice(), quote.IsQueried(), quote.GetDiff(),
+                yesterdayPrice, changeRate, MakeTrend(history) });
+        }
+
+        SortRows(rows, m_view->GetSortOrder());
+        m_view->ShowRows(rows, quotes.size());
+        m_view->SetStats(BuildStats());   // 통계 카드는 검색과 상관없이 전체 시세 기준
+    }
+
+    // 전체 시세 → 통계 카드 값 (실제 시세 · 기록만 사용, 계산할 수 없는 값은 비워 둠)
+    GemStats GemFinderManager::BuildStats() const
+    {
+        const std::string yesterdayKey{ Core::LocalTime::MakeDateKey(Core::LocalTime::AddDays(Core::LocalTime::GetGameToday(), YESTERDAY_OFFSET_DAYS)) };   // 전일 날짜 키
+        GemStats stats;                                       // 결과
+        double rateSum{};                                     // 변동률 합
+        std::size_t rateCount{};                              // 변동률을 계산할 수 있는 보석 수
+        for (const auto& [key, quote] : m_service->GetQuotes())
+        {
+            if (quote.IsQueried()) ++stats.m_queriedCount;    // 이번 실행에서 조회한 보석
+            if (!quote.GetPrice().has_value()) continue;      // 이하 매물이 있는 보석만
+
+            ++stats.m_listedCount;
+            if (*quote.GetPrice() > stats.m_topPrice)         // 가장 비싼 보석
+            {
+                stats.m_topPrice = *quote.GetPrice();
+                stats.m_topName = ToDisplayName(quote.GetGem());
+            }
+
+            const std::map<std::string, std::int64_t>& history{ m_service->GetHistory(key) };
+            if (const auto found{ history.find(yesterdayKey) }; found != history.end() && found->second > 0)
+            {
+                rateSum += static_cast<double>(*quote.GetPrice() - found->second) / static_cast<double>(found->second) * PERCENT_FACTOR;
+                ++rateCount;
+            }
+        }
+        if (rateCount > 0) stats.m_averageRate = rateSum / static_cast<double>(rateCount);   // 평균 변동률
+
+        // 마지막 갱신 = 전체 · 감시 갱신 중 더 늦은 시각
+        const std::optional<std::int64_t>& lastFull{ m_service->GetLastFullUpdated() };
+        const std::optional<std::int64_t>& lastWatch{ m_service->GetLastWatchUpdated() };
+        if (lastFull.has_value() || lastWatch.has_value())
+        {
+            stats.m_updatedText = Core::LocalTime::FormatClock(std::max(lastFull.value_or(0), lastWatch.value_or(0)));
+        }
+        return stats;
     }
 
     // 알림 목록: 상태는 위에서부터 순서대로 판정 (범위 밖 → 확인 전 → 도달 → 대기, 원본 FillAlarmRow)

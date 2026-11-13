@@ -289,7 +289,7 @@ namespace LostArkMultiTool::Views
         {
             m_page = m_searchTask.TakeResult();
             m_lastQuery = std::move(m_runningQuery);
-            m_view->ShowListings(m_page.m_listings);
+            m_view->ShowListings(m_page.m_listings, m_lastQuery->m_categoryCode, m_page.m_totalCount, Core::LocalTime::FormatClock(Core::LocalTime::GetUnixSeconds()));   // 표 · 통계 카드 갱신
             m_view->SetStatusText(m_page.m_listings.empty() ? std::wstring{ NO_RESULT_TEXT }
                 : std::format(SEARCH_DONE_FORMAT, Core::LocalTime::FormatClock(Core::LocalTime::GetUnixSeconds())));
         }

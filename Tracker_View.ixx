@@ -4,6 +4,7 @@ import std;
 import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.Platform;
 import LostArkMultiTool.Core.Renderer;
+import LostArkMultiTool.Views.PageLayout;
 import LostArkMultiTool.Views.UI.Button;
 import LostArkMultiTool.Views.UI.ComboBox;
 import LostArkMultiTool.Views.UI.ControlHost;
@@ -21,6 +22,16 @@ export namespace LostArkMultiTool::Views
         double m_average{};
         std::optional<double> m_previousRate;   // 전주대비(%)
         std::optional<double> m_firstRate;      // 첫주대비(%)
+    };
+
+    // 캐릭터별 낙원력 목록 한 줄 (저장된 주차 기록에서 계산한 값만, 새 디자인의 CHARACTER ROSTER)
+    struct RosterEntry
+    {
+        std::wstring m_name;                 // 캐릭터 이름
+        std::wstring m_detail;               // "직업 · Lv.1740.0" (원정대에서 빠졌으면 "원정대 제외")
+        double m_score{};                    // 가장 최근에 기록한 낙원력
+        std::optional<double> m_changeRate;  // 직전 기록 대비(%) (기록이 하나뿐이면 없음)
+        std::vector<double> m_history;       // 최근 기록 (오래된 것부터, 추이 선 그래프용)
     };
 
     // 낙원력 트래커 화면 구성 (원본 Form1의 화면 부분)
@@ -43,6 +54,7 @@ export namespace LostArkMultiTool::Views
         void SetOnEditPeriod(std::function<void()> onEditPeriod);   // [시즌 기간] (기간이 있는 시즌의 시작일 · 종료일 바꾸기)
         void SetOnUnlockWeek(std::function<void()> onUnlockWeek);   // [지난 주차 수정] (고른 지난 주차를 확인 후 잠깐 풀기)
         void SetOnSeasonSelected(std::function<void()> onSeasonSelected);
+        void SetOnChartRangeChanged(std::function<void()> onChartRangeChanged);   // 추이 그래프 기간(4 · 8 · 12주) 선택이 바뀜
         // 낙원력 칸 편집 확정 (score = nullopt면 숫자가 아님 → 받는 쪽이 안내하고 원래 값을 다시 씀, 빈칸 = 0 = 미기록)
         void SetOnScoreEdited(std::function<void(std::size_t weekIndex, std::size_t characterIndex, std::optional<double> score)> onScoreEdited);
 
@@ -69,6 +81,11 @@ export namespace LostArkMultiTool::Views
 
         // ===== 그래프 · 버튼 상태 =====
         void SetChart(std::wstring title, std::vector<UI::ChartPoint> points);
+        [[nodiscard]] std::optional<std::size_t> GetChartWeekLimit() const noexcept;   // 그래프에 보일 최근 주차 수 (nullopt = 전체)
+
+        // ===== 새 디자인 요약 (통계 카드 · 캐릭터별 목록) =====
+        void SetStatCards(std::vector<PageLayout::StatCard> cards);   // 통계 카드 (최대 4장)
+        void SetRoster(std::vector<RosterEntry> entries);              // 낙원력 높은 순으로 받음 (검색어로 걸러서 보여 줌)
         void SetSyncBusy(bool isBusy);
 
         // ===== 프레임 =====
@@ -83,6 +100,7 @@ export namespace LostArkMultiTool::Views
         void Layout(const Core::RectF& contentArea);
         void ApplyRowStyle(std::size_t row);   // 한 행의 칸 색 · 편집 가능 여부
         void HandleCellEdited(std::size_t row, std::size_t column, const std::wstring& text);
+        void RebuildRoster();                    // 검색어에 맞는 캐릭터만 목록 표에 채우기
 
         [[nodiscard]] std::size_t GetStatColumn(std::size_t statOffset) const noexcept;   // 통계 열 번호 (캐릭터 열 바로 다음부터)
         [[nodiscard]] bool IsEditableColumn(std::size_t column) const noexcept;
@@ -99,6 +117,10 @@ export namespace LostArkMultiTool::Views
         UI::Button& m_periodButton;      // [시즌 기간]
         UI::Button& m_unlockButton;      // [지난 주차 수정]
         UI::Label& m_scheduleLabel;      // 이번 주 입력 마감 안내
+        UI::TextBox& m_searchBox;        // 캐릭터 이름 · 직업 검색
+        UI::Button& m_clearButton;       // 검색어 지우기 (✕)
+        UI::Grid& m_rosterGrid;          // 캐릭터별 낙원력 목록 (읽기 전용)
+        UI::ComboBox& m_rangeBox;        // 추이 그래프 기간
         UI::Grid& m_grid;
         UI::LineChart& m_chart;
 
@@ -110,12 +132,26 @@ export namespace LostArkMultiTool::Views
         Core::RectF m_layoutArea;
         bool m_hasLayout{};
 
+        // 카드 영역 (Layout에서 계산, Render에서 그림)
+        Core::RectF m_toolbarRect;                  // 시즌 · 동기화 도구 카드
+        std::array<Core::RectF, 4> m_statRects{};   // 통계 카드 4장
+        Core::RectF m_filterRect;                   // 검색 줄 카드
+        Core::RectF m_filterCountRect;              // "N개의 캐릭터" 글자 자리
+        Core::RectF m_rosterRect;                   // CHARACTER ROSTER 카드
+        Core::RectF m_growthRect;                   // GROWTH HISTORY 카드
+        Core::RectF m_recordRect;                   // WEEKLY RECORD 카드 (주차별 입력 표)
+
+        std::vector<PageLayout::StatCard> m_statCards;   // 통계 카드 내용
+        std::vector<RosterEntry> m_rosterEntries;         // 목록 전체 (검색 전)
+        std::size_t m_shownRosterCount{};                 // 검색어에 맞아 보이는 수
+
         std::function<void(const std::wstring&)> m_onSyncRoster;
         std::function<void()> m_onAddWeek;
         std::function<void()> m_onAddSeason;
         std::function<void()> m_onEditPeriod;
         std::function<void()> m_onUnlockWeek;
         std::function<void()> m_onSeasonSelected;
+        std::function<void()> m_onChartRangeChanged;
         std::function<void(std::size_t, std::size_t, std::optional<double>)> m_onScoreEdited;
     };
 }

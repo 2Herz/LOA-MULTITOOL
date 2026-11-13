@@ -6,9 +6,10 @@ import LostArkMultiTool.Core.Platform;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Views.UI.Button;
 import LostArkMultiTool.Views.UI.CheckBox;
+import LostArkMultiTool.Views.UI.ComboBox;
 import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Grid;
-import LostArkMultiTool.Views.UI.Label;
+import LostArkMultiTool.Views.UI.TextBox;
 
 export namespace LostArkMultiTool::Views
 {
@@ -24,7 +25,7 @@ export namespace LostArkMultiTool::Views
         std::optional<double> m_dayChangeRate;    // 전일 평균가 대비 변동률(%)
     };
 
-    // 강화책 검색기 화면 구성 (왼쪽 야금술 · 오른쪽 재봉술 표)
+    // 강화책 검색기 화면 구성 (통계 카드 · 검색/분류/정렬 줄 · LIVE MARKET 표 하나)
     // 부품 배치 · 표시 형식만 알고, 조회 · 자동 갱신 일정은 RefineBookFinderManager가 맡음
     class RefineBookFinderView
     {
@@ -39,11 +40,11 @@ export namespace LostArkMultiTool::Views
         void SetOnRefresh(std::function<void()> onRefresh);
         void SetOnAutoRefreshChanged(std::function<void(bool isEnabled)> onAutoRefreshChanged);
 
-        // ===== 상단 바 =====
+        // ===== 필터 줄 =====
         void SetAutoRefreshChecked(bool isChecked) noexcept;   // 코드에서 바꿈 (알림 없음)
         [[nodiscard]] bool IsAutoRefreshChecked() const noexcept;
-        void SetRefreshEnabled(bool isEnabled) noexcept;       // 조회 중에는 [시세 갱신] 비활성
-        void SetStatusText(std::wstring text);
+        void SetRefreshEnabled(bool isEnabled);                // 조회 중에는 [시세 갱신] 비활성 + "조회 중..."
+        void SetStatusText(std::wstring text);                 // 표 머리말 오른쪽 글자 (마지막 갱신 · 조회 중)
 
         // ===== 시세 표 =====
         void ShowMetallurgy(const std::vector<RefineBookRow>& rows);   // 야금술 (무기)
@@ -58,31 +59,43 @@ export namespace LostArkMultiTool::Views
         void RestoreFocus();
 
     private:
-        // 묶음 상자 (테두리 + 제목)
-        struct Panel
+        // 표에 올릴 책 한 권 (분류 + 시세)
+        struct Entry
         {
-            Core::RectF m_bounds;
-            std::wstring m_title;
+            bool m_isMetallurgy{};
+            RefineBookRow m_row;
         };
 
-        static void FillGrid(UI::Grid& grid, const std::vector<RefineBookRow>& rows);
+        void ApplyFilter();                                    // 검색어 · 분류 · 정렬에 맞게 표 다시 채우기
+        void FillGrid(const std::vector<const Entry*>& entries);
+        void ClearSearch();                                    // 검색어 지우고 입력칸으로 포커스
+        void DrawStatCards(Core::Renderer& renderer) const;
         void Layout(const Core::RectF& contentArea);
-        [[nodiscard]] Core::RectF LayoutPanel(Panel& panel, const Core::RectF& bounds) const;   // 테두리 · 제목 자리를 뺀 안쪽 영역
-        void RenderPanels(Core::Renderer& renderer) const;
 
         UI::ControlHost m_host;
 
         // 부품은 m_host가 소유 (참조는 배치 · 값 설정용, 추가 순서 = Tab 이동 순서)
-        UI::Button& m_refreshButton;
+        UI::TextBox& m_searchBox;
+        UI::Button& m_clearButton;
+        UI::ComboBox& m_kindBox;
+        UI::ComboBox& m_sortBox;
         UI::CheckBox& m_autoRefreshBox;
-        UI::Label& m_statusLabel;
-        UI::Grid& m_metallurgyGrid;
-        UI::Grid& m_tailoringGrid;
+        UI::Button& m_refreshButton;
+        UI::Grid& m_grid;
 
-        Panel m_metallurgyPanel;
-        Panel m_tailoringPanel;
+        std::vector<Entry> m_metallurgyEntries;   // 서비스가 정한 순서 그대로
+        std::vector<Entry> m_tailoringEntries;
+        std::size_t m_shownCount{};               // 지금 표에 보이는 행 수
+        std::wstring m_statusText;
+
+        // 마지막 배치 (Render에서 카드를 그림)
         Core::RectF m_layoutArea;
         bool m_hasLayout{};
+        std::vector<Core::RectF> m_statRects;
+        Core::RectF m_filterRect;
+        Core::RectF m_marketRect;
+        Core::RectF m_emptyRect;                  // 결과가 없을 때 안내가 들어가는 자리
+        Core::RectF m_footerRect;
 
         std::function<void()> m_onRefresh;
         std::function<void(bool)> m_onAutoRefreshChanged;

@@ -118,6 +118,9 @@ namespace LostArkMultiTool::Views
 
         // ===== 캐릭터 조회 =====
         constexpr std::wstring_view TRIM_CHARACTERS{ L" \t\r\n" };   // 이름 양 끝에서 지울 글자
+        constexpr std::wstring_view CALCULATE_NEED_PRICE_TEXT{ L"시세가 아직 없어서 계산할 수 없어요. [시세 갱신]을 먼저 눌러 주세요." };   // 가격 없이 계산 요청
+        constexpr std::wstring_view CALCULATE_DONE_FORMAT{ L"재련 계산 완료 · {}" };   // 계산 완료 토스트 ({} = 요약)
+        constexpr std::wstring_view CALCULATE_FAILED_TEXT{ L"재련 계산을 마쳤지만 목표에 도달할 수 없어요. 요약을 확인해 주세요." };   // 목표 도달 불가 토스트
         constexpr std::wstring_view EMPTY_NAME_TEXT{ L"캐릭터 이름을 입력해 주세요." };   // 이름 입력 요청 안내
         constexpr std::wstring_view LOOKUP_RATE_SHORTAGE_FORMAT{ L"남은 호출이 부족해서 이번 조회는 건너뛰었어요.\n{} 이후 다시 시도해 주세요." };   // 호출 한도 부족 안내
         constexpr std::wstring_view LOOKING_UP_FORMAT{ L"'{}' 조회 중..." };   // 조회 중 상태 줄
@@ -380,6 +383,7 @@ namespace LostArkMultiTool::Views
         });
         m_view->SetOnStartPresetSelected([this](std::size_t index) { OnStartPresetSelected(index); });
         m_view->SetOnLookup([this](const std::wstring& name) { RequestLookup(name); });   // [조회] · 이름 칸 Enter 연결
+        m_view->SetOnCalculate([this] { OnCalculateClicked(); });   // [계산] 버튼 연결
         m_view->SetOnTargetModeSelected([this](std::size_t index) { OnTargetModeSelected(index); });
         m_view->SetOnTargetItemLevelChanged([this](const std::wstring& text) { OnTargetItemLevelChanged(text); });
         m_view->SetOnSlotCellClicked([this](std::size_t row, RefineSlotColumn column) { OnSlotCellClicked(row, column); });
@@ -580,6 +584,19 @@ namespace LostArkMultiTool::Views
 
     // ===================== 계산 =====================
 
+    // [계산] 버튼: 가격이 있으면 다시 계산 예약 + 진행 표시 (끝나면 FinishCalculation이 토스트)
+    void RefineSimulatorManager::OnCalculateClicked()
+    {
+        if (!m_service->HasPrices())   // 가격이 없으면
+        {
+            m_context->m_notifier.ShowMessage(std::wstring{ NOTICE_TITLE }, std::wstring{ CALCULATE_NEED_PRICE_TEXT }, Core::NoticeKind::NOTICE_INFO, nullptr);   // 안내
+            return;   // 계산하지 않고 종료
+        }
+        m_isManualCalculation = true;   // 끝나면 토스트를 띄우도록 표시
+        m_isCalculationDirty = true;   // 다음 프레임에 계산 시작
+        RefreshStatus();   // 버튼을 "계산 중..."으로
+    }
+
     // 지금 입력으로 백그라운드 계산 시작 (가격이 그대로면 지난 비용표를 다시 씀)
     void RefineSimulatorManager::StartCalculation()
     {
@@ -619,6 +636,22 @@ namespace LostArkMultiTool::Views
             m_calculationError = std::format(CALCULATION_ERROR_FORMAT, ToWideMessage(error.what()));
         }
         RefreshAll();
+
+        // [계산] 버튼으로 시작한 계산이면 완료 토스트 (그 사이 입력이 또 바뀌었으면 다음 계산 뒤에)
+        if (m_isManualCalculation && !m_isCalculationDirty)
+        {
+            m_isManualCalculation = false;   // 대기 해제
+            const bool isSuccess{ !m_calculationError.has_value() && m_result.has_value() && m_result->m_failure == Models::RefineFailure::FAILURE_NONE };   // 성공 여부
+            if (isSuccess)
+            {
+                m_context->m_notifier.ShowToast(std::format(CALCULATE_DONE_FORMAT, FormatShortGold(m_result->m_totalCost)), Core::NoticeKind::NOTICE_SUCCESS);   // 총 골드와 함께 완료 알림
+            }
+            else
+            {
+                m_context->m_notifier.ShowToast(m_calculationError.value_or(std::wstring{ CALCULATE_FAILED_TEXT }), Core::NoticeKind::NOTICE_WARNING);   // 실패 이유 알림
+            }
+            RefreshStatus();   // 버튼 상태 복구
+        }
     }
 
     // 입력이 바뀜 → 저장 → 다시 계산 예약 → 설정 · 표 갱신
@@ -1089,6 +1122,7 @@ namespace LostArkMultiTool::Views
     void RefineSimulatorManager::RefreshStatus()
     {
         if (!m_view) return;
+        m_view->SetCalculateBusy(m_isManualCalculation && (m_calculationTask.IsRunning() || m_isCalculationDirty));   // 계산 버튼 진행 상태
         if (m_refreshTask.IsRunning())
         {
             m_view->SetStatusText(std::wstring{ REFRESHING_TEXT });

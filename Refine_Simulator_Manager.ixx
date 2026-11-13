@@ -61,6 +61,7 @@ export namespace LostArkMultiTool::Views
         void ShowAutoError(std::wstring_view title, const std::wstring& message);
 
         // ===== 계산 =====
+        void OnCalculateClicked();   // [계산] 버튼: 지금 입력으로 다시 계산 (진행 표시 + 완료 토스트)
         void StartCalculation();
         void FinishCalculation();
         void MarkChanged(bool isPriceChanged);   // 입력이 바뀜 → 저장 + 다시 계산 + 화면 갱신
@@ -105,6 +106,7 @@ export namespace LostArkMultiTool::Views
         Models::RefineRequest m_resultRequest;                        // 그 결과의 입력 (계산 중 입력이 바뀌어도 화면은 결과와 맞게)
         std::optional<std::wstring> m_calculationError;
         bool m_isCalculationDirty{ true };
+        bool m_isManualCalculation{};                                 // [계산] 버튼으로 시작한 계산이 끝나기를 기다리는 중 (끝나면 토스트)
 
         bool m_isRunningAuto{};
         bool m_isAutoRefreshWanted{};

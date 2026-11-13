@@ -38,7 +38,14 @@ namespace LostArkMultiTool::Views
         constexpr int AMOUNT_DECIMALS{ 0 };
 
         // ===== 문구 =====
-        constexpr std::wstring_view CHART_TITLE_FORMAT{ L"내 원정대 총 자산: {} 골드" };
+        constexpr std::wstring_view CHART_TITLE_TEXT{ L"날짜별 원정대 총 자산 (골드)" };   // 총자산 숫자는 카드 머리말 오른쪽에 따로 표시
+        constexpr std::wstring_view SYNC_RUNNING_TEXT{ L"원정대 불러오는 중..." };          // 동기화 진행 상태
+        constexpr std::wstring_view SYNC_DONE_FORMAT{ L"마지막 동기화 {}" };                 // 동기화 성공 시각
+        constexpr std::wstring_view SYNC_FAILED_TEXT{ L"동기화 실패" };                      // 동기화 실패 상태
+        constexpr std::wstring_view RESET_TITLE{ L"입력 초기화" };
+        constexpr std::wstring_view RESET_QUESTION_FORMAT{ L"{}의 보유 수량(상위 · 하위)을 모두 0으로 되돌릴까요?\n입력한 수량이 지워져요." };
+        constexpr std::wstring_view RESET_DONE_TEXT{ L"입력한 수량을 초기화했어요." };
+        constexpr std::wstring_view RESET_NO_CHARACTER_TEXT{ L"먼저 캐릭터를 골라 주세요." };
         constexpr std::wstring_view CHART_EMPTY_TEXT{ L"아직 자산 기록이 없어요 · [시세 갱신] 후 기록돼요" };
         constexpr std::wstring_view TRAY_TOOLTIP_FORMAT{ L"원정대 자산: {} 골드" };
         constexpr std::wstring_view BACKGROUND_STATUS_FORMAT{ L"{}분마다 시세를 자동으로 갱신해요." };
@@ -127,6 +134,7 @@ namespace LostArkMultiTool::Views
         m_view->SetOnRefresh([this] { StartRefresh(false); });
         m_view->SetOnAutoRefreshChanged([this](bool isEnabled) { SetAutoRefresh(isEnabled); });
         m_view->SetOnCharacterSelected([this] { SelectCharacter(); });
+        m_view->SetOnResetInput([this] { ResetInput(); });
         m_view->SetOnQuantityEdited([this](MaterialTier tier, std::size_t materialIndex, double quantity) { EditQuantity(tier, materialIndex, quantity); });
 
         // 저장 파일이 손상돼 복구했으면 알림 (원본 Form1_Load)
@@ -208,6 +216,7 @@ namespace LostArkMultiTool::Views
         if (m_rosterTask.IsRunning()) return;
 
         m_view->SetSyncBusy(true);
+        m_view->SetSyncStatus(std::wstring{ SYNC_RUNNING_TEXT });   // 조회 진행 상태 표시
         Core::MarketAPI* marketAPI{ &m_context->m_marketAPI };
         m_rosterTask.Start([marketAPI, name = Core::TextEncoding::WideToUTF8(trimmedName)] { return marketAPI->GetRoster(name); });
     }
@@ -346,11 +355,13 @@ namespace LostArkMultiTool::Views
         }
         catch (const Core::APIKeyInvalidException& error)
         {
+            m_view->SetSyncStatus(std::wstring{ SYNC_FAILED_TEXT });
             HandleAPIKeyError(error.what());
             return;
         }
         catch (const std::exception& error)
         {
+            m_view->SetSyncStatus(std::wstring{ SYNC_FAILED_TEXT });
             m_context->m_notifier.ShowMessage(std::wstring{ ERROR_TITLE }, std::wstring{ ROSTER_ERROR_TEXT } + ToWideMessage(error.what()),
                 Core::NoticeKind::NOTICE_ERROR, nullptr);
             return;
@@ -358,10 +369,12 @@ namespace LostArkMultiTool::Views
 
         if (roster.empty())
         {
+            m_view->SetSyncStatus(std::wstring{ SYNC_FAILED_TEXT });
             m_context->m_notifier.ShowMessage(std::wstring{ NOTICE_TITLE }, std::wstring{ ROSTER_NOT_FOUND_TEXT }, Core::NoticeKind::NOTICE_WARNING, nullptr);
             return;
         }
 
+        m_view->SetSyncStatus(std::format(SYNC_DONE_FORMAT, Core::LocalTime::FormatClock(Core::LocalTime::GetUnixSeconds())));   // 마지막 동기화 시각
         std::ranges::stable_sort(roster, std::ranges::greater{}, &Models::CharacterInfo::GetNumericItemLevel);
 
         Models::UserData& data{ m_repository->GetData() };
@@ -498,10 +511,46 @@ namespace LostArkMultiTool::Views
             currentTotal = total;
         }
 
-        std::wstring title{ points.empty() ? std::wstring{ CHART_EMPTY_TEXT }
-            : std::format(CHART_TITLE_FORMAT, Core::NumberFormat::FormatNumber(currentTotal, AMOUNT_DECIMALS)) };
+        std::wstring title{ points.empty() ? std::wstring{ CHART_EMPTY_TEXT } : std::wstring{ CHART_TITLE_TEXT } };
+        m_view->SetTotalAsset(points.empty() ? std::nullopt : std::optional<double>{ currentTotal });   // 카드 머리말 오른쪽 "총자산 N G"
         m_view->SetChart(std::move(title), std::move(points));
         return currentTotal;
+    }
+
+    // 고른 캐릭터의 보유 수량(상위 · 하위)을 모두 0으로 (지워지므로 먼저 확인 → 예: 저장 · 다시 계산, 원본에 없는 새 기능)
+    void CalculatorManager::ResetInput()
+    {
+        m_view->CommitEdit();   // 입력 중이던 칸은 확정한 뒤 지움
+
+        const std::optional<std::string> name{ GetSelectedCharacterName() };
+        if (!name.has_value())
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ RESET_NO_CHARACTER_TEXT }, Core::NoticeKind::NOTICE_INFO);
+            return;
+        }
+
+        m_context->m_notifier.AskYesNo(std::wstring{ RESET_TITLE }, std::format(RESET_QUESTION_FORMAT, Core::TextEncoding::UTF8ToWide(*name)),
+            [this, name = *name](bool isYes)
+        {
+            if (!isYes || !m_repository || !m_view) return;   // 답하기 전에 프로그램이 종료됐거나 아니요
+
+            Models::Character* character{ m_repository->GetData().FindCharacter(name) };
+            if (character == nullptr) return;
+
+            // 재료마다 직전 수량을 남기고 0으로 (지난 입력 대비 증감 표시와 같은 규칙)
+            for (std::size_t index{ FIRST_MATERIAL_INDEX }; index < Core::APPConstants::MAT_KEYS.size(); ++index)
+            {
+                Models::ItemData& item{ character->GetMaterial(Core::APPConstants::MAT_KEYS[index]) };
+                item.SetPreviousTopQty(item.GetTopQty());
+                item.SetTopQty(0.0);
+                item.SetPreviousBottomQty(item.GetBottomQty());
+                item.SetBottomQty(0.0);
+            }
+
+            TrySave();
+            SelectCharacter();   // 표 수량 다시 표시 + 재계산 (총자산 즉시 반영)
+            m_context->m_notifier.ShowToast(std::wstring{ RESET_DONE_TEXT }, Core::NoticeKind::NOTICE_SUCCESS);
+        });
     }
 
     // 레벨에 따라 보유수량 행 하나를 잠금 (1730 이상 = 상위만, 미만 = 하위만, 레벨 모름 = 둘 다) (원본 ApplyQtyRowLock)
@@ -581,4 +630,4 @@ namespace LostArkMultiTool::Views
                 Core::NoticeKind::NOTICE_ERROR, nullptr);
         }
     }
-}
+}

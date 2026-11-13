@@ -54,6 +54,8 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view CHART_EMPTY_FORMAT{ L"{} — 아직 기록이 없어요" };      // 고른 각인서에 기록이 없을 때
         constexpr std::wstring_view CHART_HINT_TEXT{ L"표에서 각인서를 고르면 일별 최저가 그래프가 보여요" };   // 아직 아무것도 고르지 않았을 때
         constexpr std::wstring_view SEARCH_IGNORED_CHARACTERS{ L" \t" };   // 검색할 때 무시하는 글자 (띄어쓰기 차이)
+        constexpr std::wstring_view REFRESH_DONE_TEXT{ L"유각 시세를 갱신했어요." };       // 수동 갱신이 끝났을 때 토스트
+        constexpr std::size_t TREND_DAY_COUNT{ 14 };                                     // 추이 선에 쓰는 최근 기록 일수
 
         // 예외 메시지(UTF-8) → 화면 문구 (변환할 수 없으면 기본 문구)
         [[nodiscard]] std::wstring ToWideMessage(const char* message)
@@ -66,6 +68,20 @@ namespace LostArkMultiTool::Views
             {
                 return std::wstring{ UNKNOWN_ERROR_TEXT };
             }
+        }
+
+        // 일별 최저가 기록 → 추이 선 값 (날짜순 마지막 TREND_DAY_COUNT일)
+        [[nodiscard]] std::vector<double> MakeTrend(const std::map<std::string, std::int64_t>& days)
+        {
+            std::vector<double> trend;                                         // 결과
+            const std::size_t skip{ days.size() > TREND_DAY_COUNT ? days.size() - TREND_DAY_COUNT : 0 };   // 오래된 날은 건너뜀
+            std::size_t index{};                                               // 지금까지 본 날 수
+            for (const auto& [dateKey, price] : days)
+            {
+                if (index++ < skip) continue;
+                trend.push_back(static_cast<double>(price));
+            }
+            return trend;
         }
 
         // 띄어쓰기를 뺀 글자 ("아드 레날린" → "아드레날린", 검색어 · 이름 비교용)
@@ -283,6 +299,7 @@ namespace LostArkMultiTool::Views
             m_service->ApplyQuotes(m_refreshTask.TakeResult());   // 백그라운드에서 난 예외는 여기서 다시 던져짐
             m_lastAutoError.reset();
             RecordHistory();                                       // 새 시세로 오늘의 각인서별 최저가 기록
+            if (!isAuto) m_context->m_notifier.ShowToast(std::wstring{ REFRESH_DONE_TEXT }, Core::NoticeKind::NOTICE_SUCCESS);   // 수동 갱신 완료 피드백
         }
         catch (const Core::APIKeyInvalidException& error)
         {
@@ -328,6 +345,36 @@ namespace LostArkMultiTool::Views
         });
     }
 
+    // 전체 시세 → 통계 카드 값 (실제 시세만 사용, 계산할 수 없는 값은 비워 둠)
+    EngravingStats EngravingFinderManager::BuildStats(const std::vector<Models::EngravingQuote>& quotes) const
+    {
+        EngravingStats stats;                                   // 결과
+        stats.m_quoteCount = quotes.size();                     // 조회한 종류 수
+        double rateSum{};                                       // 변동률 합
+        std::size_t rateCount{};                                // 변동률을 계산할 수 있는 종류 수
+        for (const Models::EngravingQuote& quote : quotes)
+        {
+            if (quote.GetCurrentMinPrice() > 0.0) ++stats.m_listedCount;   // 매물이 있는 종류
+            if (const std::optional<double> rate{ quote.GetDayChangeRate() }; rate.has_value())
+            {
+                rateSum += *rate;
+                ++rateCount;
+            }
+            if (quote.GetCurrentMinPrice() > stats.m_topPrice)             // 가장 비싼 각인서
+            {
+                stats.m_topPrice = quote.GetCurrentMinPrice();
+                stats.m_topName = ToWideMessage(quote.GetName().c_str());
+            }
+        }
+        if (rateCount > 0) stats.m_averageRate = rateSum / static_cast<double>(rateCount);   // 평균 변동률
+
+        if (const std::optional<std::int64_t>& lastUpdated{ m_service->GetLastUpdated() }; lastUpdated.has_value())
+        {
+            stats.m_updatedText = Core::LocalTime::FormatClock(*lastUpdated);   // 마지막 갱신 시각
+        }
+        return stats;
+    }
+
     // 검색어(띄어쓰기 무시)로 거르고 정렬 기준대로 표 채우기
     void EngravingFinderManager::RefreshTable()
     {
@@ -344,11 +391,13 @@ namespace LostArkMultiTool::Views
             if (!keyword.empty() && !RemoveSpaces(name).contains(keyword)) continue;
 
             rows.push_back(EngravingRow{ std::move(name), quote.GetCurrentMinPrice(), quote.GetDiff(),
-                quote.GetYesterdayAvgPrice(), quote.GetRecentPrice(), quote.GetDayChangeRate(), quote.GetName() });
+                quote.GetYesterdayAvgPrice(), quote.GetRecentPrice(), quote.GetDayChangeRate(), quote.GetName(),
+                MakeTrend(m_historyRepository->GetHistory().GetDays(quote.GetName())) });   // 추이 선 = 일별 최저가 기록
         }
 
         SortRows(rows, m_view->GetSortOrder());
-        m_view->ShowRows(rows);
+        m_view->ShowRows(rows, quotes.size());
+        m_view->SetStats(BuildStats(quotes));   // 위쪽 통계 카드 (검색과 상관없이 전체 시세 기준)
 
         // 표 행 순서대로 기록 키를 보관하고, 고른 각인서가 아직 표에 있으면 선택을 유지 (정렬 · 검색으로 순서가 바뀌어도)
         m_rowKeys.clear();

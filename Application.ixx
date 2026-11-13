@@ -12,6 +12,7 @@ import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Models.ServerConfig;
 import LostArkMultiTool.Services.UpdateInstaller;
+import LostArkMultiTool.Views.UI.TextBox;
 import LostArkMultiTool.Views.APIKeyDialog;
 import LostArkMultiTool.Views.DX11Renderer;
 import LostArkMultiTool.Views.MainWindow;
@@ -59,6 +60,14 @@ export namespace LostArkMultiTool::Views
         void InitializeTools();
         void ShutdownTools();
         void SelectTool(std::size_t index);
+        void SelectAdjacentTool(bool isNext);           // Alt+↑/↓: 보이는 도구 목록에서 위 · 아래로 이동
+        void ApplyToolFilter();                         // 도구 검색어로 왼쪽 메뉴 목록 걸러냄
+        void FocusToolSearch();                         // Ctrl+K: 도구 검색칸으로 포커스
+        void LeaveToolSearch(bool isClearing);          // 검색칸에서 탭 화면으로 포커스 돌려줌
+        [[nodiscard]] bool IsToolSearchFocused() const noexcept;
+        void LoadLastTool();                            // 마지막으로 쓴 도구 불러오기 (실행 시)
+        void SaveLastTool() const noexcept;             // 마지막으로 쓴 도구 저장 (도구를 바꿀 때)
+        void SyncWindowTitle();                         // 제목 표시줄 = "로스트아크 멀티툴 v… - 탭 이름"
 
         // ===== 원격 설정 (점검 스위치 · 업데이트 · 공지) =====
         void StartServerCheck(bool isStartup);   // isStartup: 실행 직후 확인 (확인 대화상자 표시)
@@ -112,6 +121,8 @@ export namespace LostArkMultiTool::Views
         UI::ControlHost m_headerHost;                       // 왼쪽 메뉴 아래 버튼 (API 키 설정)
         UI::Button* m_apiKeyButton{};                       // m_headerHost가 소유
         UI::Button* m_reportButton{};                       // [문제 보고] 버튼 (m_headerHost가 소유)
+        UI::TextBox* m_toolSearchBox{};                     // 왼쪽 메뉴 도구 검색칸 (m_headerHost가 소유)
+        std::vector<std::size_t> m_visibleTools;            // 검색어에 맞는 도구 번호 (메뉴에 보이는 순서)
         Core::BackgroundTask<std::filesystem::path> m_updateTask;   // 자동 업데이트 받기 · 검증
         std::wstring m_downloadURL;                         // 업데이트 다운로드 페이지 (자동 업데이트 실패 때 안내)
 

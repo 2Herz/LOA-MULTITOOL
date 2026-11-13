@@ -63,7 +63,8 @@ export namespace LostArkMultiTool::Views
 
         // ===== 화면 갱신 =====
         void RefreshView();   // 갱신이 끝날 때마다 호출 (원본 RefreshUI)
-        void RefreshPriceGrid();
+        void RefreshPriceGrid();   // 검색어 · 분류 · 정렬을 적용해 최저가 표를 채움 + 통계 카드
+        [[nodiscard]] GemStats BuildStats() const;   // 통계 카드 값 계산
         void RefreshAlarmList();
         void RefreshChart();
         void UpdateStatusText();

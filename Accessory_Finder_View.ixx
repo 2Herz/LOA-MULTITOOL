@@ -49,7 +49,8 @@ export namespace LostArkMultiTool::Views
         void SetPageInfo(std::wstring text, bool hasPrevious, bool hasNext);
 
         // ===== 결과 표 =====
-        void ShowListings(const std::vector<Models::AccessoryListing>& listings);
+        // categoryCode = 이 결과를 검색한 부위, totalCount = 조건에 맞는 전체 매물 수, searchedAtText = 검색을 마친 시각
+        void ShowListings(const std::vector<Models::AccessoryListing>& listings, int categoryCode, int totalCount, std::wstring searchedAtText);
 
         // ===== 프레임 =====
         void Update(double deltaSeconds);
@@ -71,7 +72,8 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] std::array<OptionSlot, Core::APPConstants::MAX_ACCESSORY_OPTION_FILTERS> MakeOptionSlots();
 
         void Layout(const Core::RectF& contentArea);
-        void RenderPanel(Core::Renderer& renderer) const;
+        void RenderCards(Core::Renderer& renderer) const;
+        void RenderEmptyState(Core::Renderer& renderer) const;   // 매물이 없을 때 표 위 안내
         void UpdatePageButtons() noexcept;
 
         UI::ControlHost m_host;
@@ -94,9 +96,22 @@ export namespace LostArkMultiTool::Views
         bool m_hasPrevious{};
         bool m_hasNext{};
 
-        Core::RectF m_panelBounds;   // 묶음 상자 (테두리 + 제목)
+        // 새 디자인 카드 영역 (Layout이 계산, Render가 그림)
+        static constexpr std::size_t STAT_CARD_COUNT{ 4 };   // 위쪽 통계 카드 수
+        std::array<Core::RectF, STAT_CARD_COUNT> m_statBounds;   // 통계 카드 칸
+        Core::RectF m_filterBounds;    // 검색 조건 카드
+        Core::RectF m_resultBounds;    // 결과 카드 (머리말 + 표 + 아래 줄)
+        Core::RectF m_gridBounds;      // 결과 표 칸
+        Core::RectF m_footerBounds;    // 표 아래 줄 (설명 + 페이지 이동)
         Core::RectF m_layoutArea;
         bool m_hasLayout{};
+
+        // 통계 카드에 보여 줄 실제 검색 결과 값
+        bool m_hasSearched{};                    // 한 번이라도 결과를 받았는지
+        int m_totalCount{};                      // 조건에 맞는 전체 매물 수
+        std::optional<std::int64_t> m_lowestPrice;    // 이 페이지 즉시 구매가 최저
+        std::optional<std::int64_t> m_averagePrice;   // 이 페이지 즉시 구매가 평균
+        std::wstring m_searchedAtText;           // 마지막 검색 시각
 
         std::function<void()> m_onSearch;
         std::function<void(int)> m_onPageMove;

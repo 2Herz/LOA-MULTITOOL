@@ -30,9 +30,10 @@ namespace LostArkMultiTool::Views
         // ===== 문구 =====
         constexpr std::wstring_view NOT_UPDATED_TEXT{ L"아직 조회하지 않았어요." };
         constexpr std::wstring_view REFRESHING_TEXT{ L"야금술 · 재봉술 시세 조회 중..." };
-        constexpr std::wstring_view STATUS_FORMAT{ L"야금술 {}종 · 재봉술 {}종 · 마지막 갱신 {}" };
+        constexpr std::wstring_view STATUS_FORMAT{ L"마지막 갱신 {}" };
         constexpr std::wstring_view BACKGROUND_STATUS_FORMAT{ L"강화책: {}분마다 시세를 자동으로 갱신해요." };
         constexpr std::wstring_view AUTO_ERROR_FORMAT{ L"{}: {}" };
+        constexpr std::wstring_view REFRESH_DONE_TEXT{ L"강화책 시세를 갱신했어요." };   // 직접 갱신을 눌렀을 때 완료 알림
 
         constexpr std::wstring_view NOTICE_TITLE{ L"알림" };
         constexpr std::wstring_view ERROR_TITLE{ L"오류" };
@@ -214,11 +215,13 @@ namespace LostArkMultiTool::Views
         m_view->SetRefreshEnabled(true);
         const bool isAuto{ m_isRunningAuto };
         std::optional<std::string> keyError;
+        bool isApplied{};   // 시세를 정상으로 받았는지
 
         try
         {
             m_service->ApplyQuotes(m_refreshTask.TakeResult());   // 백그라운드에서 난 예외는 여기서 다시 던져짐
             m_lastAutoError.reset();
+            isApplied = true;
         }
         catch (const Core::APIKeyInvalidException& error)
         {
@@ -242,6 +245,7 @@ namespace LostArkMultiTool::Views
         }
 
         RefreshTables();
+        if (isApplied && !isAuto) m_context->m_notifier.ShowToast(std::wstring{ REFRESH_DONE_TEXT }, Core::NoticeKind::NOTICE_SUCCESS);   // 완료 토스트
 
         // 조회가 끝난 뒤에 키 재입력 안내
         if (keyError.has_value()) HandleAPIKeyError(*keyError);
@@ -287,7 +291,7 @@ namespace LostArkMultiTool::Views
             m_view->SetStatusText(std::wstring{ NOT_UPDATED_TEXT });
             return;
         }
-        m_view->SetStatusText(std::format(STATUS_FORMAT, metallurgyRows.size(), tailoringRows.size(), Core::LocalTime::FormatClock(*lastUpdated)));
+        m_view->SetStatusText(std::format(STATUS_FORMAT, Core::LocalTime::FormatClock(*lastUpdated)));
     }
 
     // 자동 갱신 오류는 내용이 바뀌었을 때만 알림 (같은 오류가 반복해서 뜨는 것 방지, 숨어 있으면 풍선 알림)

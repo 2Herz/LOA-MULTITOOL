@@ -28,6 +28,7 @@ export namespace LostArkMultiTool::Core
         KEY_C,
         KEY_V,
         KEY_X,
+        KEY_K,      // Ctrl+K 도구 검색
         KEY_SPACE,
         KEY_1,      // KEY_1 ~ KEY_9는 순서대로 이어져 있어야 함 (탭 단축키 계산)
         KEY_2,
@@ -85,6 +86,7 @@ export namespace LostArkMultiTool::Core
         Key m_key{ Key::KEY_UNKNOWN };
         bool m_isCtrlDown{};
         bool m_isShiftDown{};
+        bool m_isAltDown{};   // Alt+↑/↓ 도구 이동 (WM_SYSKEYDOWN)
     };
 
     // 확정된 글자 (일반 타자 · 한글 조합 완료)
