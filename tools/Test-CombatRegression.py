@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """전투력 계수 회귀 테스트 (lopec 측정값 대비)
 
-보정 키트(lopec_results/calibration_kit, gitignore)의 Python 미러로 지금까지 측정한 lopec 결과(아크 패시브 51명)를 다시 계산해서
+보정 키트(Verify/lopec_results/calibration_kit, gitignore)의 Python 미러로 지금까지 측정한 lopec 결과(아크 패시브 51명)를 다시 계산해서
 data/CombatCoefficients.json을 바꾼 뒤 예측 오차가 허용치를 넘는 캐릭터가 생겼는지 확인한다.
  - 6랭크 캐릭터: ap_class_eval.py (단일 랭크 모델과 같음)
  - 랭크가 덜 찬 캐릭터: ap_tree_eval.py b (v1.5.4 트리별 랭크 모델)
@@ -22,7 +22,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))                        # 저장소 루트
-KIT = os.path.join(ROOT, 'lopec_results', 'calibration_kit')                              # 보정 키트 (gitignore)
+KIT = os.path.join(ROOT, 'Verify', 'lopec_results', 'calibration_kit')                              # 보정 키트 (gitignore)
 CLASS_SCRIPT = os.path.join(KIT, 'ap_class_eval.py')                                      # 6랭크 평가
 TREE_SCRIPT = os.path.join(KIT, 'ap_tree_eval.py')                                        # 트리별 랭크 평가
 CLASS_RESULT = os.path.join(KIT, 'analysis', 'class', 'ap_class_eval.json')               # 6랭크 평가 결과

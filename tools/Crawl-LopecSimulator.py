@@ -20,7 +20,7 @@
     COMBO_GEAR: 6부위 재련 + 품질을 동시에 무작위 (기본 250)
     COMBO_DEAL: 악세 연마 · 주스탯 + 팔찌 효과 + 스톤 각인을 동시에 무작위 (기본 250)
 
-결과: lopec_results/로펙_<캐릭터>_<날짜>.csv (utf-8-sig)
+결과: Verify/lopec_results/로펙_<캐릭터>_<날짜>.csv (utf-8-sig)
 """
 import argparse
 import csv
@@ -36,8 +36,8 @@ from playwright.sync_api import sync_playwright
 # ===== 접속 · 출력 =====
 SIMULATOR_URL = "https://lopec.kr/character/simulator/{name}"   # 캐릭터 시뮬레이터 주소
 DEFAULT_CHARACTERS = ["핢머니", "리퍼는지켜줘야해", "필례"]   # 기준 + 검증 캐릭터
-OUTPUT_DIR = "lopec_results"                                      # CSV 저장 폴더
-PROFILE_DIR = "lopec_browser_profile"                             # 브라우저 프로필 (쿠키 유지)
+OUTPUT_DIR = "Verify/lopec_results"                                      # CSV 저장 폴더
+PROFILE_DIR = "Verify/lopec_browser_profile"                             # 브라우저 프로필 (쿠키 유지)
 AD_MARKER = "google_vignette"                                     # 전면 광고가 뜨면 주소에 붙는 표시
 NO_THROTTLE_ARGS = ["--disable-background-timer-throttling",      # 가려진 창의 타이머 억제 끄기
                     "--disable-renderer-backgrounding",
