@@ -61,7 +61,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view GEM_TARGET_TEXT{ L"모든 보석 목표 레벨" };  // 보석 전체 목표 안내 글자
         constexpr std::wstring_view GEAR_PANEL_TITLE{ L"장비 재련 · 완갑 (목표 칸에 숫자를 넣어요)" };  // 장비 재련 상자 제목
         constexpr std::wstring_view OPTION_PANEL_TITLE{ L"보석 · 무기 품질" };  // 보석 · 품질 상자 제목
-        constexpr std::wstring_view NOTE_TEXT{ L"※ lopec 측정 기반 추정치예요. 근사: 스톤 1번 줄 없음(불안정) · 직업 각인(미측정) · 스톤과 같은 이름의 각인서(약 ±4%) · 아크 패시브 랭크(세 트리 중 가장 낮은 값) · 깨달음 포인트 구성(최대로 가정) · 완갑(에스더/일반 두 가지 표)" };  // 추정치 안내 문구
+        constexpr std::wstring_view NOTE_TEXT{ L"※ lopec 측정 기반 추정치예요. 근사: 스톤 1번 줄 없음(불안정) · 스톤과 같은 이름의 각인서(약 ±4%) · 깨달음 포인트 구성(최대로 가정) · 완갑(에스더/일반 두 가지 표)" };  // 추정치 안내 문구
         constexpr std::wstring_view HINT_DEFAULT_TEXT{ L"항목을 고르면 여기서 선택지를 고를 수 있어요. 숫자 항목은 목표 칸을 눌러 바로 입력해요." };  // 카드 기본 안내 문구
         constexpr std::wstring_view HINT_NUMBER_FORMAT{ L"{}   현재 {}  →  목표 {}   (목표 칸을 눌러 숫자를 입력)" };  // 숫자 항목 안내 서식
         constexpr std::wstring_view HINT_CHOICE_FORMAT{ L"{}   현재 {}  →  목표 {}" };  // 선택 항목 안내 서식

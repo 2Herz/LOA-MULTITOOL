@@ -105,7 +105,8 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
     // 아크 패시브
     struct ArkPassiveState
     {
-        int m_rank{ MAX_PASSIVE_RANK };                                       // 랭크 0 ~ 6
+        int m_rank{ MAX_PASSIVE_RANK };                                       // 랭크 0 ~ 6 (세 트리 중 가장 낮은 값, 편집기 표시용)
+        std::array<int, PASSIVE_TREE_COUNT> m_treeRanks{ MAX_PASSIVE_RANK, MAX_PASSIVE_RANK, MAX_PASSIVE_RANK };  // 진화 · 깨달음 · 도약 트리별 랭크 (랭크를 고치면 셋 다 같은 값)
         std::string m_enlightenment{ FULL_ENLIGHTENMENT };                    // 깨달음 포인트 구성
         std::array<int, PASSIVE_TREE_COUNT> m_levels{};                       // 진화 · 깨달음 · 도약 레벨
         [[nodiscard]] bool operator==(const ArkPassiveState& other) const = default;  // 모든 멤버가 같으면 같은 상태 (기본 비교 연산)

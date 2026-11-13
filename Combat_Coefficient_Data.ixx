@@ -171,6 +171,7 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
 
     [[nodiscard]] std::span<const KeyedValue> GetEnlightenmentRatios() noexcept;         // 깨달음 포인트 구성 → 배율
     [[nodiscard]] std::span<const double> GetPassiveRankRatios() noexcept;               // [랭크 0 ~ 6] → 배율
+    [[nodiscard]] std::span<const double> GetPassiveRankTreeShares() noexcept;           // [진화 · 깨달음 · 도약] 현재 랭크 ln 몫 (합 1)
     [[nodiscard]] const PassiveSlopes& GetPassiveSlopes() noexcept;  // 패시브 기울기 조회
     // 랭크 · 깨달음 포인트가 둘 다 최대가 아닐 때 ln 보정 = 상수 + 교차항 × (1 - 랭크 배율) × (1 - 깨달음 배율)
     struct PassiveInteraction

@@ -1127,6 +1127,10 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         constexpr std::array<double, 7> PASSIVE_RANK_RATIOS{   // 총 7칸
             0.9254627, 0.9382875, 0.951228, 0.9642855, 0.9774293, 0.9907199, 1.0,   // 칸 0 ~ 6
         };   // PASSIVE_RANK_RATIOS 끝
+        // 현재 랭크 ln의 트리별 몫 (진화 · 깨달음 · 도약, 합 1)
+        constexpr std::array<double, 3> PASSIVE_RANK_TREE_SHARES{   // 총 3칸
+            0.46133, 0.26073, 0.27794,   // 칸 0 ~ 2
+        };   // PASSIVE_RANK_TREE_SHARES 끝
         constexpr PassiveSlopes PASSIVE_SLOPES{ 0.000443262, 0.000198808 };   // 레벨 1 · 2 감소 기울기
         constexpr PassiveInteraction PASSIVE_INTERACTION{ -0.00425393, -0.37053824 };   // 랭크 < 최대 · 깨달음 < 최대일 때 ln 상수 · 교차항
 
@@ -1385,6 +1389,12 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
     std::span<const double> GetPassiveRankRatios() noexcept
     {
         return PASSIVE_RANK_RATIOS;   // 아크 패시브 랭크별 배율 반환
+    }
+
+    // 아크 패시브 랭크 트리별 몫
+    std::span<const double> GetPassiveRankTreeShares() noexcept
+    {
+        return PASSIVE_RANK_TREE_SHARES;   // 아크 패시브 랭크 트리별 몫 반환
     }
 
     // 아크 패시브 레벨 감소 기울기

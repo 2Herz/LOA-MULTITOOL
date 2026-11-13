@@ -384,13 +384,26 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         const Models::ArkPassiveState& from{ current.m_extra.m_passive };  // 현재 패시브 상태
         const Models::ArkPassiveState& to{ target.m_extra.m_passive };  // 목표 패시브 상태
 
-        // 랭크 (0 ~ 6 표)
+        // 랭크 (0 ~ 6 표, 트리별 랭크의 ln을 몫으로 가중합 · lopec 랭크 조절은 세 트리를 같은 값으로)
         double factor{ NO_CHANGE_FACTOR };  // 배율 초기값 (변화 없음)
         const std::span<const double> ranks{ Data::GetPassiveRankRatios() };  // 랭크 배율 표
+        const std::span<const double> shares{ Data::GetPassiveRankTreeShares() };  // 트리별 몫 (진화 · 깨달음 · 도약)
         const auto rankRatio{ [&ranks](int rank) { return ranks.empty() ? FULL_PASSIVE_RATIO : ranks[static_cast<std::size_t>(std::clamp(rank, Models::MIN_VALUE, static_cast<int>(ranks.size()) - 1))]; } };  // 랭크를 표 범위 안으로 제한해 배율 조회 (표가 없으면 최대 취급)
-        const double fromRank{ rankRatio(from.m_rank) };  // 현재 랭크 배율
-        const double toRank{ rankRatio(to.m_rank) };  // 목표 랭크 배율
+        const auto treeRankRatio{ [&rankRatio, &shares](const Models::ArkPassiveState& state)  // 트리별 랭크 → 효과 랭크 배율
+        {
+            double rankLn{ NO_INTERACTION_LN };  // 가중 ln 합
+            for (std::size_t tree{}; tree < state.m_treeRanks.size() && tree < shares.size(); ++tree)  // 몫이 있는 트리만 순회 (경계 검사)
+            {
+                const double ratio{ rankRatio(state.m_treeRanks[tree]) };  // 이 트리 랭크의 표 배율
+                if (ratio > 0.0) rankLn += shares[tree] * std::log(ratio);  // 양수일 때만 몫 × ln 누적
+            }
+            return std::exp(rankLn);  // 효과 랭크 배율
+        } };
+        const double fromRank{ treeRankRatio(from) };  // 현재 랭크 배율 (트리별 가중)
+        const double toRank{ treeRankRatio(to) };  // 목표 랭크 배율 (트리별 가중)
         if (fromRank > 0.0) factor *= toRank / fromRank;  // 현재 랭크 값이 양수이면 랭크 배율 반영
+        const double fromEnlightenmentRank{ rankRatio(from.m_treeRanks[PASSIVE_ENLIGHTENMENT_TREE]) };  // 현재 깨달음 트리 랭크 배율 (상호작용용)
+        const double toEnlightenmentRank{ rankRatio(to.m_treeRanks[PASSIVE_ENLIGHTENMENT_TREE]) };  // 목표 깨달음 트리 랭크 배율 (상호작용용)
 
         // 깨달음 포인트 구성 (+ 랭크와 둘 다 최대가 아닐 때 상호작용)
         const std::span<const Data::KeyedValue> enlightenments{ Data::GetEnlightenmentRatios() };  // 깨달음 구성 배율 표
@@ -399,7 +412,7 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         if (fromEnlightenment != nullptr && toEnlightenment != nullptr && fromEnlightenment->m_value > 0.0 && fromRank > 0.0)  // 두 구성이 모두 표에 있고 값이 양수일 때만
         {
             factor *= toEnlightenment->m_value / fromEnlightenment->m_value;  // 깨달음 구성 비율 반영
-            factor *= std::exp(GetPassiveInteractionLn(toRank, toEnlightenment->m_value) - GetPassiveInteractionLn(fromRank, fromEnlightenment->m_value));  // 상호작용 ln 차이 반영
+            factor *= std::exp(GetPassiveInteractionLn(toEnlightenmentRank, toEnlightenment->m_value) - GetPassiveInteractionLn(fromEnlightenmentRank, fromEnlightenment->m_value));  // 상호작용 ln 차이 반영 (깨달음 트리 랭크 기준, lopec 측정)
         }
 
         // 깨달음 · 도약 레벨 (진화 레벨은 효과 없음)

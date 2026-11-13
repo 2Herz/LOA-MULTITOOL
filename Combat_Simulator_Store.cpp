@@ -62,6 +62,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         constexpr std::string_view KEY_RANK{ "Rank" };  // 랭크 키
         constexpr std::string_view KEY_ENLIGHTENMENT{ "Enlightenment" };  // 깨달음 키
         constexpr std::string_view KEY_LEVELS{ "Levels" };  // 레벨 배열 키
+        constexpr std::string_view KEY_TREE_RANKS{ "TreeRanks" };  // 트리별 랭크 배열 키
         constexpr std::string_view KEY_VAMBRACE{ "Vambrace" };  // 완갑 레벨 키
         constexpr std::string_view KEY_VAMBRACE_GRADE{ "VambraceGrade" };  // 완갑 등급 키 (0 영웅 ~ 3 고대)
         constexpr int MAX_VAMBRACE_GRADE{ static_cast<int>(Models::VambraceGrade::VAMBRACE_ANCIENT) };  // 완갑 등급 최대값 (고대)
@@ -168,7 +169,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             add(KEY_CORES, JSONValue::CreateArray(std::move(cores)));  // 아크 코어 저장
             add(KEY_ARK_GEM_LEVELS, MakeNumbers(extra.m_arkGemLevels));  // 아크 젬 레벨 저장
             add(KEY_PASSIVE, MakeObject({ { KEY_RANK, MakeNumber(extra.m_passive.m_rank) }, { KEY_ENLIGHTENMENT, MakeString(extra.m_passive.m_enlightenment) },  // 아크 패시브 저장 (랭크 · 깨달음 · 레벨)
-                { KEY_LEVELS, MakeNumbers(extra.m_passive.m_levels) } }));
+                { KEY_LEVELS, MakeNumbers(extra.m_passive.m_levels) }, { KEY_TREE_RANKS, MakeNumbers(extra.m_passive.m_treeRanks) } }));
             if (extra.m_vambraceLevel.has_value()) add(KEY_VAMBRACE, MakeNumber(*extra.m_vambraceLevel));  // 완갑 레벨이 있을 때만 저장
             if (extra.m_vambraceGrade.has_value()) add(KEY_VAMBRACE_GRADE, MakeNumber(static_cast<int>(*extra.m_vambraceGrade)));  // 완갑 등급이 있을 때만 저장
             return JSONValue::CreateObject(std::move(keys), std::move(values));  // 전체 객체 생성 후 반환
@@ -216,6 +217,8 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
 
             const JSONValue& passive{ root.FindMember(KEY_PASSIVE) };  // 아크 패시브 객체
             ReadStored(passive.FindMember(KEY_RANK), extra.m_passive.m_rank);  // 랭크 읽기
+            extra.m_passive.m_treeRanks.fill(extra.m_passive.m_rank);  // 트리별 랭크가 없던 예전 저장 파일이면 랭크로 채움
+            ReadArray(passive.FindMember(KEY_TREE_RANKS), extra.m_passive.m_treeRanks, [](const JSONValue& item, int& rank) { ReadStored(item, rank); });  // 트리별 랭크 배열 읽기
             ReadString(passive.FindMember(KEY_ENLIGHTENMENT), extra.m_passive.m_enlightenment);  // 깨달음 읽기
             ReadArray(passive.FindMember(KEY_LEVELS), extra.m_passive.m_levels, [](const JSONValue& item, int& level) { ReadStored(item, level); });  // 레벨 배열 읽기
 

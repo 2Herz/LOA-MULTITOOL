@@ -166,6 +166,7 @@ namespace LostArkMultiTool::Models  // 모델 네임스페이스 시작
             for (ArkCoreState& core : clamped.m_cores) core.m_points = std::clamp(core.m_points, MIN_VALUE, MAX_ARK_CORE_POINTS);  // 코어 의지력 포인트 범위 제한
             for (int& level : clamped.m_arkGemLevels) level = std::clamp(level, MIN_VALUE, MAX_ARK_GEM_LEVEL_SUM);  // 아크 젬 레벨 합 범위 제한
             clamped.m_passive.m_rank = std::clamp(clamped.m_passive.m_rank, MIN_VALUE, MAX_PASSIVE_RANK);  // 아크 패시브 랭크 범위 제한
+            for (int& rank : clamped.m_passive.m_treeRanks) rank = std::clamp(rank, MIN_VALUE, MAX_PASSIVE_RANK);  // 아크 패시브 트리별 랭크 범위 제한
             for (int& level : clamped.m_passive.m_levels) level = std::clamp(level, MIN_VALUE, MAX_PASSIVE_LEVEL);  // 아크 패시브 트리 레벨 범위 제한
             if (clamped.m_vambraceLevel.has_value())  // 완갑이 있으면
             {

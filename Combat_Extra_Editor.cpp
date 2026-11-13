@@ -315,7 +315,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         for (int rank{ Models::MIN_VALUE }; rank <= Models::MAX_PASSIVE_RANK; ++rank) ranks.push_back(std::format(RANK_FORMAT, rank));  // 0 ~ 최대 랭크 글자 만들기
         AddIndexChoice(specs, RANK_LABEL, std::move(ranks),  // 랭크 선택 행 추가
             [](const Models::ExtraState& state) { return static_cast<std::size_t>(std::clamp(state.m_passive.m_rank, Models::MIN_VALUE, Models::MAX_PASSIVE_RANK)); },  // 현재 랭크 번호 읽기 함수
-            [](Models::ExtraState& state, std::size_t index) { state.m_passive.m_rank = static_cast<int>(index); });  // 랭크 번호 쓰기 함수
+            [](Models::ExtraState& state, std::size_t index) { state.m_passive.m_rank = static_cast<int>(index); state.m_passive.m_treeRanks.fill(state.m_passive.m_rank); });  // 랭크 번호 쓰기 함수 (lopec처럼 세 트리를 모두 같은 랭크로)
 
         // 깨달음 포인트 구성: 배율이 큰 구성부터
         std::vector<Data::KeyedValue> enlightenments{ Data::GetEnlightenmentRatios().begin(), Data::GetEnlightenmentRatios().end() };  // 깨달음 구성 표 복사

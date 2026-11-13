@@ -237,6 +237,8 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         constexpr std::array<std::string_view, Models::PASSIVE_TREE_COUNT> PASSIVE_TREE_NAMES{ "진화", "깨달음", "도약" };  // 아크 패시브 트리 이름 표
         constexpr std::size_t PASSIVE_RANK_INDEX{ 0 };      // "6랭크 27레벨"에서 첫 번째 숫자
         constexpr std::size_t PASSIVE_LEVEL_INDEX{ 1 };     // 두 번째 숫자
+        constexpr int EMPTY_TREE_RANK{ 0 };                 // 설명이 빈 트리(랭크 미달성)의 랭크 (lopec 해석)
+        constexpr int EMPTY_TREE_LEVEL{ 1 };                // 설명이 빈 트리의 레벨 (lopec 해석)
 
         // ASCII 대소문자를 가리지 않고 같은 글자인지 (태그 이름 비교용)
         [[nodiscard]] bool EqualsIgnoreCase(char first, char second) noexcept
@@ -532,7 +534,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             }
         }
 
-        // 아크 패시브: 진화 · 깨달음 · 도약의 "N랭크 M레벨" (랭크는 세 트리 중 가장 낮은 값)
+        // 아크 패시브: 진화 · 깨달음 · 도약의 "N랭크 M레벨" → 트리별 랭크 · 레벨 (설명이 비면 랭크 0 · 레벨 1, 표시 랭크는 세 트리 중 가장 낮은 값)
         void ParseArkPassive(const JSONValue& arkPassive, Models::ExtraState& extra)
         {
             std::optional<int> lowestRank;  // 가장 낮은 랭크
@@ -541,10 +543,13 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
                 const auto tree{ std::ranges::find(PASSIVE_TREE_NAMES, std::string_view{ point.FindMember(KEY_NAME).GetString() }) };  // 트리 이름 찾기
                 if (tree == PASSIVE_TREE_NAMES.end()) continue;  // 모르는 트리면 건너뜀
 
+                const auto treeIndex{ static_cast<std::size_t>(std::distance(PASSIVE_TREE_NAMES.begin(), tree)) };  // 트리 번호
                 const std::vector<int> numbers{ ExtractIntegers(point.FindMember(KEY_DESCRIPTION).GetString()) };  // 설명에서 숫자 추출
-                if (numbers.size() <= PASSIVE_LEVEL_INDEX) continue;  // 숫자가 부족하면 건너뜀
-                extra.m_passive.m_levels[static_cast<std::size_t>(std::distance(PASSIVE_TREE_NAMES.begin(), tree))] = numbers[PASSIVE_LEVEL_INDEX];  // 트리 레벨 기록
-                lowestRank = std::min(lowestRank.value_or(numbers[PASSIVE_RANK_INDEX]), numbers[PASSIVE_RANK_INDEX]);  // 가장 낮은 랭크 갱신
+                const bool hasRank{ numbers.size() > PASSIVE_LEVEL_INDEX };  // "N랭크 M레벨"이 모두 있는지
+                const int rank{ hasRank ? numbers[PASSIVE_RANK_INDEX] : EMPTY_TREE_RANK };  // 트리 랭크 (없으면 랭크 미달성)
+                extra.m_passive.m_levels[treeIndex] = hasRank ? numbers[PASSIVE_LEVEL_INDEX] : EMPTY_TREE_LEVEL;  // 트리 레벨 기록 (없으면 최소 레벨)
+                extra.m_passive.m_treeRanks[treeIndex] = rank;  // 트리 랭크 기록
+                lowestRank = std::min(lowestRank.value_or(rank), rank);  // 가장 낮은 랭크 갱신
             }
             if (lowestRank.has_value()) extra.m_passive.m_rank = *lowestRank;  // 랭크가 있으면 기록
         }

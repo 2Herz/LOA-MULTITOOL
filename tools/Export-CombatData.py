@@ -264,6 +264,7 @@ def build_extra(data):
     consts.append(format_keyed('ENLIGHTENMENT_RATIOS', list(passive['EnlightenmentPoint'].items()), '깨달음 포인트 구성 → 전투력 배율 (최대 구성 = 1)'))
     ranks = [passive['RankControl'][str(rank)] for rank in range(RANK_COUNT)]
     consts.append(format_array('PASSIVE_RANK_RATIOS', ranks, '아크 패시브 랭크 0 ~ 6 → 전투력 배율'))
+    consts.append(format_array('PASSIVE_RANK_TREE_SHARES', passive['RankTreeShares'], '현재 랭크 ln의 트리별 몫 (진화 · 깨달음 · 도약, 합 1)'))
     consts.append(f'{INDENT * 2}constexpr PassiveSlopes PASSIVE_SLOPES{{ {format_number(passive["Level1_RatioPerLevel"])}, {format_number(passive["Level2_RatioPerLevel"])} }};   // 레벨 1 · 2 감소 기울기')
     interaction = passive['RankEnlightenmentInteraction']   # 랭크 · 깨달음 포인트가 둘 다 최대가 아닐 때 상호작용
     consts.append(f'{INDENT * 2}constexpr PassiveInteraction PASSIVE_INTERACTION{{ {format_number(interaction["ConstantLn"])}, {format_number(interaction["CrossLn"])} }};   // 랭크 < 최대 · 깨달음 < 최대일 때 ln 상수 · 교차항')
@@ -322,6 +323,7 @@ def build_extra(data):
         ('std::span<const KeyedValue> GetArkGemPerLevel() noexcept', 'ARK_GEM_PER_LEVEL', '아크 그리드 젬 효과 레벨 1당 ln'),
         ('std::span<const KeyedValue> GetEnlightenmentRatios() noexcept', 'ENLIGHTENMENT_RATIOS', '깨달음 포인트 구성별 배율'),
         ('std::span<const double> GetPassiveRankRatios() noexcept', 'PASSIVE_RANK_RATIOS', '아크 패시브 랭크별 배율'),
+        ('std::span<const double> GetPassiveRankTreeShares() noexcept', 'PASSIVE_RANK_TREE_SHARES', '아크 패시브 랭크 트리별 몫'),
         ('const PassiveSlopes& GetPassiveSlopes() noexcept', 'PASSIVE_SLOPES', '아크 패시브 레벨 감소 기울기'),
         ('const PassiveInteraction& GetPassiveInteraction() noexcept', 'PASSIVE_INTERACTION', '아크 패시브 랭크 · 깨달음 상호작용'),
         ('std::span<const VambraceGrade> GetVambraceGrades() noexcept', 'VAMBRACE_GRADES', '완갑 등급별 재련 단계 표'),
