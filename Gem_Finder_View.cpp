@@ -141,6 +141,18 @@ namespace LostArkMultiTool::Views
             return Core::APPConstants::MAX_GEM_LEVEL - static_cast<int>(row);
         }
 
+        // ===== 보석 레벨 → 게임 등급 (7 = 전설 · 8~9 = 유물 · 10 = 고대) =====
+        constexpr int LEGENDARY_MAX_GEM_LEVEL{ 7 };    // 이 레벨까지 전설 등급
+        constexpr int ANCIENT_MIN_GEM_LEVEL{ 10 };     // 이 레벨부터 고대 등급 (그 사이는 유물)
+
+        // 레벨 열 글자색 (강화책 · 젬 이름과 같은 게임 등급 색)
+        [[nodiscard]] const Core::Color& GetLevelGradeColor(int level) noexcept
+        {
+            if (level <= LEGENDARY_MAX_GEM_LEVEL) return Theme::GRADE_LEGENDARY_COLOR;   // 전설
+            if (level >= ANCIENT_MIN_GEM_LEVEL) return Theme::GRADE_ANCIENT_COLOR;       // 고대
+            return Theme::GRADE_RELIC_COLOR;                                             // 유물
+        }
+
         [[nodiscard]] std::wstring_view GetStateText(AlarmState state) noexcept
         {
             switch (state)
@@ -522,7 +534,7 @@ namespace LostArkMultiTool::Views
         for (std::size_t row{}; row < Models::GemCatalog::LEVEL_COUNT; ++row)
         {
             m_priceGrid.SetCellText(row, PRICE_COL_LEVEL, std::format(L"{}{}", GetRowLevel(row), LEVEL_SUFFIX));
-            m_priceGrid.SetCellStyle(row, PRICE_COL_LEVEL, UI::GridCellStyle{ Theme::LABEL_BACK_COLOR, Theme::HEADER_TEXT_COLOR });
+            m_priceGrid.SetCellStyle(row, PRICE_COL_LEVEL, UI::GridCellStyle{ Theme::LABEL_BACK_COLOR, GetLevelGradeColor(GetRowLevel(row)), Core::FontWeight::BOLD });   // 머리글 톤 바탕 + 등급색 굵은 글자
 
             for (std::size_t column{ PRICE_COL_FIRST_TYPE }; column < m_priceGrid.GetColumnCount(); ++column)
             {

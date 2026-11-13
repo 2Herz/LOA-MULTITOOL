@@ -209,9 +209,9 @@ namespace LostArkMultiTool::Views
             const UI::GridCellStyle normalStyle{ Theme::CELL_BACK_COLOR, Theme::TEXT_COLOR };
             const UI::GridCellStyle mutedStyle{ Theme::CELL_BACK_COLOR, Theme::MUTED_TEXT_COLOR };
 
-            // 이름
+            // 이름 (조회 대상이 유물 각인서뿐이라 유물 등급색 + 굵게, 강화책 · 젬 이름과 같은 형식)
             m_priceGrid.SetCellText(row, COL_NAME, engraving.m_name);
-            m_priceGrid.SetCellStyle(row, COL_NAME, normalStyle);
+            m_priceGrid.SetCellStyle(row, COL_NAME, UI::GridCellStyle{ Theme::CELL_BACK_COLOR, Theme::GRADE_RELIC_COLOR, Core::FontWeight::BOLD });
 
             // 현재 최저가 + 직전 갱신 대비 등락 (▲ 빨강 / ▼ 파랑, 원본 보석 검색기와 같은 형식)
             std::wstring currentText{ FormatPrice(engraving.m_currentMinPrice) };

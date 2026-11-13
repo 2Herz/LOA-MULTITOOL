@@ -106,7 +106,7 @@ export namespace LostArkMultiTool::Views::Theme
         }
     }
 
-    // ===== 아이템 등급 글자색 (게임 등급 색 → 강화책 · 젬 이름) =====
+    // ===== 아이템 등급 글자색 (게임 등급 색 → 강화책 · 젬 · 유각 이름, 보석 레벨) =====
     inline constexpr Core::Color GRADE_NORMAL_COLOR{ MakeColor(220, 220, 220) };    // 일반
     inline constexpr Core::Color GRADE_UNCOMMON_COLOR{ MakeColor(141, 198, 63) };   // 고급
     inline constexpr Core::Color GRADE_RARE_COLOR{ MakeColor(0, 176, 250) };        // 희귀
