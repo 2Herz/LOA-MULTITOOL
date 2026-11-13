@@ -1020,12 +1020,13 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         } };   // BOOK_CANDIDATES 끝
         constexpr LevelRange LEGEND_RATIO{ 0.861525, 0.976897 };   // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0, 레벨 4)
 
-        // 아바타 한 부위의 ln 배율 (등급 이름 → 값)
-        constexpr std::array<KeyedValue, 3> AVATAR_LN{ {   // 문구 키 3개
-            KeyedValue{ "전설", 0.008885 },   // 키 → 값
-            KeyedValue{ "영웅", 0.004423 },   // 키 → 값
+        // 아바타 한 부위의 주스탯 % (등급 이름 → 값)
+        constexpr std::array<KeyedValue, 3> AVATAR_PERCENT{ {   // 문구 키 3개
+            KeyedValue{ "전설", 2.0 },   // 키 → 값
+            KeyedValue{ "영웅", 1.0 },   // 키 → 값
             KeyedValue{ "없음", 0.0 },   // 키 → 값
-        } };   // AVATAR_LN 끝
+        } };   // AVATAR_PERCENT 끝
+        constexpr double AVATAR_MAIN_STAT_SCALE{ 0.009569 };   // 아바타 배율 = sqrt((1 + 이 값 × 목표 % 합) / (1 + 이 값 × 현재 % 합))
 
         // 코어 번호별 고대 등급 추가 ln
         constexpr std::array<double, 6> ARK_CORE_ANCIENT_GAINS{   // 총 6칸
@@ -1123,6 +1124,7 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
             0.9254627, 0.9382875, 0.951228, 0.9642855, 0.9774293, 0.9907199, 1.0,   // 칸 0 ~ 6
         };   // PASSIVE_RANK_RATIOS 끝
         constexpr PassiveSlopes PASSIVE_SLOPES{ 0.000443262, 0.000198808 };   // 레벨 1 · 2 감소 기울기
+        constexpr PassiveInteraction PASSIVE_INTERACTION{ -0.00425393, -0.37053824 };   // 랭크 < 최대 · 깨달음 < 최대일 때 ln 상수 · 교차항
 
         // ===== 완갑 재련 (등급마다 재련 단계별 무기 공격력 · 주스탯 · 기본 공격력) =====
         // 영웅 등급 0단계부터 (무기 공격력, 주스탯, 기본 공격력)
@@ -1333,10 +1335,16 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         return LEGEND_RATIO;   // 전설 각인서 효과 비율 반환
     }
 
-    // 아바타 등급별 ln
-    std::span<const KeyedValue> GetAvatarLn() noexcept
+    // 아바타 등급별 한 부위 주스탯 %
+    std::span<const KeyedValue> GetAvatarPercent() noexcept
     {
-        return AVATAR_LN;   // 아바타 등급별 ln 반환
+        return AVATAR_PERCENT;   // 아바타 등급별 한 부위 주스탯 % 반환
+    }
+
+    // 아바타 주스탯 % 합 배율 계수
+    double GetAvatarMainStatScale() noexcept
+    {
+        return AVATAR_MAIN_STAT_SCALE;   // 아바타 주스탯 % 합 배율 계수 반환
     }
 
     // 코어 번호별 고대 등급 추가 ln
@@ -1373,6 +1381,12 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
     const PassiveSlopes& GetPassiveSlopes() noexcept
     {
         return PASSIVE_SLOPES;   // 아크 패시브 레벨 감소 기울기 반환
+    }
+
+    // 아크 패시브 랭크 · 깨달음 상호작용
+    const PassiveInteraction& GetPassiveInteraction() noexcept
+    {
+        return PASSIVE_INTERACTION;   // 아크 패시브 랭크 · 깨달음 상호작용 반환
     }
 
     // 완갑 등급별 재련 단계 표

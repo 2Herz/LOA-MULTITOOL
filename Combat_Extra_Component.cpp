@@ -28,6 +28,8 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         constexpr std::string_view AVATAR_NONE_KEY{ "없음" };  // 아바타 없음 표 키
         constexpr std::size_t PASSIVE_ENLIGHTENMENT_TREE{ 1 };   // 아크 패시브 트리 번호: 0 진화(효과 없음), 1 깨달음, 2 도약
         constexpr std::size_t PASSIVE_LEAP_TREE{ 2 };  // 아크 패시브 도약 트리 번호
+        constexpr double FULL_PASSIVE_RATIO{ 1.0 };           // 최대 랭크 · 최대 깨달음 구성의 표 배율 (이보다 작으면 최대가 아님)
+        constexpr double NO_INTERACTION_LN{ 0.0 };            // 랭크 · 깨달음 상호작용이 없을 때 ln
 
         // 무기 공격력 기준 W0 (모르면 0 → 무기 공격력 식은 계산하지 않음)
         [[nodiscard]] double GetWeaponBase(const Models::CombatState& state) noexcept  // 무기 공격력 기준값 조회
@@ -215,13 +217,12 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
             return std::max(1.0 - slope * static_cast<double>(Models::MAX_PASSIVE_LEVEL - clamped), MIN_RATIO);  // 1 - 기울기 × (최대 - 레벨), 0 나눗셈 방지 최소값 적용
         }
 
-        // 표 배율 두 개의 비 (둘 중 하나라도 없으면 1)
-        [[nodiscard]] double GetKeyedRatio(std::span<const Data::KeyedValue> table, std::string_view currentKey, std::string_view targetKey)  // 표 배율 두 개의 비 계산
+        // 랭크 · 깨달음 포인트가 둘 다 최대가 아닐 때 더하는 ln (lopec 조합 측정: 상수 + 교차항 × 두 감소폭의 곱)
+        [[nodiscard]] double GetPassiveInteractionLn(double rankRatio, double enlightenmentRatio) noexcept  // 랭크 · 깨달음 상호작용 ln 계산
         {
-            const Data::KeyedValue* currentValue{ Data::FindKeyed(table, currentKey) };  // 현재 키의 표 값
-            const Data::KeyedValue* targetValue{ Data::FindKeyed(table, targetKey) };  // 목표 키의 표 값
-            if (currentValue == nullptr || targetValue == nullptr || currentValue->m_value <= 0.0) return NO_CHANGE_FACTOR;  // 하나라도 없거나 현재 값이 0 이하면 영향 없음
-            return targetValue->m_value / currentValue->m_value;  // 목표 ÷ 현재 반환
+            if (rankRatio >= FULL_PASSIVE_RATIO || enlightenmentRatio >= FULL_PASSIVE_RATIO) return NO_INTERACTION_LN;  // 둘 중 하나라도 최대면 상호작용 없음
+            const Data::PassiveInteraction& interaction{ Data::GetPassiveInteraction() };  // 상호작용 계수
+            return interaction.m_constantLn + interaction.m_crossLn * (FULL_PASSIVE_RATIO - rankRatio) * (FULL_PASSIVE_RATIO - enlightenmentRatio);  // 상수 + 교차항 × 랭크 감소폭 × 깨달음 감소폭
         }
     }
 
@@ -319,18 +320,21 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
 
     double AvatarFactorComponent::GetFactor(const Models::CombatState& current, const Models::CombatState& target) const  // 아바타 배율 계산
     {
-        const auto getLn{ [](Models::AvatarGrade grade)  // 등급의 ln을 구하는 람다
+        const auto getPercent{ [](Models::AvatarGrade grade)  // 등급의 한 부위 주스탯 %를 구하는 람다
         {
-            const Data::KeyedValue* found{ Data::FindKeyed(Data::GetAvatarLn(), GetAvatarKey(grade)) };  // 등급 키로 아바타 ln 표 조회
+            const Data::KeyedValue* found{ Data::FindKeyed(Data::GetAvatarPercent(), GetAvatarKey(grade)) };  // 등급 키로 아바타 주스탯 % 표 조회
             return found != nullptr ? found->m_value : 0.0;  // 표에 없으면 0
         } };
 
-        double lnChange{};  // ln 변화량 합계
+        double currentPercent{};  // 현재 네 부위 주스탯 % 합
+        double targetPercent{};   // 목표 네 부위 주스탯 % 합
         for (std::size_t slot{}; slot < Models::AVATAR_SLOT_COUNT; ++slot)  // 아바타 부위 슬롯 순회
         {
-            lnChange += getLn(target.m_extra.m_avatars[slot]) - getLn(current.m_extra.m_avatars[slot]);  // 목표 등급 ln에서 현재 등급 ln을 뺀 값을 누적
+            currentPercent += getPercent(current.m_extra.m_avatars[slot]);  // 현재 등급의 주스탯 % 누적
+            targetPercent += getPercent(target.m_extra.m_avatars[slot]);    // 목표 등급의 주스탯 % 누적
         }
-        return std::exp(lnChange);  // ln 변화량을 지수로 되돌려 배율로 반환
+        const double scale{ Data::GetAvatarMainStatScale() };  // 주스탯 % 합 배율 계수
+        return std::sqrt((1.0 + scale * targetPercent) / (1.0 + scale * currentPercent));  // 주스탯 변화가 sqrt(S) 경로로 들어간 배율 반환
     }
 
     // ===================== 아크 그리드 코어 =====================
@@ -379,11 +383,20 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         // 랭크 (0 ~ 6 표)
         double factor{ NO_CHANGE_FACTOR };  // 배율 초기값 (변화 없음)
         const std::span<const double> ranks{ Data::GetPassiveRankRatios() };  // 랭크 배율 표
-        const auto rankIndex{ [&ranks](int rank) { return static_cast<std::size_t>(std::clamp(rank, Models::MIN_VALUE, static_cast<int>(ranks.size()) - 1)); } };  // 랭크를 표 범위 안 번호로 바꾸는 람다
-        if (!ranks.empty() && ranks[rankIndex(from.m_rank)] > 0.0) factor *= ranks[rankIndex(to.m_rank)] / ranks[rankIndex(from.m_rank)];  // 표가 있고 현재 랭크 값이 양수이면 랭크 배율 반영
+        const auto rankRatio{ [&ranks](int rank) { return ranks.empty() ? FULL_PASSIVE_RATIO : ranks[static_cast<std::size_t>(std::clamp(rank, Models::MIN_VALUE, static_cast<int>(ranks.size()) - 1))]; } };  // 랭크를 표 범위 안으로 제한해 배율 조회 (표가 없으면 최대 취급)
+        const double fromRank{ rankRatio(from.m_rank) };  // 현재 랭크 배율
+        const double toRank{ rankRatio(to.m_rank) };  // 목표 랭크 배율
+        if (fromRank > 0.0) factor *= toRank / fromRank;  // 현재 랭크 값이 양수이면 랭크 배율 반영
 
-        // 깨달음 포인트 구성
-        factor *= GetKeyedRatio(Data::GetEnlightenmentRatios(), from.m_enlightenment, to.m_enlightenment);  // 깨달음 구성 비율 반영
+        // 깨달음 포인트 구성 (+ 랭크와 둘 다 최대가 아닐 때 상호작용)
+        const std::span<const Data::KeyedValue> enlightenments{ Data::GetEnlightenmentRatios() };  // 깨달음 구성 배율 표
+        const Data::KeyedValue* fromEnlightenment{ Data::FindKeyed(enlightenments, from.m_enlightenment) };  // 현재 구성 표 값
+        const Data::KeyedValue* toEnlightenment{ Data::FindKeyed(enlightenments, to.m_enlightenment) };  // 목표 구성 표 값
+        if (fromEnlightenment != nullptr && toEnlightenment != nullptr && fromEnlightenment->m_value > 0.0 && fromRank > 0.0)  // 두 구성이 모두 표에 있고 값이 양수일 때만
+        {
+            factor *= toEnlightenment->m_value / fromEnlightenment->m_value;  // 깨달음 구성 비율 반영
+            factor *= std::exp(GetPassiveInteractionLn(toRank, toEnlightenment->m_value) - GetPassiveInteractionLn(fromRank, fromEnlightenment->m_value));  // 상호작용 ln 차이 반영
+        }
 
         // 깨달음 · 도약 레벨 (진화 레벨은 효과 없음)
         const Data::PassiveSlopes& slopes{ Data::GetPassiveSlopes() };  // 트리 레벨 기울기 표

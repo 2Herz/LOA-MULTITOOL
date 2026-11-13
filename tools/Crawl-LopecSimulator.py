@@ -73,6 +73,20 @@ COMBO_DEAL_SEED_OFFSET = 1      # 딜 조합 난수 시드 = COMBO_SEED + 1 (예
 COMBO_ACC_SEED_OFFSET = 2       # 악세 전용 조합 난수 시드 = COMBO_SEED + 2
 COMBO_PROGRESS_INTERVAL = 25    # 진행 상황을 찍는 간격 (조합 수)
 
+# ===== 보석 사이클 (GEM_CYCLE) =====
+GEM_CYCLE_COUNT = 0                         # 사이클 반복 수 (기본은 안 돌림, --gem-cycles로 지정)
+GEM_CYCLE_LEVELS = ("8", "9", "10")         # 사이클 한 번에 차례로 측정할 목표 레벨
+GEM_LEVEL_PREFIX = "gem-level-"             # 보석 레벨 선택 상자 id 앞부분
+GEM_CYCLE_GROUP = "GEM_CYCLE"               # CSV 계통 이름
+GEM_CYCLE_BULK_KEY = "gem-level-all"        # 일괄 변경 줄의 컨트롤 칸 표시
+GEM_CYCLE_PROGRESS_INTERVAL = 5             # 진행 상황을 찍는 간격 (사이클 수)
+GEM_CYCLE_MODE_STACK = "stack"              # 일괄 8→9→10 → 레벨마다 기존 → 1개씩 쌓아 가며
+GEM_CYCLE_MODE_SINGLE = "single"            # 레벨마다 일괄 → 기존 → 보석 1개만 바꾸고 매번 기준으로
+GEM_CYCLE_SINGLE_GROUP = "GEM_CYCLE_SINGLE" # 단일 방식 CSV 계통 이름
+GEM_CYCLE_MODE_LAYER = "layer"              # 기준 레벨(7 · 8 · 9)마다 10레벨까지 변동폭
+GEM_CYCLE_LAYER_GROUP = "GEM_CYCLE_LAYER"   # 레이어 방식 CSV 계통 이름
+GEM_LAYER_LEVELS = ("7", "8", "9", "10")    # 레이어 방식 레벨 (마지막 값 = 목표 최대 레벨, 나머지 = 기준 레벨)
+
 # ===== 아크그리드 조합 (COMBO_GRID) =====
 COMBO_GRID_COUNT = 0            # 아크그리드 조합 수 (기본은 안 돌림, --grid-samples로 지정)
 COMBO_GRID_SEED_OFFSET = 3      # 아크그리드 조합 난수 시드 = COMBO_SEED + 3
@@ -603,6 +617,124 @@ def run_combo_grid(page, name, writer, count):
     open_simulator(page, name)
 
 
+def run_gem_cycle(page, name, writer, baseline, cycles):
+    """보석 사이클 (cycles번 반복, 레벨은 GEM_CYCLE_LEVELS = 8 → 9 → 10)
+    1. 기존 상태에서 보석 전체를 8 → 9 → 10으로 이어서 일괄 변경
+    2. 기존으로 돌아가서 보석을 1개씩 쌓아 가며 8레벨로 변경 (1개 → 2개 → … → 전체)
+    3. 9레벨 일괄 변경 → 기존(전체 8레벨)으로 복귀 → 1개씩 쌓아 가며 9레벨로 변경
+    4. 10레벨도 3번처럼 (기존 = 전체 9레벨)"""
+    snapshot = page.evaluate("() => window.__lp.snapshot()")                       # 기준 상태 저장
+    gems = [c for c in page.evaluate("() => window.__lp.controls()")              # 보석 레벨 선택 상자만
+            if c["kind"] == "select" and c["key"].startswith(GEM_LEVEL_PREFIX)]
+    print(f"   {GEM_CYCLE_GROUP}: 보석 {len(gems)}개 × 레벨 {len(GEM_CYCLE_LEVELS)}개 × 사이클 {cycles}번")
+
+    def set_all(level):
+        """보석 전체를 같은 레벨로 (반환: 전부 성공했는지)"""
+        return all([apply(page, gem, level) for gem in gems])                     # 하나도 빼먹지 않게 리스트로 전부 적용
+
+    def bulk_row(cycle, before, level):
+        """지금 상태에서 전체 일괄 변경 → 한 줄 기록 (반환: 읽은 점수)"""
+        ok = set_all(level)                                                        # 전체 일괄 변경
+        scores = stable_read(page)                                                 # 점수 읽기
+        writer.row(GEM_CYCLE_GROUP, GEM_CYCLE_BULK_KEY, f"사이클 {cycle} 일괄", before, level, scores,
+                   "" if ok else "일부 적용 실패")
+        return scores
+
+    for cycle in range(1, cycles + 1):                                             # 사이클 반복
+        # 1. 기존 → 8 → 9 → 10 이어서 일괄 변경 (각 레벨 일괄 값은 3 · 4번의 '기존' 확인에 씀)
+        snapshot = restore_or_reload(page, name, {"key": GEM_CYCLE_BULK_KEY}, snapshot, baseline)
+        bulk_scores = {}                                                           # 레벨 → 일괄 변경 점수
+        before = "현재"                                                            # 첫 일괄은 기존 상태에서
+        for level in GEM_CYCLE_LEVELS:
+            bulk_scores[level] = bulk_row(cycle, before, level)                    # 이어서 일괄 변경
+            before = level                                                         # 다음 일괄은 이 레벨에서
+
+        previous = None                                                            # 2번의 기존 = 기준 상태
+        for level in GEM_CYCLE_LEVELS:                                             # 2 · 3 · 4번
+            snapshot = restore_or_reload(page, name, {"key": GEM_CYCLE_BULK_KEY}, snapshot, baseline)  # 기준으로
+            if previous is not None:                                               # 3 · 4번: 먼저 일괄 변경 한 번
+                bulk_row(cycle, "현재", level)
+                restore_state(page, snapshot)                                      # 기준으로 되돌린 뒤
+                set_all(previous)                                                  # 기존 = 전체 이전 레벨
+            back = stable_read(page)                                               # 기존 상태 점수
+            expected = baseline if previous is None else bulk_scores[previous]     # 같아야 하는 값
+            writer.row(GEM_CYCLE_GROUP, "", f"사이클 {cycle} 기존", level, previous or "현재", back,
+                       "" if same_scores(back, expected) else "기존 값과 다름")
+            for count, gem in enumerate(gems, start=1):                            # 1개씩 쌓아 가며 변경
+                ok = apply(page, gem, level)                                       # 이 보석까지 목표 레벨
+                writer.row(GEM_CYCLE_GROUP, gem["key"], f"사이클 {cycle} 누적 {count}개",
+                           previous or "현재", level, stable_read(page), "" if ok else "적용 실패")
+            previous = level                                                       # 다음 단계의 기존 레벨
+        if cycle % GEM_CYCLE_PROGRESS_INTERVAL == 0:                               # 진행 상황 출력
+            print(f"   {GEM_CYCLE_GROUP} {cycle}/{cycles}")
+    restore_or_reload(page, name, {"key": GEM_CYCLE_BULK_KEY}, snapshot, baseline)  # 끝나면 기준 상태로
+
+
+def run_gem_cycle_single(page, name, writer, baseline, cycles):
+    """보석 사이클 (단일 방식): 목표 레벨(8 → 9 → 10)마다 [모든 보석 일괄 변경 → 기존(되돌린 뒤 확인) →
+    보석 1개만 변경하고 매번 기준으로]을 한 사이클로 보고 cycles번 반복"""
+    snapshot = page.evaluate("() => window.__lp.snapshot()")                       # 기준 상태 저장
+    gems = [c for c in page.evaluate("() => window.__lp.controls()")              # 보석 레벨 선택 상자만
+            if c["kind"] == "select" and c["key"].startswith(GEM_LEVEL_PREFIX)]
+    print(f"   {GEM_CYCLE_SINGLE_GROUP}: 보석 {len(gems)}개 × 레벨 {len(GEM_CYCLE_LEVELS)}개 × 사이클 {cycles}번")
+    for cycle in range(1, cycles + 1):                                             # 사이클 반복
+        for level in GEM_CYCLE_LEVELS:                                             # 목표 레벨 8 → 9 → 10
+            restore_state(page, snapshot)                                          # 기준 상태에서 시작
+            done = [apply(page, gem, level) for gem in gems]                       # 모든 보석을 목표 레벨로 (일괄)
+            writer.row(GEM_CYCLE_SINGLE_GROUP, GEM_CYCLE_BULK_KEY, f"사이클 {cycle} 일괄", "현재", level,
+                       stable_read(page), "" if all(done) else "일부 적용 실패")
+            snapshot = restore_or_reload(page, name, {"key": GEM_CYCLE_BULK_KEY}, snapshot, baseline)  # 기존으로
+            back = stable_read(page)                                               # 되돌린 뒤 점수
+            writer.row(GEM_CYCLE_SINGLE_GROUP, "", f"사이클 {cycle} 기존", level, "현재", back,
+                       "" if same_scores(back, baseline) else "기준과 다름")
+            for gem in gems:                                                       # 보석 1개씩 목표 레벨로
+                restore_state(page, snapshot)                                      # 매번 기준 상태에서
+                ok = apply(page, gem, level)                                       # 이 보석만 변경
+                writer.row(GEM_CYCLE_SINGLE_GROUP, gem["key"], f"사이클 {cycle} 단일",
+                           gem.get("text") or gem["value"], level, stable_read(page) if ok else {},
+                           "" if ok else "적용 실패")
+                snapshot = restore_or_reload(page, name, gem, snapshot, baseline)  # 기준으로 되돌림
+        if cycle % GEM_CYCLE_PROGRESS_INTERVAL == 0:                               # 진행 상황 출력
+            print(f"   {GEM_CYCLE_SINGLE_GROUP} {cycle}/{cycles}")
+
+
+def run_gem_cycle_layer(page, name, writer, baseline, cycles):
+    """보석 사이클 (레이어 방식): 기준 레벨 B(7 · 8 · 9)마다 보석 전체를 B로 맞춘 '기준 층'에서
+    일괄 변경 B+1 → … → 10 (이어서), 그다음 목표 레벨 T(B+1 ~ 10)마다 기준 층에서 보석을 1개씩 쌓아 가며 T로
+    바꿔서 층마다 변동폭을 봄 (예: 기준 7 → 일괄 8 · 9 · 10 → 1개씩 쌓아 가며 8 / 9 / 10)"""
+    snapshot = page.evaluate("() => window.__lp.snapshot()")                       # 원래 상태 저장
+    gems = [c for c in page.evaluate("() => window.__lp.controls()")              # 보석 레벨 선택 상자만
+            if c["kind"] == "select" and c["key"].startswith(GEM_LEVEL_PREFIX)]
+    print(f"   {GEM_CYCLE_LAYER_GROUP}: 보석 {len(gems)}개 × 기준 층 {len(GEM_LAYER_LEVELS) - 1}개 × 사이클 {cycles}번")
+
+    def set_layer(base):
+        """원래 상태로 되돌린 뒤 보석 전체를 기준 레벨로 (반환: 전부 성공했는지)"""
+        restore_state(page, snapshot)                                              # 원래 상태에서
+        return all([apply(page, gem, base) for gem in gems])                      # 전체를 기준 레벨로
+
+    for cycle in range(1, cycles + 1):                                             # 사이클 반복
+        for index, base in enumerate(GEM_LAYER_LEVELS[:-1]):                       # 기준 층 7 → 8 → 9
+            ok = set_layer(base)                                                   # 기준 층 만들기
+            layer_scores = stable_read(page)                                       # 기준 층 점수
+            writer.row(GEM_CYCLE_LAYER_GROUP, GEM_CYCLE_BULK_KEY, f"사이클 {cycle} 기준 층 {base}", "현재", base,
+                       layer_scores, "" if ok else "일부 적용 실패")
+            previous = base                                                        # 일괄 변경은 이어서
+            for target in GEM_LAYER_LEVELS[index + 1:]:                            # 일괄 B+1 → … → 10
+                ok = all([apply(page, gem, target) for gem in gems])               # 전체 일괄 변경
+                writer.row(GEM_CYCLE_LAYER_GROUP, GEM_CYCLE_BULK_KEY, f"사이클 {cycle} 층 {base} 일괄",
+                           previous, target, stable_read(page), "" if ok else "일부 적용 실패")
+                previous = target                                                  # 다음 일괄은 이 레벨에서
+            for target in GEM_LAYER_LEVELS[index + 1:]:                            # 목표 B+1 ~ 10
+                set_layer(base)                                                    # 기준 층에서 시작
+                for count, gem in enumerate(gems, start=1):                        # 1개씩 쌓아 가며
+                    ok = apply(page, gem, target)                                  # 이 보석까지 목표 레벨
+                    writer.row(GEM_CYCLE_LAYER_GROUP, gem["key"], f"사이클 {cycle} 층 {base} 누적 {count}개",
+                               base, target, stable_read(page), "" if ok else "적용 실패")
+            snapshot = restore_or_reload(page, name, {"key": GEM_CYCLE_BULK_KEY}, snapshot, baseline)  # 원래대로
+        if cycle % GEM_CYCLE_PROGRESS_INTERVAL == 0:                               # 진행 상황 출력
+            print(f"   {GEM_CYCLE_LAYER_GROUP} {cycle}/{cycles}")
+
+
 def random_value(page, control, rng):
     """컨트롤 하나에 넣을 무작위 값 (반환: (값, 표시 이름) 또는 None)"""
     kind = control["kind"]
@@ -647,7 +779,8 @@ def run_combo_groups(page, name, writer, groups, count):
 
 
 def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_count=COMBO_ACC_COUNT,
-                    grid_count=COMBO_GRID_COUNT, combo_groups=(), combo_count=0, skip_single=False):
+                    grid_count=COMBO_GRID_COUNT, combo_groups=(), combo_count=0, skip_single=False,
+                    gem_cycles=GEM_CYCLE_COUNT, gem_cycle_mode=GEM_CYCLE_MODE_STACK):
     """캐릭터 하나 전체 (반환: CSV 경로 또는 None)"""
     print(f"\n===== {name} =====")
     try:
@@ -688,6 +821,13 @@ def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_cou
         # 아크그리드 조합은 --grid-samples로 수를 줬고, --only가 없거나 COMBO_GRID를 포함할 때만
         if (not only or "COMBO_GRID" in only) and grid_count:
             run_combo_grid(page, name, writer, grid_count)
+        # 보석 사이클 (--gem-cycles 반복 수, 일괄 8→9→10 → 레벨마다 기존 → 1개씩 쌓아 가며)
+        if gem_cycles and gem_cycle_mode == GEM_CYCLE_MODE_LAYER:
+            run_gem_cycle_layer(page, name, writer, baseline, gem_cycles)          # 기준 층마다 변동폭
+        elif gem_cycles and gem_cycle_mode == GEM_CYCLE_MODE_SINGLE:
+            run_gem_cycle_single(page, name, writer, baseline, gem_cycles)         # 1개만 바꾸는 방식
+        elif gem_cycles:
+            run_gem_cycle(page, name, writer, baseline, gem_cycles)                # 1개씩 쌓아 가는 방식
         # 범용 조합 (--combo 계통 목록 + --combo-samples 개수)
         if combo_groups and combo_count:
             run_combo_groups(page, name, writer, set(combo_groups), combo_count)
@@ -709,6 +849,12 @@ def run():
     parser.add_argument("--grid-samples", type=int, default=COMBO_GRID_COUNT, help="아크그리드 무작위 조합 수 (COMBO_GRID)")
     parser.add_argument("--combo", default="", help="범용 조합 계통 (쉼표로 여러 개, 예: AVATAR 또는 ENGRAVING,STONE)")
     parser.add_argument("--combo-samples", type=int, default=0, help="범용 조합 수")
+    parser.add_argument("--gem-cycles", type=int, default=GEM_CYCLE_COUNT,
+                        help="보석 사이클 반복 수 (일괄 8→9→10, 레벨마다 기존 → 1개씩 쌓아 가며)")
+    parser.add_argument("--gem-cycle-mode", default=GEM_CYCLE_MODE_STACK,
+                        choices=(GEM_CYCLE_MODE_STACK, GEM_CYCLE_MODE_SINGLE, GEM_CYCLE_MODE_LAYER),
+                        help="보석 사이클 방식: stack(1개씩 쌓아 가며) · single(1개만 바꾸고 매번 기준으로)"
+                             " · layer(기준 층 7 · 8 · 9마다 일괄 → 1개씩 쌓아 가며 10레벨까지)")
     parser.add_argument("--skip-single", action="store_true", help="단일 변경 · 상급 재련을 건너뛰고 조합만")
     parser.add_argument("--profile", default=PROFILE_DIR, help="브라우저 프로필 폴더 (동시에 여러 개 돌릴 때 서로 다르게)")
     parser.add_argument("--list", action="store_true", help="실험 수만 세고 끝냄")
@@ -733,7 +879,8 @@ def run():
             path = crawl_character(page, name, only, args.gear_samples, args.deal_samples, args.list, args.acc_samples,
                                    args.grid_samples,
                                    [g.strip().upper() for g in args.combo.split(",") if g.strip()],
-                                   args.combo_samples, args.skip_single)
+                                   args.combo_samples, args.skip_single, args.gem_cycles,
+                                   args.gem_cycle_mode)
             if path:
                 results.append(path)
         context.close()

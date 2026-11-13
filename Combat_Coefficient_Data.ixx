@@ -150,7 +150,8 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
     [[nodiscard]] const LevelRange& GetLegendRatio() noexcept;                           // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0 ~ 4 보간)
 
     // ===== 아바타 =====
-    [[nodiscard]] std::span<const KeyedValue> GetAvatarLn() noexcept;                    // 등급 이름("전설" · "영웅" · "없음") → 한 부위 ln
+    [[nodiscard]] std::span<const KeyedValue> GetAvatarPercent() noexcept;               // 등급 이름("전설" · "영웅" · "없음") → 한 부위 주스탯 %
+    [[nodiscard]] double GetAvatarMainStatScale() noexcept;                              // 아바타 배율 = sqrt((1 + 이 값 × 목표 % 합) / (1 + 이 값 × 현재 % 합))
 
     // ===== 아크 그리드 =====
     struct ArkCorePoint
@@ -176,6 +177,14 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
     [[nodiscard]] std::span<const KeyedValue> GetEnlightenmentRatios() noexcept;         // 깨달음 포인트 구성 → 배율
     [[nodiscard]] std::span<const double> GetPassiveRankRatios() noexcept;               // [랭크 0 ~ 6] → 배율
     [[nodiscard]] const PassiveSlopes& GetPassiveSlopes() noexcept;  // 패시브 기울기 조회
+    // 랭크 · 깨달음 포인트가 둘 다 최대가 아닐 때 ln 보정 = 상수 + 교차항 × (1 - 랭크 배율) × (1 - 깨달음 배율)
+    struct PassiveInteraction
+    {
+        double m_constantLn{};                  // 둘 다 최대가 아닐 때 더하는 ln 상수
+        double m_crossLn{};                     // (1 - 랭크 배율) × (1 - 깨달음 배율)에 곱하는 ln 계수
+    };
+
+    [[nodiscard]] const PassiveInteraction& GetPassiveInteraction() noexcept;  // 랭크 · 깨달음 상호작용 계수 조회
 
     // ===== 완갑 =====
     // 재련 단계 하나의 기본 효과 (전율 완갑 4등급 표, 등급마다 단계별로 다름)

@@ -239,8 +239,9 @@ def build_extra(data):
     consts.append('')
 
     # ----- 아바타 -----
-    avatar = find_component(components, AVATAR_ID)['LnPerSlot']
-    consts.append(format_keyed('AVATAR_LN', list(avatar.items()), '아바타 한 부위의 ln 배율 (등급 이름 → 값)'))
+    avatar = find_component(components, AVATAR_ID)   # 아바타 요소 (부위별 주스탯 % · 주스탯 배율 계수)
+    consts.append(format_keyed('AVATAR_PERCENT', list(avatar['PercentPerSlot'].items()), '아바타 한 부위의 주스탯 % (등급 이름 → 값)'))
+    consts.append(f'{INDENT * 2}constexpr double AVATAR_MAIN_STAT_SCALE{{ {format_number(avatar["MainStatScale"])} }};   // 아바타 배율 = sqrt((1 + 이 값 × 목표 % 합) / (1 + 이 값 × 현재 % 합))')
     consts.append('')
 
     # ----- 아크 그리드 -----
@@ -264,6 +265,8 @@ def build_extra(data):
     ranks = [passive['RankControl'][str(rank)] for rank in range(RANK_COUNT)]
     consts.append(format_array('PASSIVE_RANK_RATIOS', ranks, '아크 패시브 랭크 0 ~ 6 → 전투력 배율'))
     consts.append(f'{INDENT * 2}constexpr PassiveSlopes PASSIVE_SLOPES{{ {format_number(passive["Level1_RatioPerLevel"])}, {format_number(passive["Level2_RatioPerLevel"])} }};   // 레벨 1 · 2 감소 기울기')
+    interaction = passive['RankEnlightenmentInteraction']   # 랭크 · 깨달음 포인트가 둘 다 최대가 아닐 때 상호작용
+    consts.append(f'{INDENT * 2}constexpr PassiveInteraction PASSIVE_INTERACTION{{ {format_number(interaction["ConstantLn"])}, {format_number(interaction["CrossLn"])} }};   // 랭크 < 최대 · 깨달음 < 최대일 때 ln 상수 · 교차항')
     consts.append('')
 
     # ----- 완갑 (등급 · 재련 단계별 무기 공격력 / 주스탯 / 기본 공격력) -----
@@ -311,13 +314,15 @@ def build_extra(data):
         ('std::span<const EngravingBook> GetEngravingBooks() noexcept', 'ENGRAVING_BOOKS', '각인서 효과 표'),
         ('std::span<const std::string_view> GetBookCandidates() noexcept', 'BOOK_CANDIDATES', '각인서 이름 선택지'),
         ('const LevelRange& GetLegendRatio() noexcept', 'LEGEND_RATIO', '전설 각인서 효과 비율'),
-        ('std::span<const KeyedValue> GetAvatarLn() noexcept', 'AVATAR_LN', '아바타 등급별 ln'),
+        ('std::span<const KeyedValue> GetAvatarPercent() noexcept', 'AVATAR_PERCENT', '아바타 등급별 한 부위 주스탯 %'),
+        ('double GetAvatarMainStatScale() noexcept', 'AVATAR_MAIN_STAT_SCALE', '아바타 주스탯 % 합 배율 계수'),
         ('std::span<const double> GetArkCoreAncientGains() noexcept', 'ARK_CORE_ANCIENT_GAINS', '코어 번호별 고대 등급 추가 ln'),
         ('std::span<const ArkCorePoint> GetArkCorePoints() noexcept', 'ARK_CORE_POINTS', '코어 의지력 포인트별 ln 표'),
         ('std::span<const KeyedValue> GetArkGemPerLevel() noexcept', 'ARK_GEM_PER_LEVEL', '아크 그리드 젬 효과 레벨 1당 ln'),
         ('std::span<const KeyedValue> GetEnlightenmentRatios() noexcept', 'ENLIGHTENMENT_RATIOS', '깨달음 포인트 구성별 배율'),
         ('std::span<const double> GetPassiveRankRatios() noexcept', 'PASSIVE_RANK_RATIOS', '아크 패시브 랭크별 배율'),
         ('const PassiveSlopes& GetPassiveSlopes() noexcept', 'PASSIVE_SLOPES', '아크 패시브 레벨 감소 기울기'),
+        ('const PassiveInteraction& GetPassiveInteraction() noexcept', 'PASSIVE_INTERACTION', '아크 패시브 랭크 · 깨달음 상호작용'),
         ('std::span<const VambraceGrade> GetVambraceGrades() noexcept', 'VAMBRACE_GRADES', '완갑 등급별 재련 단계 표'),
         ('std::span<const VambraceGradeBonus> GetVambraceGradeBonuses() noexcept', 'VAMBRACE_GRADE_BONUSES', '완갑 등급별 한계 해방 추가 효과 표'),
         ('double GetBaseAttackCalibration() noexcept', 'BASE_ATTACK_CALIBRATION', '기본 공격력 추정식 보정'),
