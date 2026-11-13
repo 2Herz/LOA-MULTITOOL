@@ -860,34 +860,34 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
 
         // 스톤 각인 레벨 1 효과 (각인 이름 → 같은 이름 각인서에 더하는 비율, 표에 없는 이름은 0)
         constexpr std::array<KeyedValue, 25> STONE_LEVEL_ONE{ {   // 문구 키 25개
-            KeyedValue{ "결투의 대가", 0.025885 },   // 키 → 값
-            KeyedValue{ "구슬동자", 0.006767 },   // 키 → 값
-            KeyedValue{ "기습의 대가", 0.027093 },   // 키 → 값
-            KeyedValue{ "달인의 저력", 0.028466 },   // 키 → 값
-            KeyedValue{ "돌격대장", 0.029982 },   // 키 → 값
-            KeyedValue{ "마나 효율 증가", 0.030135 },   // 키 → 값
+            KeyedValue{ "결투의 대가", 0.027099 },   // 키 → 값
+            KeyedValue{ "구슬동자", 0.0048 },   // 키 → 값
+            KeyedValue{ "기습의 대가", 0.0271 },   // 키 → 값
+            KeyedValue{ "달인의 저력", 0.03 },   // 키 → 값
+            KeyedValue{ "돌격대장", 0.03004 },   // 키 → 값
+            KeyedValue{ "마나 효율 증가", 0.03 },   // 키 → 값
             KeyedValue{ "마나의 흐름", 0.0 },   // 키 → 값
-            KeyedValue{ "바리케이드", 0.0317 },   // 키 → 값
-            KeyedValue{ "부러진 뼈", 0.00905 },   // 키 → 값
-            KeyedValue{ "분쇄의 주먹", 0.000935 },   // 키 → 값
-            KeyedValue{ "속전속결", 0.024402 },   // 키 → 값
-            KeyedValue{ "슈퍼 차지", 0.026464 },   // 키 → 값
-            KeyedValue{ "승부사", 0.003342 },   // 키 → 값
-            KeyedValue{ "시선 집중", 0.011975 },   // 키 → 값
-            KeyedValue{ "아드레날린", 0.02718 },   // 키 → 값
-            KeyedValue{ "안정된 상태", 0.030309 },   // 키 → 값
-            KeyedValue{ "약자 무시", 0.024992 },   // 키 → 값
-            KeyedValue{ "에테르 포식자", 0.032926 },   // 키 → 값
-            KeyedValue{ "예리한 둔기", 0.027384 },   // 키 → 값
-            KeyedValue{ "원한", 0.032177 },   // 키 → 값
-            KeyedValue{ "저주받은 인형", 0.028944 },   // 키 → 값
-            KeyedValue{ "정밀 단도", 0.022695 },   // 키 → 값
-            KeyedValue{ "질량 증가", 0.030568 },   // 키 → 값
-            KeyedValue{ "추진력", 0.0209 },   // 키 → 값
-            KeyedValue{ "타격의 대가", 0.028992 },   // 키 → 값
+            KeyedValue{ "바리케이드", 0.030001 },   // 키 → 값
+            KeyedValue{ "부러진 뼈", 0.007999 },   // 키 → 값
+            KeyedValue{ "분쇄의 주먹", 0.00151 },   // 키 → 값
+            KeyedValue{ "속전속결", 0.024 },   // 키 → 값
+            KeyedValue{ "슈퍼 차지", 0.024 },   // 키 → 값
+            KeyedValue{ "승부사", 0.00302 },   // 키 → 값
+            KeyedValue{ "시선 집중", 0.012 },   // 키 → 값
+            KeyedValue{ "아드레날린", 0.028778 },   // 키 → 값
+            KeyedValue{ "안정된 상태", 0.03 },   // 키 → 값
+            KeyedValue{ "약자 무시", 0.024001 },   // 키 → 값
+            KeyedValue{ "에테르 포식자", 0.0306 },   // 키 → 값
+            KeyedValue{ "예리한 둔기", 0.02795 },   // 키 → 값
+            KeyedValue{ "원한", 0.030024 },   // 키 → 값
+            KeyedValue{ "저주받은 인형", 0.03 },   // 키 → 값
+            KeyedValue{ "정밀 단도", 0.02102 },   // 키 → 값
+            KeyedValue{ "질량 증가", 0.03 },   // 키 → 값
+            KeyedValue{ "추진력", 0.02102 },   // 키 → 값
+            KeyedValue{ "타격의 대가", 0.03 },   // 키 → 값
         } };   // STONE_LEVEL_ONE 끝
         constexpr std::array<double, 5> STONE_LEVEL_SCALE{ { 0.0, 1.0, 1.25, 1.75, 2.0 } };   // 스톤 레벨 0 ~ 4 → 레벨 1 효과 대비 배수
-        constexpr StoneSumBonus STONE_SUM_BONUS{ 5, 0.011873 };   // 스톤 두 줄 레벨 합 보너스 (최소 합, ln)
+        constexpr StoneSumBonus STONE_SUM_BONUS{ 5, 0.01259 };   // 스톤 두 줄 레벨 합 보너스 (최소 합, ln)
         // 스톤 각인 이름 선택지
         constexpr std::array<std::string_view, 26> STONE_CANDIDATES{ {   // 선택지 26개
             "없음",   // 선택지
@@ -1018,7 +1018,11 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
             "탈출의 명수",   // 선택지
             "폭발물 전문가",   // 선택지
         } };   // BOOK_CANDIDATES 끝
-        constexpr LevelRange LEGEND_RATIO{ 0.861525, 0.976897 };   // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0, 레벨 4)
+        constexpr int LEGEND_LEVEL_OFFSET{ 4 };   // 전설 Xk = 유물 X0에서 (이 값 - k)단계 아래 (배율 직선)
+        // 전설이어도 유물 X0와 같은 각인
+        constexpr std::array<std::string_view, 1> LEGEND_FLAT_NAMES{ {   // 선택지 1개
+            "에테르 포식자",   // 선택지
+        } };   // LEGEND_FLAT_NAMES 끝
 
         // 아바타 한 부위의 주스탯 % (등급 이름 → 값)
         constexpr std::array<KeyedValue, 3> AVATAR_PERCENT{ {   // 문구 키 3개
@@ -1329,10 +1333,16 @@ namespace LostArkMultiTool::Models::CombatCoefficientData   // 계수 데이터 
         return BOOK_CANDIDATES;   // 각인서 이름 선택지 반환
     }
 
-    // 전설 각인서 효과 비율
-    const LevelRange& GetLegendRatio() noexcept
+    // 전설 각인서가 유물 X0보다 낮은 단계 수 기준
+    int GetLegendLevelOffset() noexcept
     {
-        return LEGEND_RATIO;   // 전설 각인서 효과 비율 반환
+        return LEGEND_LEVEL_OFFSET;   // 전설 각인서가 유물 X0보다 낮은 단계 수 기준 반환
+    }
+
+    // 전설이어도 유물 X0와 같은 각인
+    std::span<const std::string_view> GetLegendFlatNames() noexcept
+    {
+        return LEGEND_FLAT_NAMES;   // 전설이어도 유물 X0와 같은 각인 반환
     }
 
     // 아바타 등급별 한 부위 주스탯 %

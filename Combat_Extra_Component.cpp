@@ -111,15 +111,19 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
             return Models::IsNone(line.m_name) ? 0 : line.m_level;  // 이름이 없으면 0, 있으면 저장된 레벨
         }
 
-        // 각인서 한 권의 기본 ln (유물: 레벨 0 ~ 4 보간, 전설: 유물 레벨 0 효과 × 등급 비율)
+        // 각인서 한 권의 기본 ln (유물: 레벨 0 ~ 4 보간, 전설: 유물 레벨 0에서 남은 단계만큼 배율을 직선으로 뺌)
         [[nodiscard]] double GetBookBaseLn(const Data::EngravingBook& entry, const Models::BookState& book)  // 각인서 한 권의 기본 ln 계산
         {
-            const double fraction{ static_cast<double>(std::clamp(book.m_level, Models::MIN_VALUE, Data::ENGRAVING_BOOK_MAX_LEVEL)) / Data::ENGRAVING_BOOK_MAX_LEVEL };  // 레벨 비율 (0 ~ 1)
+            const int level{ std::clamp(book.m_level, Models::MIN_VALUE, Data::ENGRAVING_BOOK_MAX_LEVEL) };  // 0 ~ 최대로 제한한 레벨
+            const double fraction{ static_cast<double>(level) / Data::ENGRAVING_BOOK_MAX_LEVEL };  // 레벨 비율 (0 ~ 1)
             if (!book.m_isLegendary) return entry.m_base + (entry.m_top - entry.m_base) * fraction;  // 유물이면 기본값과 최대값 사이를 레벨 비율로 보간
 
-            const Data::LevelRange& ratio{ Data::GetLegendRatio() };  // 전설 등급 효과 비율 범위
-            const double scale{ ratio.m_atMin + (ratio.m_atMax - ratio.m_atMin) * fraction };  // 레벨 비율로 보간한 전설 비율
-            return std::log1p(std::expm1(entry.m_base) * scale);  // 유물 레벨 0 효과(비율)에 전설 비율을 곱해 ln 으로 되돌림
+            const std::span<const std::string_view> flatNames{ Data::GetLegendFlatNames() };  // 전설이어도 유물 레벨 0과 같은 각인
+            if (std::ranges::find(flatNames, entry.m_name) != flatNames.end()) return entry.m_base;  // 그런 각인이면 유물 레벨 0 값
+
+            const double stepRatio{ std::expm1(entry.m_top - entry.m_base) / Data::ENGRAVING_BOOK_MAX_LEVEL };  // 유물 한 단계가 올리는 배율 (유물 레벨 0 대비)
+            const int stepsBelow{ std::max(Data::GetLegendLevelOffset() - level, Models::MIN_VALUE) };  // 유물 레벨 0보다 낮은 단계 수 (전설 X4 = 0)
+            return entry.m_base + std::log1p(-stepRatio * stepsBelow);  // 유물 레벨 0 배율에서 단계만큼 직선으로 빼서 ln 으로
         }
 
         // 각인 이름과 같은 스톤 줄의 가장 높은 레벨 (같은 이름 줄이 없으면 0)

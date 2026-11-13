@@ -87,6 +87,25 @@ GEM_CYCLE_MODE_LAYER = "layer"              # 기준 레벨(7 · 8 · 9)마다 1
 GEM_CYCLE_LAYER_GROUP = "GEM_CYCLE_LAYER"   # 레이어 방식 CSV 계통 이름
 GEM_LAYER_LEVELS = ("7", "8", "9", "10")    # 레이어 방식 레벨 (마지막 값 = 목표 최대 레벨, 나머지 = 기준 레벨)
 
+# ===== 각인 격자 (ENGRAVING_GRID) =====
+ENGRAVING_SLOT_COUNT = 5                                   # 각인서 칸 수
+ENGRAVING_LEVELS = ("X0", "X1", "X2", "X3", "X4")          # 각인서 레벨 값
+ENGRAVING_GRADES = ("유물 각인", "전설 각인")               # 각인서 등급 값
+STONE_LEVELS = range(0, 5)                                 # 스톤 각인 레벨 (0 = 없음)
+ENGRAVING_GRID_NAME_SLOT = 3                               # 이름 × 레벨 격자를 재는 칸 (스톤과 겹치지 않는 칸)
+ENGRAVING_GRID_STONE_LINE = 1                              # 스톤 × 같은 이름 각인서 격자를 재는 스톤 줄
+ENGRAVING_GRID_PREFIX = "COMBO_ENGR_GRID_"                 # CSV 계통 이름 앞부분 (engr_eval.py가 조합 행으로 읽음)
+ENGRAVING_GRID_PROGRESS_INTERVAL = 50                      # 진행 상황을 찍는 간격 (측정 수)
+ENGRAVING_GRID_SECTIONS = "ABCD"                           # --engraving-grid 기본 구역
+ENGRAVING_GRID_DEAL_NAMES = ("결투의 대가", "구슬동자", "기습의 대가", "달인의 저력", "돌격대장", "마나 효율 증가",
+                             "마나의 흐름", "바리케이드", "부러진 뼈", "분쇄의 주먹", "속전속결", "슈퍼 차지", "승부사",
+                             "시선 집중", "아드레날린", "안정된 상태", "약자 무시", "에테르 포식자", "예리한 둔기", "원한",
+                             "저주받은 인형", "정밀 단도", "질량 증가", "추진력", "타격의 대가")   # H. 격자 D에서 효과가 있던 각인
+ENGRAVING_GRID_STONE_LEGEND_NAMES = ("결투의 대가", "돌격대장", "마나의 흐름", "약자 무시", "정밀 단도")  # T. 기울기가 다른 딜 각인
+ENGRAVING_GRID_APPLY_PASSES = 3                            # 막힌 칸을 다시 시도하는 최대 횟수
+ENGRAVING_GRID_RANDOM_COUNT = 200                          # R. 순서를 지킨 무작위 조합 수
+ENGRAVING_GRID_SEED_OFFSET = 7                             # R. 난수 시드 = COMBO_SEED + 7
+
 # ===== 아크그리드 조합 (COMBO_GRID) =====
 COMBO_GRID_COUNT = 0            # 아크그리드 조합 수 (기본은 안 돌림, --grid-samples로 지정)
 COMBO_GRID_SEED_OFFSET = 3      # 아크그리드 조합 난수 시드 = COMBO_SEED + 3
@@ -754,6 +773,143 @@ def random_value(page, control, rng):
     return choice["value"], choice["value"]
 
 
+def run_engraving_grid(page, name, writer, baseline, sections=ENGRAVING_GRID_SECTIONS):
+    """각인 격자: 무작위 조합 대신 변수 두 개만 격자로 바꿔서 각인끼리 · 스톤과의 상호작용을 분리
+    A. 각인서 두 칸 레벨 × 레벨 (10쌍 × 25)
+    B. 각인서 칸마다 등급 × 레벨 (5칸 × 10)
+    C. 스톤 1번 줄(같은 이름 각인서 5개) 레벨 × 그 각인서 레벨 (5 × 25)
+    D. 각인서 한 칸의 이름 × 레벨 (다른 칸과 겹치지 않는 이름 × 5)
+    E. D와 같은 이름 × 레벨을 전설 등급으로
+    F. 전설 각인서 수 1 ~ 5칸 (앞 칸부터) × 레벨 (모두 같은 레벨)
+    G. 전설 각인서 두 칸(1 · 2번) 레벨 × 레벨
+    H. 각인서 3 · 4번 칸 이름 쌍 (딜 각인끼리, 둘 다 유물 X4) + 4번 칸 이름 하나만 → 이름끼리 곱인지 합인지
+    S. 스톤과 안 겹치는 각인서 칸에 딜 각인을 넣고(유물 X0) 스톤 1번 줄을 그 이름 Lv.1 ~ 4로 → 이름별 스톤 계수
+    T. S와 같은 칸에 딜 각인 5개 × (전설 X0 ~ X3 · 유물 X0 · X4) × 스톤 1번 줄 Lv.0 ~ 4 → 전설 각인서에 붙는 스톤
+    R. 무작위 조합 (이름 → 등급 → 레벨 → 스톤 순서로 적용해서 앞에서 바꾼 칸이 뒤 칸을 초기화하지 않게,
+       이름은 칸끼리 겹치지 않게, 스톤 1번 줄은 비우지 않음)
+    sections: 잴 구역 글자 (예: "ABCD", "EFG")
+    측정마다 기준 상태로 되돌린 뒤 지정한 칸만 바꿈 (변경 후 칸 = 'key=value | …', 조합 평가기로 그대로 읽힘)"""
+    snapshot = page.evaluate("() => window.__lp.snapshot()")                       # 기준 상태 저장
+    controls = {c["key"]: c for c in page.evaluate("() => window.__lp.controls()")}  # id → 컨트롤
+    books = [controls[f"engraving-option-{slot}"]["value"] for slot in range(1, ENGRAVING_SLOT_COUNT + 1)]  # 지금 각인서 이름
+    count = 0                                                                      # 측정 수
+
+    def measure(section, settings):
+        """기준 상태에서 settings [(key, value)]만 바꾸고 한 줄 기록"""
+        nonlocal snapshot, count
+        restore_state(page, snapshot)                                              # 기준 상태에서
+        groups = []                                                                # 같은 종류 칸끼리 (이름 → 등급 → 레벨 → 스톤 순서 유지)
+        for key, value in settings:
+            kind = key.rsplit("-", 1)[0]                                           # 예: engraving-option
+            if not groups or groups[-1][0] != kind:
+                groups.append((kind, []))
+            groups[-1][1].append((key, value))
+        ok = True                                                                  # 전부 바뀌었는지
+        for _, pending in groups:
+            for _ in range(ENGRAVING_GRID_APPLY_PASSES):                           # 다른 칸 이름과 겹쳐서 막힌 칸은 다음 차례에 다시
+                pending = [(key, value) for key, value in pending if not apply(page, controls[key], value)]
+                if not pending:
+                    break
+            ok = ok and not pending
+        label = " | ".join(f"{key}={value}" for key, value in settings)            # 조합 평가기 형식
+        writer.row(ENGRAVING_GRID_PREFIX + section, "", f"격자 {section}", "현재", label,
+                   stable_read(page), "" if ok else "적용 실패")
+        count += 1                                                                 # 진행 상황
+        if count % ENGRAVING_GRID_PROGRESS_INTERVAL == 0:
+            print(f"   ENGRAVING_GRID {count}")
+            snapshot = restore_or_reload(page, name, {"key": "engraving-grid"}, snapshot, baseline)  # 가끔 기준 확인
+
+    legend = ENGRAVING_GRADES[-1]                                                  # 전설 각인 값
+    if "A" in sections:
+      for first in range(1, ENGRAVING_SLOT_COUNT + 1):                             # A. 두 칸 레벨 × 레벨
+        for second in range(first + 1, ENGRAVING_SLOT_COUNT + 1):
+            for level_a in ENGRAVING_LEVELS:
+                for level_b in ENGRAVING_LEVELS:
+                    measure("A", [(f"engraving-level-{first}", level_a), (f"engraving-level-{second}", level_b)])
+    if "B" in sections:
+      for slot in range(1, ENGRAVING_SLOT_COUNT + 1):                              # B. 등급 × 레벨
+        for grade in ENGRAVING_GRADES:
+            for level in ENGRAVING_LEVELS:
+                measure("B", [(f"engraving-grade-{slot}", grade), (f"engraving-level-{slot}", level)])
+    if "C" in sections:
+      stone_key = f"stone-option-select-{ENGRAVING_GRID_STONE_LINE}"               # C. 스톤 × 같은 이름 각인서
+      for slot, book in enumerate(books, start=1):
+        for stone_level in STONE_LEVELS:
+            stone_value = NONE_OPTION if stone_level == 0 else f"{book} Lv.{stone_level}"   # 스톤 줄 값
+            for level in ENGRAVING_LEVELS:
+                measure("C", [(stone_key, stone_value), (f"engraving-level-{slot}", level)])
+    name_key = f"engraving-option-{ENGRAVING_GRID_NAME_SLOT}"                       # D · E. 이름 × 레벨
+    grade_key = f"engraving-grade-{ENGRAVING_GRID_NAME_SLOT}"                       # 이름 칸의 등급
+    others = set(books) - {books[ENGRAVING_GRID_NAME_SLOT - 1]}                    # 다른 칸 이름 (중복 각인 제외)
+    names = [value for value, _ in sweep_values(page, controls[name_key]) if value not in others and value != NONE_OPTION]
+    for section, grade in (("D", None), ("E", legend)):
+        if section not in sections:
+            continue
+        for book in names + [books[ENGRAVING_GRID_NAME_SLOT - 1]]:
+            for level in ENGRAVING_LEVELS:
+                settings = [(name_key, book)] + ([(grade_key, grade)] if grade else [])  # 이름 → 등급 (E는 전설)
+                measure(section, settings + [(f"engraving-level-{ENGRAVING_GRID_NAME_SLOT}", level)])  # 레벨은 맨 뒤 (등급을 바꾸면 레벨이 눌림)
+    if "F" in sections:
+      for count_legend in range(1, ENGRAVING_SLOT_COUNT + 1):                      # F. 전설 칸 수 × 레벨
+        for level in ENGRAVING_LEVELS:
+            settings = []
+            for slot in range(1, count_legend + 1):                                # 앞 칸부터 전설
+                settings += [(f"engraving-grade-{slot}", legend), (f"engraving-level-{slot}", level)]
+            measure("F", settings)
+    if "H" in sections:
+      slot_a, slot_b = ENGRAVING_GRID_NAME_SLOT, ENGRAVING_GRID_NAME_SLOT + 1      # 이름을 바꿀 두 칸
+      fixed = set(books) - {books[slot_a - 1], books[slot_b - 1]}                  # 나머지 칸 이름 (중복 제외)
+      deal = [n for n in ENGRAVING_GRID_DEAL_NAMES if n not in fixed]               # 딜 각인 후보
+      top = ENGRAVING_LEVELS[-1]                                                   # 유물 X4
+      for book in deal:                                                            # 4번 칸 이름 하나만
+          measure("H", [(f"engraving-option-{slot_b}", book), (f"engraving-level-{slot_b}", top)])
+      for i, first in enumerate(deal):                                             # 두 칸 이름 쌍
+          for second in deal[i + 1:]:
+              measure("H", [(f"engraving-option-{slot_a}", first), (f"engraving-option-{slot_b}", second),
+                            (f"engraving-level-{slot_a}", top), (f"engraving-level-{slot_b}", top)])
+    if "S" in sections:
+      stone_names = {controls[f"stone-option-select-{line}"]["value"].rsplit(" Lv.", 1)[0] for line in (1, 2)}  # 지금 스톤 이름
+      slot = next(i for i, book in enumerate(books, start=1) if book not in stone_names)  # 스톤과 안 겹치는 칸
+      stone_key = f"stone-option-select-{ENGRAVING_GRID_STONE_LINE}"
+      for book in [n for n in ENGRAVING_GRID_DEAL_NAMES if n not in set(books) - {books[slot - 1]}]:
+          for stone_level in STONE_LEVELS:                                         # 0 = 없음
+              stone_value = NONE_OPTION if stone_level == 0 else f"{book} Lv.{stone_level}"
+              measure("S", [(f"engraving-option-{slot}", book), (f"engraving-grade-{slot}", ENGRAVING_GRADES[0]),
+                            (f"engraving-level-{slot}", ENGRAVING_LEVELS[0]), (stone_key, stone_value)])
+    if "T" in sections:
+      stone_names = {controls[f"stone-option-select-{line}"]["value"].rsplit(" Lv.", 1)[0] for line in (1, 2)}
+      slot = next(i for i, book in enumerate(books, start=1) if book not in stone_names)
+      stone_key = f"stone-option-select-{ENGRAVING_GRID_STONE_LINE}"
+      states = [(legend, level) for level in ENGRAVING_LEVELS[:-1]] + [(ENGRAVING_GRADES[0], ENGRAVING_LEVELS[0]),
+                                                                      (ENGRAVING_GRADES[0], ENGRAVING_LEVELS[-1])]
+      for book in [n for n in ENGRAVING_GRID_STONE_LEGEND_NAMES if n not in set(books) - {books[slot - 1]}]:
+          for grade, level in states:
+              for stone_level in STONE_LEVELS:
+                  stone_value = NONE_OPTION if stone_level == 0 else f"{book} Lv.{stone_level}"
+                  measure("T", [(f"engraving-option-{slot}", book), (f"engraving-grade-{slot}", grade),
+                                (f"engraving-level-{slot}", level), (stone_key, stone_value)])
+    if "R" in sections:
+      rng = random.Random(COMBO_SEED + ENGRAVING_GRID_SEED_OFFSET)                 # 다시 돌려도 같은 조합
+      pool = [value for value, _ in sweep_values(page, controls["engraving-option-1"]) if value != NONE_OPTION]
+      pool = sorted(set(pool) | {books[0]})                                        # 1번 칸 지금 이름도 후보
+      for _ in range(ENGRAVING_GRID_RANDOM_COUNT):
+        picked = rng.sample(pool, ENGRAVING_SLOT_COUNT)                            # 칸끼리 겹치지 않는 이름
+        settings = [(f"engraving-option-{slot}", picked[slot - 1]) for slot in range(1, ENGRAVING_SLOT_COUNT + 1)]
+        settings += [(f"engraving-grade-{slot}", rng.choice(ENGRAVING_GRADES)) for slot in range(1, ENGRAVING_SLOT_COUNT + 1)]
+        settings += [(f"engraving-level-{slot}", rng.choice(ENGRAVING_LEVELS)) for slot in range(1, ENGRAVING_SLOT_COUNT + 1)]
+        for line in (1, 2):                                                        # 스톤 두 줄 (각인서 이름 중에서)
+            stone_level = rng.choice(list(STONE_LEVELS)[1:])                       # 1 ~ 4 (없음 제외)
+            settings.append((f"stone-option-select-{line}", f"{rng.choice(picked)} Lv.{stone_level}"))
+        measure("R", settings)
+    if "G" in sections:
+      for level_a in ENGRAVING_LEVELS:                                             # G. 전설 두 칸 레벨 × 레벨
+        for level_b in ENGRAVING_LEVELS:
+            measure("G", [("engraving-grade-1", legend), ("engraving-level-1", level_a),
+                          ("engraving-grade-2", legend), ("engraving-level-2", level_b)])
+    restore_or_reload(page, name, {"key": "engraving-grid"}, snapshot, baseline)  # 끝나면 기준 상태로
+    print(f"   ENGRAVING_GRID 끝: {count}개")
+
+
 def run_combo_groups(page, name, writer, groups, count):
     """범용 조합: 지정한 계통(AVATAR · ARK_PASSIVE · ENGRAVING · STONE · BRACELET · ARMORY …)의 컨트롤을
     동시에 무작위로 바꿈 (단일 변경에서 건너뛰는 컨트롤은 제외, 끝나면 페이지를 새로 엶)"""
@@ -780,7 +936,7 @@ def run_combo_groups(page, name, writer, groups, count):
 
 def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_count=COMBO_ACC_COUNT,
                     grid_count=COMBO_GRID_COUNT, combo_groups=(), combo_count=0, skip_single=False,
-                    gem_cycles=GEM_CYCLE_COUNT, gem_cycle_mode=GEM_CYCLE_MODE_STACK):
+                    gem_cycles=GEM_CYCLE_COUNT, gem_cycle_mode=GEM_CYCLE_MODE_STACK, engraving_grid=""):
     """캐릭터 하나 전체 (반환: CSV 경로 또는 None)"""
     print(f"\n===== {name} =====")
     try:
@@ -822,6 +978,8 @@ def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_cou
         if (not only or "COMBO_GRID" in only) and grid_count:
             run_combo_grid(page, name, writer, grid_count)
         # 보석 사이클 (--gem-cycles 반복 수, 일괄 8→9→10 → 레벨마다 기존 → 1개씩 쌓아 가며)
+        if engraving_grid:
+            run_engraving_grid(page, name, writer, baseline, engraving_grid.upper())  # 각인 격자 (구역 글자)
         if gem_cycles and gem_cycle_mode == GEM_CYCLE_MODE_LAYER:
             run_gem_cycle_layer(page, name, writer, baseline, gem_cycles)          # 기준 층마다 변동폭
         elif gem_cycles and gem_cycle_mode == GEM_CYCLE_MODE_SINGLE:
@@ -855,6 +1013,9 @@ def run():
                         choices=(GEM_CYCLE_MODE_STACK, GEM_CYCLE_MODE_SINGLE, GEM_CYCLE_MODE_LAYER),
                         help="보석 사이클 방식: stack(1개씩 쌓아 가며) · single(1개만 바꾸고 매번 기준으로)"
                              " · layer(기준 층 7 · 8 · 9마다 일괄 → 1개씩 쌓아 가며 10레벨까지)")
+    parser.add_argument("--engraving-grid", nargs="?", const=ENGRAVING_GRID_SECTIONS, default="",
+                        help="각인 격자 구역 (기본 ABCD: 레벨 쌍 · 등급 × 레벨 · 스톤 × 같은 이름 · 이름 × 레벨,"
+                             " EFG: 전설 이름 × 레벨 · 전설 칸 수 · 전설 두 칸 레벨 쌍)")
     parser.add_argument("--skip-single", action="store_true", help="단일 변경 · 상급 재련을 건너뛰고 조합만")
     parser.add_argument("--profile", default=PROFILE_DIR, help="브라우저 프로필 폴더 (동시에 여러 개 돌릴 때 서로 다르게)")
     parser.add_argument("--list", action="store_true", help="실험 수만 세고 끝냄")
@@ -880,7 +1041,7 @@ def run():
                                    args.grid_samples,
                                    [g.strip().upper() for g in args.combo.split(",") if g.strip()],
                                    args.combo_samples, args.skip_single, args.gem_cycles,
-                                   args.gem_cycle_mode)
+                                   args.gem_cycle_mode, args.engraving_grid)
             if path:
                 results.append(path)
         context.close()

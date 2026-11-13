@@ -126,12 +126,6 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
         double m_top{};                         // 각인서 레벨 4의 ln (효과 없는 각인은 둘 다 0)
     };
 
-    struct LevelRange
-    {
-        double m_atMin{};                       // 각인서 레벨 0
-        double m_atMax{};                       // 각인서 레벨 4
-    };
-
     struct StoneSumBonus
     {
         int m_minLevel{};                       // 보너스가 붙는 두 줄 레벨 합의 최솟값
@@ -147,7 +141,8 @@ export namespace LostArkMultiTool::Models::CombatCoefficientData  // 계수 데�
     [[nodiscard]] std::span<const std::string_view> GetStoneCandidates() noexcept;       // 스톤 각인 이름 선택지 ("없음" 먼저)
     [[nodiscard]] std::span<const EngravingBook> GetEngravingBooks() noexcept;  // 각인서 효과 표 조회
     [[nodiscard]] std::span<const std::string_view> GetBookCandidates() noexcept;        // 각인서 이름 선택지 ("없음" 먼저)
-    [[nodiscard]] const LevelRange& GetLegendRatio() noexcept;                           // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0 ~ 4 보간)
+    [[nodiscard]] int GetLegendLevelOffset() noexcept;                                   // 전설 Xk = 유물 X0에서 (이 값 - k)단계 아래 (배율 직선)
+    [[nodiscard]] std::span<const std::string_view> GetLegendFlatNames() noexcept;       // 전설이어도 유물 X0와 같은 각인 이름
 
     // ===== 아바타 =====
     [[nodiscard]] std::span<const KeyedValue> GetAvatarPercent() noexcept;               // 등급 이름("전설" · "영웅" · "없음") → 한 부위 주스탯 %

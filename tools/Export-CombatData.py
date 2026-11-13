@@ -234,8 +234,8 @@ def build_extra(data):
         consts.append(f'{INDENT * 3}EngravingBook{{ {cpp_string(name)}, {format_number(base_value)}, {format_number(top_value)} }},   // 이름 · 레벨 0 ln · 레벨 4 ln')
     consts.append(f'{INDENT * 2}}} }};   // ENGRAVING_BOOKS 끝')
     consts.append(format_strings('BOOK_CANDIDATES', cands['EngravingBook'], '각인서 이름 선택지'))
-    legend = book['GradeLegendRatio']
-    consts.append(f'{INDENT * 2}constexpr LevelRange LEGEND_RATIO{{ {format_number(legend["X0"])}, {format_number(legend["X4"])} }};   // 전설 각인서 효과 = 유물 레벨 0 효과 × 비율 (레벨 0, 레벨 4)')
+    consts.append(f'{INDENT * 2}constexpr int LEGEND_LEVEL_OFFSET{{ {int(book["LegendLevelOffset"])} }};   // 전설 Xk = 유물 X0에서 (이 값 - k)단계 아래 (배율 직선)')
+    consts.append(format_strings('LEGEND_FLAT_NAMES', book['LegendFlatNames'], '전설이어도 유물 X0와 같은 각인'))
     consts.append('')
 
     # ----- 아바타 -----
@@ -313,7 +313,8 @@ def build_extra(data):
         ('std::span<const std::string_view> GetStoneCandidates() noexcept', 'STONE_CANDIDATES', '스톤 각인 이름 선택지'),
         ('std::span<const EngravingBook> GetEngravingBooks() noexcept', 'ENGRAVING_BOOKS', '각인서 효과 표'),
         ('std::span<const std::string_view> GetBookCandidates() noexcept', 'BOOK_CANDIDATES', '각인서 이름 선택지'),
-        ('const LevelRange& GetLegendRatio() noexcept', 'LEGEND_RATIO', '전설 각인서 효과 비율'),
+        ('int GetLegendLevelOffset() noexcept', 'LEGEND_LEVEL_OFFSET', '전설 각인서가 유물 X0보다 낮은 단계 수 기준'),
+        ('std::span<const std::string_view> GetLegendFlatNames() noexcept', 'LEGEND_FLAT_NAMES', '전설이어도 유물 X0와 같은 각인'),
         ('std::span<const KeyedValue> GetAvatarPercent() noexcept', 'AVATAR_PERCENT', '아바타 등급별 한 부위 주스탯 %'),
         ('double GetAvatarMainStatScale() noexcept', 'AVATAR_MAIN_STAT_SCALE', '아바타 주스탯 % 합 배율 계수'),
         ('std::span<const double> GetArkCoreAncientGains() noexcept', 'ARK_CORE_ANCIENT_GAINS', '코어 번호별 고대 등급 추가 ln'),
