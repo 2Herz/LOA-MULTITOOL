@@ -654,21 +654,21 @@
     "semantic_hash": "3f0ef05426f8012213355e7bc02dfe98"
   },
   "README.md": {
-    "mtime": 1794566994.2826676,
-    "seen": 1794615926.8380115,
-    "ast_hash": "8ec7da526fb0796c92867f72bcd3029d",
+    "mtime": 1794617661.1625373,
+    "seen": 1794617672.8299003,
+    "ast_hash": "66699423c1029773e74325dedd588825",
     "semantic_hash": ""
   },
   "Visual.html": {
-    "mtime": 1794615900.3191848,
-    "seen": 1794615926.8380187,
-    "ast_hash": "c059e0c03fcbbdc16f6544d4cb67c259",
+    "mtime": 1794617661.9185805,
+    "seen": 1794617672.8299048,
+    "ast_hash": "895fda8f26cfd82704bf6a1d44cfbb2a",
     "semantic_hash": ""
   },
   "\ud328\uce58\ub178\ud2b8.md": {
-    "mtime": 1794566994.2806675,
-    "seen": 1794615926.8380282,
-    "ast_hash": "b1ee64fe90129bf149e0b8dbdabde39f",
+    "mtime": 1794617661.160033,
+    "seen": 1794617672.8299088,
+    "ast_hash": "191163240489146136e625d03e3f620d",
     "semantic_hash": ""
   },
   "API_Key_Dialog.ixx": {
@@ -686,9 +686,9 @@
     "language": "language=.cpp"
   },
   "APP_Constants.ixx": {
-    "mtime": 1794562785.7001607,
-    "seen": 1794563138.8615704,
-    "ast_hash": "25846aa3c033cf7f2bd3f937fa0baffa",
+    "mtime": 1794617661.1585867,
+    "seen": 1794617672.828077,
+    "ast_hash": "c90ed035f57e094ea62c87646fd4d04d",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1742,9 +1742,9 @@
     "language": "language=.cpp"
   },
   "Self_Test.cpp": {
-    "mtime": 1794564270.7399292,
-    "seen": 1794565647.0599902,
-    "ast_hash": "a80c3a5119b63215ab138809b0688f01",
+    "mtime": 1794617420.4787192,
+    "seen": 1794617672.8295603,
+    "ast_hash": "5a0e91585739761e3e1ab2d4d01af6f0",
     "semantic_hash": ""
   },
   "Self_Test.ixx": {
@@ -1768,9 +1768,9 @@
     "language": "language=.cpp"
   },
   "tools/Check-CombatDrift.py": {
-    "mtime": 1794568228.5259619,
-    "seen": 1794615926.8379407,
-    "ast_hash": "d22aea7ba208457d2d90b2b13bc54133",
+    "mtime": 1794617619.2365124,
+    "seen": 1794617672.8298578,
+    "ast_hash": "dea284a6bfed5baf14678553ed7bdb3d",
     "semantic_hash": ""
   },
   "tools/Test-CombatRegression.py": {
@@ -1796,6 +1796,25 @@
     "mtime": 1794615899.634524,
     "seen": 1794615926.8379774,
     "ast_hash": "ded844d2abde586b46148fe2908dff0c",
+    "semantic_hash": ""
+  },
+  "Combat_Regression.cpp": {
+    "mtime": 1794617559.8408911,
+    "seen": 1794617672.8285327,
+    "ast_hash": "b8ab263e8fea3ad4557373a3d6dd7483",
+    "semantic_hash": ""
+  },
+  "Combat_Regression.ixx": {
+    "mtime": 1794617420.4777217,
+    "seen": 1794617672.8285398,
+    "ast_hash": "f4e68df31ea9b0f70c5122e4c6bc4b5f",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "tools/Fetch-RegressionArmory.py": {
+    "mtime": 1794616672.3944592,
+    "seen": 1794617672.8298717,
+    "ast_hash": "7b94221f30b8caba1f24560457c6d8f0",
     "semantic_hash": ""
   }
 }
