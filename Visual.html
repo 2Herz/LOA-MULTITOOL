@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.3.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-06</div>
+      <div class="sub">C++23 모듈 · v1.6.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-14</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -209,90 +209,6 @@
 
 <script>
 const MODULES = [
- {
-  "file": "API_Format_Monitor.ixx",
-  "module": "LostArkMultiTool.Core.APIFormatMonitor",
-  "imports": [],
-  "cppImports": [
-   "LostArkMultiTool.Core.AppLogger",
-   "LostArkMultiTool.Core.TextEncoding"
-  ],
-  "lines": 16,
-  "cppLines": 47,
-  "hasCpp": true,
-  "filter": "1. 코어\\1. 기반\\4. 시간",
-  "desc": "API 응답 형식 변경 감시 (옵저버 대신 \"알림 우편함\" 방식)",
-  "types": []
- },
- {
-  "file": "API_Key_Dialog.ixx",
-  "module": "LostArkMultiTool.Views.APIKeyDialog",
-  "imports": [
-   "LostArkMultiTool.Core.Notifier",
-   "LostArkMultiTool.Core.Platform",
-   "LostArkMultiTool.Core.Renderer",
-   "LostArkMultiTool.Views.UI.Button",
-   "LostArkMultiTool.Views.UI.Dialog",
-   "LostArkMultiTool.Views.UI.Label",
-   "LostArkMultiTool.Views.UI.TextBox"
-  ],
-  "cppImports": [
-   "LostArkMultiTool.Core.TextEncoding",
-   "LostArkMultiTool.Views.Theme"
-  ],
-  "lines": 60,
-  "cppLines": 189,
-  "hasCpp": true,
-  "filter": "4. 뷰\\4. UI\\5. 모달",
-  "desc": "API 키 입력 창을 연 상황",
-  "types": [
-   "APIKeyDialog"
-  ]
- },
- {
-  "file": "API_Key_Store.ixx",
-  "module": "LostArkMultiTool.Core.APIKeyStore",
-  "imports": [],
-  "cppImports": [],
-  "lines": 19,
-  "cppLines": 6,
-  "hasCpp": true,
-  "filter": "3. 서비스\\3. API",
-  "desc": "API 키 저장소 인터페이스 (세 툴이 키 하나를 공유 → 한 번만 입력)",
-  "types": [
-   "APIKeyStore"
-  ]
- },
- {
-  "file": "APP_Constants.ixx",
-  "module": "LostArkMultiTool.Core.APPConstants",
-  "imports": [],
-  "cppImports": [],
-  "lines": 140,
-  "cppLines": 128,
-  "hasCpp": true,
-  "filter": "1. 코어\\1. 기반\\1. 상수",
-  "desc": "프로그램 전체에서 쓰는 상수 모음 (코드에 숫자·문자열을 직접 적지 않기 위함)",
-  "types": []
- },
- {
-  "file": "APP_Exceptions.ixx",
-  "module": "LostArkMultiTool.Core.APPExceptions",
-  "imports": [],
-  "cppImports": [],
-  "lines": 47,
-  "cppLines": 51,
-  "hasCpp": true,
-  "filter": "1. 코어\\1. 기반\\2. 예외처리",
-  "desc": "API 키가 잘못됐을 때 (HTTP 401)",
-  "types": [
-   "APIKeyInvalidException",
-   "APIRateLimitException",
-   "APIMaintenanceException",
-   "APIRequestException",
-   "RequestCanceledException"
-  ]
- },
  {
   "file": "Accessory_Finder_Manager.ixx",
   "module": "LostArkMultiTool.Views.AccessoryFinderManager",
@@ -409,6 +325,90 @@ const MODULES = [
   "desc": "악세 검색 (악세 검색기의 모델)",
   "types": [
    "AccessorySearchService"
+  ]
+ },
+ {
+  "file": "API_Format_Monitor.ixx",
+  "module": "LostArkMultiTool.Core.APIFormatMonitor",
+  "imports": [],
+  "cppImports": [
+   "LostArkMultiTool.Core.AppLogger",
+   "LostArkMultiTool.Core.TextEncoding"
+  ],
+  "lines": 16,
+  "cppLines": 47,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\4. 시간",
+  "desc": "API 응답 형식 변경 감시 (옵저버 대신 \"알림 우편함\" 방식)",
+  "types": []
+ },
+ {
+  "file": "API_Key_Dialog.ixx",
+  "module": "LostArkMultiTool.Views.APIKeyDialog",
+  "imports": [
+   "LostArkMultiTool.Core.Notifier",
+   "LostArkMultiTool.Core.Platform",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.UI.Button",
+   "LostArkMultiTool.Views.UI.Dialog",
+   "LostArkMultiTool.Views.UI.Label",
+   "LostArkMultiTool.Views.UI.TextBox"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 60,
+  "cppLines": 189,
+  "hasCpp": true,
+  "filter": "4. 뷰\\4. UI\\5. 모달",
+  "desc": "API 키 입력 창을 연 상황",
+  "types": [
+   "APIKeyDialog"
+  ]
+ },
+ {
+  "file": "API_Key_Store.ixx",
+  "module": "LostArkMultiTool.Core.APIKeyStore",
+  "imports": [],
+  "cppImports": [],
+  "lines": 19,
+  "cppLines": 6,
+  "hasCpp": true,
+  "filter": "3. 서비스\\3. API",
+  "desc": "API 키 저장소 인터페이스 (세 툴이 키 하나를 공유 → 한 번만 입력)",
+  "types": [
+   "APIKeyStore"
+  ]
+ },
+ {
+  "file": "APP_Constants.ixx",
+  "module": "LostArkMultiTool.Core.APPConstants",
+  "imports": [],
+  "cppImports": [],
+  "lines": 140,
+  "cppLines": 128,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\1. 상수",
+  "desc": "프로그램 전체에서 쓰는 상수 모음 (코드에 숫자·문자열을 직접 적지 않기 위함)",
+  "types": []
+ },
+ {
+  "file": "APP_Exceptions.ixx",
+  "module": "LostArkMultiTool.Core.APPExceptions",
+  "imports": [],
+  "cppImports": [],
+  "lines": 47,
+  "cppLines": 51,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\2. 예외처리",
+  "desc": "API 키가 잘못됐을 때 (HTTP 401)",
+  "types": [
+   "APIKeyInvalidException",
+   "APIRateLimitException",
+   "APIMaintenanceException",
+   "APIRequestException",
+   "RequestCanceledException"
   ]
  },
  {
@@ -1040,7 +1040,8 @@ const MODULES = [
    "BookState",
    "ArkCoreState",
    "ArkPassiveState",
-   "ExtraState"
+   "ExtraState",
+   "VambraceGain"
   ]
  },
  {
@@ -1084,7 +1085,8 @@ const MODULES = [
   "desc": "배율 요소 하나의 결과",
   "types": [
    "CombatFactorResult",
-   "CombatPowerResult"
+   "CombatPowerResult",
+   "CombatPowerCalculator"
   ]
  },
  {
@@ -1276,42 +1278,6 @@ const MODULES = [
   "types": []
  },
  {
-  "file": "DPAPI_Key_Store.ixx",
-  "module": "LostArkMultiTool.Services.DPAPIKeyStore",
-  "imports": [
-   "LostArkMultiTool.Core.APIKeyStore"
-  ],
-  "cppImports": [
-   "LostArkMultiTool.Core.APPConstants"
-  ],
-  "lines": 21,
-  "cppLines": 116,
-  "hasCpp": true,
-  "filter": "3. 서비스\\5. 암호화",
-  "desc": "Windows DPAPI로 암호화해서 저장 → 같은 Windows 사용자 계정에서만 복호화 가능",
-  "types": [
-   "DPAPIKeyStore"
-  ]
- },
- {
-  "file": "DX11_Renderer.ixx",
-  "module": "LostArkMultiTool.Views.DX11Renderer",
-  "imports": [
-   "LostArkMultiTool.Core.Renderer"
-  ],
-  "cppImports": [
-   "LostArkMultiTool.Views.Theme"
-  ],
-  "lines": 58,
-  "cppLines": 819,
-  "hasCpp": true,
-  "filter": "4. 뷰\\1. DX11",
-  "desc": "Direct3D 11 장치 + DXGI 스왑체인 위에 Direct2D · DirectWrite로 2D 화면(탭 · 표 · 그래프 · 글자)을 그림",
-  "types": [
-   "DX11Renderer"
-  ]
- },
- {
   "file": "Data_Repository.ixx",
   "module": "LostArkMultiTool.Core.DataRepository",
   "imports": [
@@ -1372,6 +1338,42 @@ const MODULES = [
   "desc": "모달 대화상자의 공통 틀 (화면 어둡게 + 가운데 패널 + 제목 + 내용 부품)",
   "types": [
    "Dialog"
+  ]
+ },
+ {
+  "file": "DPAPI_Key_Store.ixx",
+  "module": "LostArkMultiTool.Services.DPAPIKeyStore",
+  "imports": [
+   "LostArkMultiTool.Core.APIKeyStore"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants"
+  ],
+  "lines": 21,
+  "cppLines": 116,
+  "hasCpp": true,
+  "filter": "3. 서비스\\5. 암호화",
+  "desc": "Windows DPAPI로 암호화해서 저장 → 같은 Windows 사용자 계정에서만 복호화 가능",
+  "types": [
+   "DPAPIKeyStore"
+  ]
+ },
+ {
+  "file": "DX11_Renderer.ixx",
+  "module": "LostArkMultiTool.Views.DX11Renderer",
+  "imports": [
+   "LostArkMultiTool.Core.Renderer"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 58,
+  "cppLines": 819,
+  "hasCpp": true,
+  "filter": "4. 뷰\\1. DX11",
+  "desc": "Direct3D 11 장치 + DXGI 스왑체인 위에 Direct2D · DirectWrite로 2D 화면(탭 · 표 · 그래프 · 글자)을 그림",
+  "types": [
+   "DX11Renderer"
   ]
  },
  {
