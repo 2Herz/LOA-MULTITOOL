@@ -61,19 +61,6 @@ if %errorlevel% equ 0 (
 )
 
 echo ==============================================
-echo 5. 코드 서명 (SIGN_CERT_THUMBPRINT 환경 변수가 있을 때만)
-echo ==============================================
-rem 인증서를 Windows 인증서 저장소에 설치한 뒤: setx SIGN_CERT_THUMBPRINT "인증서 지문"
-if defined SIGN_CERT_THUMBPRINT (
-    signtool sign /sha1 %SIGN_CERT_THUMBPRINT% /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "x64\Release\LOA-MULTITOOL.exe"
-    if errorlevel 1 goto error
-    signtool verify /pa "x64\Release\LOA-MULTITOOL.exe"
-    if errorlevel 1 goto error
-) else (
-    echo [건너뜀] SIGN_CERT_THUMBPRINT가 없어 서명하지 않습니다.
-)
-
-echo ==============================================
 echo [성공] Debug 및 Release 멀티 빌드가 완료되었습니다!
 echo ==============================================
 pause
