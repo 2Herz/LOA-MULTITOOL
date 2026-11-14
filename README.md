@@ -308,6 +308,7 @@
 4. 위쪽 결과 막대에서 **예상 전투력 · 증감**을 바로 확인해요!
 
 > 💡 API 전투력에 로펙 측정 기반 배율을 곱한 추정치라서, 실제 인게임 수치와 약간 다를 수 있어요.
+> (v1.6.1) 빌드할 때마다 아크 패시브 계산을 lopec 측정 55명 · 11,115개 변경과 비교해서 검증해요! (6랭크 최대 오차 0.072%)
 
 ---
 
@@ -396,6 +397,9 @@
 - Win32 + Direct3D 11 · Direct2D · DirectWrite (표 · 그래프 · 입력칸 등 UI를 직접 그림)
 - WinHTTP (API 통신) · DPAPI (API 키 암호화)
 - [로스트아크 Open API](https://developer-lostark.game.onstove.com/)
+- 자체 검사 : `LOA-MULTITOOL.exe --self-test` (build_all이 빌드 직후 실행) → 계수 · 재련 표 검사 + lopec 회귀 검사
+   - lopec 회귀는 `Verify\lopec_results`(측정 CSV, 저장소에 안 올림)와 `python tools/Fetch-RegressionArmory.py`로 받은 무기고를 앱 엔진으로 다시 계산해요. 데이터가 없는 PC면 건너뛰어요.
+   - 줄마다 결과는 `Verify\lopec_results\regression\last_result.csv`에 남아요.
 
 ---
 
