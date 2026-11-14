@@ -9,7 +9,7 @@ API 전투력만 바뀌었으면 게임 밸런스 패치로 전투력 공식이 
     python tools/Check-CombatDrift.py --record 캐릭터1 캐릭터2   # 지금 상태를 기준으로 저장 (계수를 맞춘 직후)
     python tools/Check-CombatDrift.py                           # 저장된 기준과 비교
 
-기준 파일: Verify/lopec_results/calibration_kit/drift_reference.json (gitignore, 캐릭터 이름이 들어 있음)
+기준 파일: Verify/lopec_results/regression/drift_reference.json (gitignore, 캐릭터 이름이 들어 있음)
 종료 코드: 0 = 변화 없음, 1 = 재보정 필요 의심, 2 = 실행 오류
 """
 import argparse
@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))                          # 저장소 루트
-REFERENCE_PATH = os.path.join(ROOT, 'Verify', 'lopec_results', 'calibration_kit', 'drift_reference.json')   # 기준 (gitignore)
+REFERENCE_PATH = os.path.join(ROOT, 'Verify', 'lopec_results', 'regression', 'drift_reference.json')   # 기준 (gitignore)
 API_URL = 'https://developer-lostark.game.onstove.com/armories/characters/{}'               # 무기고 전체
 TIMEOUT_SECONDS = 30                                                                        # 요청 제한 시간
 CP_TOLERANCE_PERCENT = 0.05                                                                 # 이보다 작은 전투력 변화는 반올림 차이로 봄

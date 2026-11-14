@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.6.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-14</div>
+      <div class="sub">C++23 모듈 · v1.6.1 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-14</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -1087,6 +1087,28 @@ const MODULES = [
    "CombatFactorResult",
    "CombatPowerResult",
    "CombatPowerCalculator"
+  ]
+ },
+ {
+  "file": "Combat_Regression.ixx",
+  "module": "LostArkMultiTool.Core.CombatRegression",
+  "imports": [],
+  "cppImports": [
+   "LostArkMultiTool.Core.CombatExtraComponent",
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Models.CombatState",
+   "LostArkMultiTool.Services.ArmoryParser",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "lines": 42,
+  "cppLines": 493,
+  "hasCpp": true,
+  "filter": "1. 코어\u0001. 기반\u0004. 시간",
+  "desc": "lopec 측정값 대비 전투력 엔진 회귀 검사 (자체 검사 --self-test에서 호출)",
+  "types": [
+   "RegressionFailure",
+   "RegressionResult"
   ]
  },
  {
@@ -2779,11 +2801,12 @@ const MODULES = [
   "imports": [],
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Core.CombatRegression",
    "LostArkMultiTool.Models.CombatCoefficientData",
    "LostArkMultiTool.Models.RefineData"
   ],
   "lines": 15,
-  "cppLines": 187,
+  "cppLines": 223,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",

@@ -36,8 +36,9 @@ msbuild "로스트아크 멀티툴.slnx" /t:Rebuild /p:Configuration=Release
 if %errorlevel% neq 0 goto error
 
 echo ==============================================
-echo 3. 데이터 자체 검사 (전투력 계수 · 재련 표)
+echo 3. 데이터 자체 검사 (전투력 계수 · 재련 표 · lopec 회귀)
 echo ==============================================
+rem lopec 회귀는 앱 엔진으로 Verify\lopec_results 측정을 다시 계산 (측정 데이터가 없는 PC면 건너뜀, 결과 상세: Verify\lopec_results\regression\last_result.csv)
 rem GUI 프로그램이라 start /wait로 끝날 때까지 기다려 종료 코드(실패 항목 수)를 받음
 for %%C in (Debug Release) do (
     start "" /wait "x64\%%C\LOA-MULTITOOL.exe" --self-test
@@ -48,17 +49,6 @@ for %%C in (Debug Release) do (
     )
 )
 type "x64\Release\self_test_report.txt"
-
-echo ==============================================
-echo 4. 전투력 계수 회귀 테스트 (lopec 측정값, 보정 키트가 있는 PC만)
-echo ==============================================
-where python > nul 2>&1
-if %errorlevel% equ 0 (
-    python tools\Test-CombatRegression.py
-    if errorlevel 1 goto error
-) else (
-    echo [건너뜀] python이 없어 회귀 테스트를 건너뜁니다.
-)
 
 echo ==============================================
 echo [성공] Debug 및 Release 멀티 빌드가 완료되었습니다!

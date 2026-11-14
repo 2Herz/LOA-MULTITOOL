@@ -2,6 +2,7 @@
 
 import std;
 import LostArkMultiTool.Core.APPConstants;
+import LostArkMultiTool.Core.CombatRegression;
 import LostArkMultiTool.Models.CombatCoefficientData;
 import LostArkMultiTool.Models.RefineData;
 
@@ -23,6 +24,8 @@ namespace LostArkMultiTool::Core::SelfTest
         constexpr double MAX_UNCERTAINTY_PERCENT{ 5.0 };                     // 계통 오차 추정이 이보다 크면 이상한 값
         constexpr std::string_view PASS_TEXT{ "PASS" };                      // 통과 표시
         constexpr std::string_view FAIL_TEXT{ "FAIL" };                      // 실패 표시
+        constexpr std::string_view NOTE_TEXT{ "NOTE" };                      // 안내 표시 (실패 수에 안 셈)
+        constexpr std::size_t MAX_REPORTED_FAILURES{ 20 };                   // 보고서에 적을 회귀 초과 줄 수 (오차 큰 순)
 
         // 검사 결과를 모아 보고서로 만드는 도구
         class Reporter
@@ -34,6 +37,12 @@ namespace LostArkMultiTool::Core::SelfTest
                 if (!isPassed) ++m_failCount;                                                    // 실패 수
                 m_lines += std::format("[{}] {}{}{}\n", isPassed ? PASS_TEXT : FAIL_TEXT, name,
                     detail.empty() ? "" : " : ", detail);                                         // 한 줄 기록
+            }
+
+            // 안내 한 줄 기록 (통과 · 실패에 영향 없음)
+            void Note(std::string_view text)
+            {
+                m_lines += std::format("[{}] {}\n", NOTE_TEXT, text);   // 한 줄 기록
             }
 
             [[nodiscard]] int GetFailCount() const noexcept { return m_failCount; }   // 실패 항목 수
@@ -158,6 +167,32 @@ namespace LostArkMultiTool::Core::SelfTest
             }
             reporter.Check(blockCount > 0 && invalidBlockCount == 0, "상급 재련 묶음 (기대 시도 수)", std::format("{}묶음 중 이상 {}개", blockCount, invalidBlockCount));
         }
+
+        // ===== lopec 회귀 (실제 엔진 예측 vs lopec 측정, 측정 데이터가 없는 PC면 건너뜀) =====
+        void CheckLopecRegression(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            const std::optional<std::filesystem::path> dataDirectory{ CombatRegression::FindDataDirectory(reportPath.parent_path()) };   // 실행 파일 위쪽의 Verify/lopec_results
+            if (!dataDirectory.has_value())
+            {
+                reporter.Check(true, "lopec 회귀 (건너뜀)", "Verify/lopec_results 없음 (측정 데이터는 개발 PC에만 있음)");   // 데이터 없는 PC
+                return;
+            }
+
+            const CombatRegression::RegressionResult result{ CombatRegression::Run(*dataDirectory) };   // 다시 계산
+            if (result.m_isSkipped)
+            {
+                reporter.Check(true, "lopec 회귀 (건너뜀)", result.m_skipReason);   // 무기고를 아직 안 받음 등
+                return;
+            }
+            for (const std::string& note : result.m_notes) reporter.Note(note);   // 건너뛴 캐릭터 안내
+            reporter.Check(result.m_failures.empty(), "lopec 회귀 · 아크 패시브", std::format("{}명 · 6랭크 {}줄 최대 {:.3f}% · 덜 찬 랭크 {}줄 최대 {:.3f}% · 슬라이더 기준 보정 {}명 · 제외 {}줄 · 초과 {}줄",
+                result.m_characterCount, result.m_fullRankRowCount, result.m_worstFullRankPercent, result.m_partialRankRowCount, result.m_worstPartialRankPercent,
+                result.m_offsetCharacterCount, result.m_exceptionCount, result.m_failures.size()));   // 요약 한 줄
+            for (const CombatRegression::RegressionFailure& failure : result.m_failures | std::views::take(MAX_REPORTED_FAILURES))   // 오차 큰 줄부터
+            {
+                reporter.Note(std::format("초과 {} {} ({}) : {:.3f}% (허용 {}%)", failure.m_character, failure.m_control, failure.m_change, failure.m_errorPercent, failure.m_limitPercent));
+            }
+        }
     }
 
     bool IsRequested(std::wstring_view commandLine) noexcept
@@ -172,6 +207,7 @@ namespace LostArkMultiTool::Core::SelfTest
         {
             CheckCombatCoefficients(reporter);                   // 전투력 계수
             CheckRefineTables(reporter);                         // 재련 표
+            CheckLopecRegression(reporter, reportPath);          // lopec 회귀
         }
         catch (const std::exception& exception)
         {

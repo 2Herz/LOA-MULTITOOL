@@ -379,6 +379,12 @@
     <ClCompile Include="Update_Installer.ixx">
       <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>
+    <ClCompile Include="Combat_Regression.cpp">
+      <Filter>1. 코어. 기반. 시간</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Regression.ixx">
+      <Filter>1. 코어. 기반. 시간</Filter>
+    </ClCompile>
     <ClCompile Include="Self_Test.cpp">
       <Filter>1. 코어\1. 기반\4. 시간</Filter>
     </ClCompile>
