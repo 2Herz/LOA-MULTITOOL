@@ -11,12 +11,12 @@
 #define APP_VERSION_TEXT           "1.6.2"                    // 화면용 버전 글자 (APP_VERSION과 같아야 함)
 #define APP_FILE_VERSION_TEXT      "1.6.2.0"                  // 네 자리 버전 글자
 
-#define APP_COMPANY_TEXT           "2Herz"                    // 만든 사람 (GitHub 계정)
+#define APP_COMPANY_TEXT           "ESTOPPEL"                 // 회사 이름
 #define APP_PRODUCT_TEXT           "로스트아크 멀티툴"            // 제품 이름
 #define APP_DESCRIPTION_TEXT       "로스트아크 멀티툴 (LOA KIT)"  // 파일 설명 (작업 관리자 이름)
 #define APP_INTERNAL_NAME_TEXT     "LOA-MULTITOOL"            // 내부 이름
 #define APP_ORIGINAL_NAME_TEXT     "LOA-MULTITOOL.exe"        // 원래 파일 이름
-#define APP_COPYRIGHT_TEXT         "Copyright (C) 2026 2Herz" // 저작권
+#define APP_COPYRIGHT_TEXT         "Copyright (C) 2026 ESTOPPEL" // 저작권
 #define APP_HOMEPAGE_TEXT          "https://github.com/2Herz/LOA-MULTITOOL"   // 배포 페이지
 
 #define APP_LANGUAGE_BLOCK         "041204b0"                 // 한국어(0x0412) + 유니코드(1200) 문자열 블록
