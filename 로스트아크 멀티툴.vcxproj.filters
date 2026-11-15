@@ -1080,4 +1080,9 @@
     <None Include="패치노트.md" />
     <None Include="README.md" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="App_Version.rc">
+      <Filter>1. 코어</Filter>
+    </ResourceCompile>
+  </ItemGroup>
 </Project>

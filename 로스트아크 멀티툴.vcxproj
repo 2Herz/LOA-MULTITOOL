@@ -1743,6 +1743,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ResourceCompile Include="App_Version.rc" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="README.md" />
     <None Include="패치노트.md" />
   </ItemGroup>

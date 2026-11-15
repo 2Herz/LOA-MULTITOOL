@@ -1,0 +1,58 @@
+// 실행 파일 버전 정보 리소스 (파일 속성 → 자세히 탭, 백신 평판 판단에도 쓰임)
+// 버전을 올릴 때는 APP_Constants.ixx의 APP_VERSION과 아래 APP_VERSION_* 네 값을 같이 올릴 것 (자체 검사가 둘이 같은지 확인)
+#pragma code_page(65001)                                      // 이 파일은 UTF-8 (한글 문자열)
+
+#include <winres.h>                                           // VS_VERSION_INFO · VS_FF_* · VOS_* · VFT_* 정의
+
+#define APP_VERSION_MAJOR          1                          // 주 버전
+#define APP_VERSION_MINOR          6                          // 부 버전
+#define APP_VERSION_PATCH          2                          // 수정 버전
+#define APP_VERSION_BUILD          0                          // 빌드 번호 (쓰지 않음, 항상 0)
+#define APP_VERSION_TEXT           "1.6.2"                    // 화면용 버전 글자 (APP_VERSION과 같아야 함)
+#define APP_FILE_VERSION_TEXT      "1.6.2.0"                  // 네 자리 버전 글자
+
+#define APP_COMPANY_TEXT           "2Herz"                    // 만든 사람 (GitHub 계정)
+#define APP_PRODUCT_TEXT           "로스트아크 멀티툴"            // 제품 이름
+#define APP_DESCRIPTION_TEXT       "로스트아크 멀티툴 (LOA KIT)"  // 파일 설명 (작업 관리자 이름)
+#define APP_INTERNAL_NAME_TEXT     "LOA-MULTITOOL"            // 내부 이름
+#define APP_ORIGINAL_NAME_TEXT     "LOA-MULTITOOL.exe"        // 원래 파일 이름
+#define APP_COPYRIGHT_TEXT         "Copyright (C) 2026 2Herz" // 저작권
+#define APP_HOMEPAGE_TEXT          "https://github.com/2Herz/LOA-MULTITOOL"   // 배포 페이지
+
+#define APP_LANGUAGE_BLOCK         "041204b0"                 // 한국어(0x0412) + 유니코드(1200) 문자열 블록
+#define APP_LANGUAGE_ID            0x0412                     // 한국어
+#define APP_CODE_PAGE              1200                       // 유니코드
+
+VS_VERSION_INFO VERSIONINFO                                   // 버전 정보 리소스 시작
+ FILEVERSION     APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH, APP_VERSION_BUILD   // 숫자 파일 버전
+ PRODUCTVERSION  APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH, APP_VERSION_BUILD   // 숫자 제품 버전
+ FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK                         // 유효한 플래그 범위
+#ifdef _DEBUG                                                 // Debug 빌드면
+ FILEFLAGS       VS_FF_DEBUG                                  // 디버그 표시
+#else                                                         // Release 빌드면
+ FILEFLAGS       0x0L                                         // 표시 없음
+#endif                                                        // 빌드 구성 분기 끝
+ FILEOS          VOS_NT_WINDOWS32                             // Windows NT 계열
+ FILETYPE        VFT_APP                                      // 실행 프로그램
+ FILESUBTYPE     VFT2_UNKNOWN                                 // 하위 종류 없음
+BEGIN                                                         // 버전 정보 내용
+    BLOCK "StringFileInfo"                                    // 문자열 정보
+    BEGIN                                                     // 문자열 정보 시작
+        BLOCK APP_LANGUAGE_BLOCK                              // 한국어 · 유니코드 블록
+        BEGIN                                                 // 블록 시작
+            VALUE "CompanyName",      APP_COMPANY_TEXT        // 회사
+            VALUE "FileDescription",  APP_DESCRIPTION_TEXT    // 파일 설명
+            VALUE "FileVersion",      APP_FILE_VERSION_TEXT   // 파일 버전
+            VALUE "InternalName",     APP_INTERNAL_NAME_TEXT  // 내부 이름
+            VALUE "LegalCopyright",   APP_COPYRIGHT_TEXT      // 저작권
+            VALUE "OriginalFilename", APP_ORIGINAL_NAME_TEXT  // 원래 파일 이름
+            VALUE "ProductName",      APP_PRODUCT_TEXT        // 제품 이름
+            VALUE "ProductVersion",   APP_VERSION_TEXT        // 제품 버전 (APP_VERSION과 비교됨)
+            VALUE "Comments",         APP_HOMEPAGE_TEXT       // 배포 페이지
+        END                                                   // 블록 끝
+    END                                                       // 문자열 정보 끝
+    BLOCK "VarFileInfo"                                       // 언어 정보
+    BEGIN                                                     // 언어 정보 시작
+        VALUE "Translation", APP_LANGUAGE_ID, APP_CODE_PAGE   // 한국어 · 유니코드
+    END                                                       // 언어 정보 끝
+END                                                           // 버전 정보 리소스 끝

@@ -1,4 +1,11 @@
-﻿module LostArkMultiTool.Core.SelfTest;
+﻿module;
+
+#define NOMINMAX
+#include <Windows.h>									// GetModuleFileNameW, GetFileVersionInfoW, VerQueryValueW
+
+#pragma comment(lib, "version.lib")					// 버전 정보 API
+
+module LostArkMultiTool.Core.SelfTest;
 
 import std;
 import LostArkMultiTool.Core.APPConstants;
@@ -26,6 +33,8 @@ namespace LostArkMultiTool::Core::SelfTest
         constexpr std::string_view FAIL_TEXT{ "FAIL" };                      // 실패 표시
         constexpr std::string_view NOTE_TEXT{ "NOTE" };                      // 안내 표시 (실패 수에 안 셈)
         constexpr std::size_t MAX_REPORTED_FAILURES{ 20 };                   // 보고서에 적을 회귀 초과 줄 수 (오차 큰 순)
+        constexpr std::size_t EXE_PATH_BUFFER_SIZE{ 32767 };                 // 윈도우가 지원하는 가장 긴 경로 길이
+        constexpr std::wstring_view PRODUCT_VERSION_KEY{ L"\\StringFileInfo\\041204b0\\ProductVersion" };   // App_Version.rc 한국어 · 유니코드 블록의 제품 버전
 
         // 검사 결과를 모아 보고서로 만드는 도구
         class Reporter
@@ -167,6 +176,30 @@ namespace LostArkMultiTool::Core::SelfTest
             }
             reporter.Check(blockCount > 0 && invalidBlockCount == 0, "상급 재련 묶음 (기대 시도 수)", std::format("{}묶음 중 이상 {}개", blockCount, invalidBlockCount));
         }
+        // 실행 파일 버전 정보(App_Version.rc)의 제품 버전이 APP_VERSION과 같은지 (버전을 올릴 때 rc를 빠뜨리면 실패)
+        void CheckVersionResource(Reporter& reporter)
+        {
+            std::wstring exePath(EXE_PATH_BUFFER_SIZE, L'\0');                                                   // 실행 파일 경로 버퍼
+            const DWORD pathLength{ ::GetModuleFileNameW(nullptr, exePath.data(), static_cast<DWORD>(exePath.size())) };   // 경로 읽기
+            exePath.resize(pathLength);                                                                          // 실제 길이로 자름
+
+            DWORD handle{};                                                                                      // 쓰지 않는 값 (API 형식)
+            const DWORD infoSize{ ::GetFileVersionInfoSizeW(exePath.c_str(), &handle) };                         // 버전 정보 크기
+            std::vector<std::byte> info(infoSize);                                                               // 버전 정보 버퍼
+            const bool hasInfo{ infoSize > 0 && ::GetFileVersionInfoW(exePath.c_str(), 0, infoSize, info.data()) != FALSE };   // 읽기
+
+            wchar_t* text{ nullptr };                                                                            // 버퍼 안을 가리키기만 함 (해제 불필요)
+            UINT textLength{};                                                                                   // 글자 수 (끝 0 포함)
+            const bool hasVersion{ hasInfo && ::VerQueryValueW(info.data(), PRODUCT_VERSION_KEY.data(), reinterpret_cast<void**>(&text), &textLength) != FALSE
+                && text != nullptr && textLength > 0 };                                                          // 제품 버전 찾기
+            const std::wstring resourceVersion{ hasVersion ? std::wstring{ text } : std::wstring{} };            // 리소스 버전 글자
+            const std::wstring appVersion{ APPConstants::APP_VERSION.begin(), APPConstants::APP_VERSION.end() }; // 코드 버전 (ASCII)
+
+            const std::string resourceText{ resourceVersion.begin(), resourceVersion.end() };                    // 보고서용 (버전은 ASCII)
+            reporter.Check(resourceVersion == appVersion, "실행 파일 버전 정보",
+                std::format("rc {} / APP_VERSION {}", hasVersion ? resourceText : std::string{ "없음" }, APPConstants::APP_VERSION));   // 비교 결과
+        }
+
 
         // ===== lopec 회귀 (실제 엔진 예측 vs lopec 측정, 측정 데이터가 없는 PC면 건너뜀) =====
         void CheckLopecRegression(Reporter& reporter, const std::filesystem::path& reportPath)
@@ -207,6 +240,7 @@ namespace LostArkMultiTool::Core::SelfTest
         {
             CheckCombatCoefficients(reporter);                   // 전투력 계수
             CheckRefineTables(reporter);                         // 재련 표
+            CheckVersionResource(reporter);                      // 실행 파일 버전 정보
             CheckLopecRegression(reporter, reportPath);          // lopec 회귀
         }
         catch (const std::exception& exception)
