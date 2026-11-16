@@ -61,6 +61,9 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view OPTION_SEPARATOR{ L" / " };
         constexpr std::wstring_view OPTION_FORMAT{ L"{} +{}{}" };
         constexpr std::wstring_view PERCENT_SUFFIX{ L"%" };
+        constexpr std::string_view POLISH_OPTION_TYPE{ "ACCESSORY_UPGRADE" };   // 연마 효과 줄의 옵션 종류 (옵션 1 · 2 · 3)
+        constexpr std::size_t SHOWN_STAT_COUNT{ 4 };                            // 옵션 칸에 보여 줄 기본 스탯 수
+        constexpr std::array<std::string_view, SHOWN_STAT_COUNT> SHOWN_STAT_NAMES{ "힘", "민첩", "지능", "체력" };   // 주스탯 → 체력 순서 (깨달음 등 나머지는 숨김)
         constexpr std::wstring_view TRADE_COUNT_FORMAT{ L"{}회" };
 
         // 마감 "yyyy-MM-ddTHH:mm:ss…" → "MM/dd HH:mm"
@@ -183,20 +186,29 @@ namespace LostArkMultiTool::Views
             return columns;
         }
 
-        // 옵션 한 줄씩 "추가 피해 +0.60%"로 이어 붙임 (이름이 없는 줄은 건너뜀)
+        // 옵션 한 줄을 "추가 피해 +0.60%"로 이어 붙임 (앞에 글자가 있으면 구분자부터)
+        void AppendOption(std::wstring& text, const Models::AccessoryOptionLine& option)
+        {
+            if (!text.empty()) text += OPTION_SEPARATOR;                                                                              // 앞 옵션과 구분
+            const std::wstring value{ Core::NumberFormat::FormatNumber(option.m_value, option.m_isPercentage ? PERCENT_DECIMALS : AMOUNT_DECIMALS) };   // 값 글자
+            text += std::format(OPTION_FORMAT, Core::TextEncoding::UTF8ToWide(option.m_name), value,
+                option.m_isPercentage ? PERCENT_SUFFIX : std::wstring_view{});                                                         // "이름 +값(%)"
+        }
+
+        // 옵션 칸 글자: 연마 효과(옵션 1 · 2 · 3) → 주스탯(힘 · 민첩 · 지능) → 체력 순서만 보여 줌 (깨달음 등은 칸이 잘려서 뺌)
         [[nodiscard]] std::wstring FormatOptions(const std::vector<Models::AccessoryOptionLine>& options)
         {
-            std::wstring text;
-            for (const Models::AccessoryOptionLine& option : options)
+            std::wstring text;                                                                          // 옵션 칸 글자
+            for (const Models::AccessoryOptionLine& option : options)                                   // 연마 효과를 매물 순서대로
             {
-                if (option.m_name.empty()) continue;
-                if (!text.empty()) text += OPTION_SEPARATOR;
-
-                const std::wstring value{ Core::NumberFormat::FormatNumber(option.m_value, option.m_isPercentage ? PERCENT_DECIMALS : AMOUNT_DECIMALS) };
-                text += std::format(OPTION_FORMAT, Core::TextEncoding::UTF8ToWide(option.m_name), value,
-                    option.m_isPercentage ? PERCENT_SUFFIX : std::wstring_view{});
+                if (option.m_type == POLISH_OPTION_TYPE && !option.m_name.empty()) AppendOption(text, option);
             }
-            return text.empty() ? std::wstring{ EMPTY_TEXT } : text;
+            for (const std::string_view statName : SHOWN_STAT_NAMES)                                    // 주스탯 → 체력 순서로
+            {
+                const auto found{ std::ranges::find(options, statName, &Models::AccessoryOptionLine::m_name) };   // 이름이 같은 스탯 줄
+                if (found != options.end()) AppendOption(text, *found);
+            }
+            return text.empty() ? std::wstring{ EMPTY_TEXT } : text;                                    // 보여 줄 옵션이 없으면 "-"
         }
 
         // 마감 시각 (형식이 다르면 그대로)

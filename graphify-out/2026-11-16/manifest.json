@@ -654,21 +654,21 @@
     "semantic_hash": "3f0ef05426f8012213355e7bc02dfe98"
   },
   "README.md": {
-    "mtime": 1794617661.1625373,
-    "seen": 1794617672.8299003,
-    "ast_hash": "66699423c1029773e74325dedd588825",
+    "mtime": 1794763390.7194924,
+    "seen": 1794799949.653424,
+    "ast_hash": "381db6153b8117b1d5c24573d1739461",
     "semantic_hash": ""
   },
   "Visual.html": {
-    "mtime": 1794617661.9185805,
-    "seen": 1794617672.8299048,
-    "ast_hash": "895fda8f26cfd82704bf6a1d44cfbb2a",
+    "mtime": 1794755856.312978,
+    "seen": 1794755868.8895543,
+    "ast_hash": "da60abce44854d97852f0a9ae6534f3b",
     "semantic_hash": ""
   },
   "\ud328\uce58\ub178\ud2b8.md": {
-    "mtime": 1794617661.160033,
-    "seen": 1794617672.8299088,
-    "ast_hash": "191163240489146136e625d03e3f620d",
+    "mtime": 1794755855.800873,
+    "seen": 1794755868.8895586,
+    "ast_hash": "bf75cd9c497a50c917fd58b990499d72",
     "semantic_hash": ""
   },
   "API_Key_Dialog.ixx": {
@@ -686,9 +686,9 @@
     "language": "language=.cpp"
   },
   "APP_Constants.ixx": {
-    "mtime": 1794617661.1585867,
-    "seen": 1794617672.828077,
-    "ast_hash": "c90ed035f57e094ea62c87646fd4d04d",
+    "mtime": 1794755729.7522378,
+    "seen": 1794755868.8881457,
+    "ast_hash": "fc2e712c748a55f540ae4b68272fab37",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1742,9 +1742,9 @@
     "language": "language=.cpp"
   },
   "Self_Test.cpp": {
-    "mtime": 1794617420.4787192,
-    "seen": 1794617672.8295603,
-    "ast_hash": "5a0e91585739761e3e1ab2d4d01af6f0",
+    "mtime": 1794755729.7627487,
+    "seen": 1794755868.8893702,
+    "ast_hash": "c8179dcc02e3c722ac091ab9b154846b",
     "semantic_hash": ""
   },
   "Self_Test.ixx": {
@@ -1809,6 +1809,12 @@
     "mtime": 1794616672.3944592,
     "seen": 1794617672.8298717,
     "ast_hash": "7b94221f30b8caba1f24560457c6d8f0",
+    "semantic_hash": ""
+  },
+  "resource.h": {
+    "mtime": 1794755977.689385,
+    "seen": 1794799949.6533685,
+    "ast_hash": "332418538fe7723621cde88880df981b",
     "semantic_hash": ""
   }
 }
