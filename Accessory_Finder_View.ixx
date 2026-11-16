@@ -11,6 +11,7 @@ import LostArkMultiTool.Views.UI.ComboBox;
 import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Grid;
 import LostArkMultiTool.Views.UI.Label;
+import LostArkMultiTool.Views.UI.TextBox;
 
 export namespace LostArkMultiTool::Views
 {
@@ -34,6 +35,7 @@ export namespace LostArkMultiTool::Views
         // ===== 검색 조건 =====
         [[nodiscard]] int GetCategoryCode() const noexcept;
         [[nodiscard]] std::optional<int> GetMinQuality() const noexcept;   // nullopt = 품질 전체
+        [[nodiscard]] std::optional<int> GetMinMainStat() const;           // 주스탯(힘 · 민첩 · 지능) 최소 수치 (비었거나 0이면 nullopt)
 
         // 연마 효과 칸 (옵션 이름 목록은 모든 칸 공통, 값 목록은 칸마다)
         void SetOptionNames(const std::vector<std::wstring>& optionNames);   // 모든 칸이 "선택 안 함"으로 돌아감
@@ -83,6 +85,8 @@ export namespace LostArkMultiTool::Views
         UI::ComboBox& m_categoryBox;
         UI::Label& m_qualityLabel;
         UI::ComboBox& m_qualityBox;
+        UI::Label& m_mainStatLabel;      // "주스탯"
+        UI::TextBox& m_mainStatBox;      // 주스탯 최소 수치 (숫자만, 비우면 조건 없음)
         UI::Button& m_searchButton;
         UI::Label& m_statusLabel;
         UI::Label& m_optionLabel;

@@ -37,6 +37,7 @@ export namespace LostArkMultiTool::Views
         std::optional<double> m_dayChangeRate;    // 전일 평균가 대비 변동률(%)
         std::string m_key;                        // 일별 기록을 찾는 키 (UTF-8 각인서 이름, 화면에는 표시하지 않음)
         std::vector<double> m_trend;              // 추이 선 값 (일별 최저가 기록 중 최근 날짜들, 2개 미만이면 선을 그리지 않음)
+        bool m_isFavorite{};                      // 즐겨찾기 각인서인지 (이름 앞 ★, 표 맨 위)
     };
 
     // 위쪽 통계 카드 4장의 원본 값 (화면이 형식 · 색을 정함, 값이 없으면 "-")
@@ -66,6 +67,7 @@ export namespace LostArkMultiTool::Views
         void SetOnAutoRefreshChanged(std::function<void(bool isEnabled)> onAutoRefreshChanged);
         void SetOnFilterChanged(std::function<void()> onFilterChanged);   // 검색어 · 정렬이 바뀜
         void SetOnRowSelected(std::function<void()> onRowSelected);       // 시세 표에서 행을 골랐음 (그래프 대상)
+        void SetOnFavoriteToggled(std::function<void()> onFavoriteToggled);   // [즐겨찾기] 버튼을 눌렀음 (고른 행 추가 ↔ 해제)
 
         // ===== 상단 바 =====
         void SetAutoRefreshChecked(bool isChecked) noexcept;   // 코드에서 바꿈 (알림 없음)
@@ -74,6 +76,8 @@ export namespace LostArkMultiTool::Views
         void SetStatusText(std::wstring text);
         [[nodiscard]] const std::wstring& GetSearchText() const noexcept;
         [[nodiscard]] EngravingSortOrder GetSortOrder() const noexcept;
+        [[nodiscard]] bool IsFavoriteOnly() const noexcept;                        // [즐겨찾기만] 체크 상태
+        void SetFavoriteButton(bool hasSelection, bool isFavorite);                // 고른 행에 맞게 버튼 글자 · 활성 상태
 
         // ===== 시세 표 =====
         void ShowRows(const std::vector<EngravingRow>& rows, std::size_t totalCount);   // totalCount = 검색으로 거르기 전 전체 종류 수 (빈 안내 문구 선택용)
@@ -106,6 +110,8 @@ export namespace LostArkMultiTool::Views
         UI::TextBox& m_searchBox;
         UI::Button& m_clearButton;   // 검색어 한 번에 지우기 (✕)
         UI::ComboBox& m_sortBox;
+        UI::Button& m_favoriteButton;      // 고른 각인서 즐겨찾기 추가 ↔ 해제
+        UI::CheckBox& m_favoriteOnlyBox;   // 즐겨찾기만 보기
         UI::Label& m_statusLabel;
         UI::Grid& m_priceGrid;
         UI::LineChart& m_chart;      // 고른 각인서의 일별 최저가 그래프
@@ -126,5 +132,6 @@ export namespace LostArkMultiTool::Views
         std::function<void(bool)> m_onAutoRefreshChanged;
         std::function<void()> m_onFilterChanged;
         std::function<void()> m_onRowSelected;
+        std::function<void()> m_onFavoriteToggled;
     };
 }

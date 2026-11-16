@@ -13,6 +13,7 @@ namespace LostArkMultiTool::Services
     {
         // ===== 저장 파일 키 이름 (보석 검색기 저장 파일과 같은 구조) =====
         constexpr std::string_view KEY_HISTORY{ "History" };
+        constexpr std::string_view KEY_FAVORITES{ "Favorites" };   // 즐겨찾기 품목 키 배열 (없으면 빈 즐겨찾기, 이전 파일 호환)
         constexpr std::string_view STRUCTURE_ERROR_MESSAGE{ "시세 기록 저장 파일 구조가 올바르지 않습니다." };
 
         // 구조가 어긋나면 예외 → JSONFileStore가 손상으로 처리 (백업 복구)
@@ -39,6 +40,19 @@ namespace LostArkMultiTool::Services
             RequireType(root, JSONType::OBJECT_VALUE);   // 최상위는 객체여야 함
 
             Models::PriceHistory history;   // 읽어서 채울 기록
+
+            // 즐겨찾기: 문자열 배열 (없거나 null이면 빈 즐겨찾기)
+            const JSONValue& favoritesValue{ root.FindMember(KEY_FAVORITES) };   // "Favorites" 멤버
+            if (!IsNullOrMissing(favoritesValue))
+            {
+                RequireType(favoritesValue, JSONType::ARRAY_VALUE);              // 배열이어야 함
+                for (const JSONValue& favorite : favoritesValue.GetItems())
+                {
+                    RequireType(favorite, JSONType::STRING_VALUE);               // 품목 키는 문자열
+                    history.GetFavorites().insert(favorite.GetString());         // 즐겨찾기에 추가
+                }
+            }
+
             const JSONValue& historyValue{ root.FindMember(KEY_HISTORY) };   // "History" 멤버
             if (IsNullOrMissing(historyValue)) return history;   // 기록이 없으면 빈 상태
             RequireType(historyValue, JSONType::OBJECT_VALUE);
@@ -77,9 +91,12 @@ namespace LostArkMultiTool::Services
                 itemValues.push_back(JSONValue::CreateObject(std::move(dateKeys), std::move(prices)));
             }
 
+            std::vector<JSONValue> favorites;   // 즐겨찾기 품목 키 (정렬 집합이라 가나다순)
+            for (const std::string& favorite : history.GetFavorites()) favorites.push_back(JSONValue::CreateString(favorite));
+
             return WriteJSONText(JSONValue::CreateObject(
-                { std::string{ KEY_HISTORY } },
-                { JSONValue::CreateObject(std::move(itemKeys), std::move(itemValues)) }));
+                { std::string{ KEY_FAVORITES }, std::string{ KEY_HISTORY } },
+                { JSONValue::CreateArray(std::move(favorites)), JSONValue::CreateObject(std::move(itemKeys), std::move(itemValues)) }));
         }
     }
 

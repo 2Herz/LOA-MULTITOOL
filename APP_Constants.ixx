@@ -106,6 +106,8 @@ export namespace LostArkMultiTool::Core::APPConstants
 	inline constexpr std::string_view ANCIENT_GRADE_NAME{ "고대" };
 	inline constexpr std::string_view POLISH_OPTION_KEYWORD{ "연마" };	//	검색 옵션 중 연마 효과 묶음을 찾을 때 쓰는 글자
 	inline constexpr std::size_t MAX_ACCESSORY_OPTION_FILTERS{ 3 };		//	한 번에 거는 연마 효과 조건 수
+	inline constexpr int ACCESSORY_BASE_OPTION_GROUP{ 1 };				//	경매장 검색 옵션 '장신구 기본 효과' 묶음 (EtcOptions.Value)
+	inline constexpr int MAIN_STAT_OPTION_CODE{ 11 };					//	그 묶음의 '힘 / 민첩 / 지능' (EtcSubs.Value, 최소 수치로 검색)
 
 	//	===== 강화책 검색기 =====
 	//	거래소 '강화 재료' 카테고리에서 이름으로 검색 (야금술 = 무기, 재봉술 = 방어구)

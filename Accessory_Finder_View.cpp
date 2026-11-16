@@ -15,6 +15,7 @@ import LostArkMultiTool.Views.UI.ComboBox;
 import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Grid;
 import LostArkMultiTool.Views.UI.Label;
+import LostArkMultiTool.Views.UI.TextBox;
 
 namespace LostArkMultiTool::Views
 {
@@ -62,8 +63,10 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view OPTION_FORMAT{ L"{} +{}{}" };
         constexpr std::wstring_view PERCENT_SUFFIX{ L"%" };
         constexpr std::string_view POLISH_OPTION_TYPE{ "ACCESSORY_UPGRADE" };   // 연마 효과 줄의 옵션 종류 (옵션 1 · 2 · 3)
-        constexpr std::size_t SHOWN_STAT_COUNT{ 4 };                            // 옵션 칸에 보여 줄 기본 스탯 수
-        constexpr std::array<std::string_view, SHOWN_STAT_COUNT> SHOWN_STAT_NAMES{ "힘", "민첩", "지능", "체력" };   // 주스탯 → 체력 순서 (깨달음 등 나머지는 숨김)
+        constexpr std::size_t MAIN_STAT_COUNT{ 3 };                             // 주스탯 종류 수
+        constexpr std::array<std::string_view, MAIN_STAT_COUNT> MAIN_STAT_NAMES{ "힘", "민첩", "지능" };   // 매물에 같은 값으로 세 줄이 붙음 → 하나만 보여 줌
+        constexpr std::string_view VITALITY_STAT_NAME{ "체력" };                // 주스탯 다음에 보여 줄 스탯
+        constexpr std::string_view MAIN_STAT_DISPLAY_NAME{ "힘·민·지" };        // 주스탯 한 줄 이름 (UTF-8)
         constexpr std::wstring_view TRADE_COUNT_FORMAT{ L"{}회" };
 
         // 마감 "yyyy-MM-ddTHH:mm:ss…" → "MM/dd HH:mm"
@@ -81,6 +84,10 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view SEARCH_TEXT{ L"검색" };
         constexpr std::wstring_view SEARCHING_BUTTON_TEXT{ L"검색 중…" };   // 조회 중 버튼 글자
         constexpr std::wstring_view OPTION_LABEL_TEXT{ L"연마 효과" };
+        constexpr std::wstring_view MAIN_STAT_LABEL_TEXT{ L"주스탯" };            // 주스탯 최소 수치 칸 이름
+        constexpr std::wstring_view MAIN_STAT_PLACEHOLDER{ L"최소 수치" };        // 비어 있을 때 안내 글자
+        constexpr std::size_t MAIN_STAT_MAX_LENGTH{ 6 };                          // 주스탯 입력 최대 자릿수 (악세 주스탯은 5자리)
+        constexpr int DECIMAL_BASE{ 10 };                                         // 십진수 자릿수 올림
         constexpr int PREVIOUS_PAGE_STEP{ -1 };
         constexpr int NEXT_PAGE_STEP{ 1 };
         constexpr std::wstring_view PREVIOUS_TEXT{ L"◀ 이전" };
@@ -118,6 +125,8 @@ namespace LostArkMultiTool::Views
         constexpr float CATEGORY_BOX_WIDTH{ 90.0f };
         constexpr float QUALITY_BOX_WIDTH{ 100.0f };
         constexpr float SEARCH_BUTTON_WIDTH{ 90.0f };
+        constexpr float MAIN_STAT_LABEL_WIDTH{ 42.0f };   // "주스탯"
+        constexpr float MAIN_STAT_BOX_WIDTH{ 100.0f };    // 주스탯 최소 수치 입력칸
         constexpr float OPTION_LABEL_WIDTH{ 60.0f };
         constexpr float OPTION_BOX_WIDTH{ 160.0f };
         constexpr float VALUE_BOX_WIDTH{ 100.0f };
@@ -195,7 +204,7 @@ namespace LostArkMultiTool::Views
                 option.m_isPercentage ? PERCENT_SUFFIX : std::wstring_view{});                                                         // "이름 +값(%)"
         }
 
-        // 옵션 칸 글자: 연마 효과(옵션 1 · 2 · 3) → 주스탯(힘 · 민첩 · 지능) → 체력 순서만 보여 줌 (깨달음 등은 칸이 잘려서 뺌)
+        // 옵션 칸 글자: 연마 효과(옵션 1 · 2 · 3) → 주스탯(힘·민·지 한 줄) → 체력 순서만 보여 줌 (깨달음 등은 칸이 잘려서 뺌)
         [[nodiscard]] std::wstring FormatOptions(const std::vector<Models::AccessoryOptionLine>& options)
         {
             std::wstring text;                                                                          // 옵션 칸 글자
@@ -203,11 +212,21 @@ namespace LostArkMultiTool::Views
             {
                 if (option.m_type == POLISH_OPTION_TYPE && !option.m_name.empty()) AppendOption(text, option);
             }
-            for (const std::string_view statName : SHOWN_STAT_NAMES)                                    // 주스탯 → 체력 순서로
+            // 주스탯: 힘 · 민첩 · 지능 중 처음 찾은 줄 하나만 "힘·민·지 +값"으로
+            const auto mainStat{ std::ranges::find_if(options, [](const Models::AccessoryOptionLine& option)
             {
-                const auto found{ std::ranges::find(options, statName, &Models::AccessoryOptionLine::m_name) };   // 이름이 같은 스탯 줄
-                if (found != options.end()) AppendOption(text, *found);
+                return std::ranges::contains(MAIN_STAT_NAMES, std::string_view{ option.m_name });   // 주스탯 이름인지
+            }) };
+            if (mainStat != options.end())
+            {
+                Models::AccessoryOptionLine merged{ *mainStat };            // 값은 그대로
+                merged.m_name = std::string{ MAIN_STAT_DISPLAY_NAME };      // 이름만 합친 표시로
+                AppendOption(text, merged);
             }
+
+            // 체력
+            const auto vitality{ std::ranges::find(options, VITALITY_STAT_NAME, &Models::AccessoryOptionLine::m_name) };   // 체력 줄
+            if (vitality != options.end()) AppendOption(text, *vitality);
             return text.empty() ? std::wstring{ EMPTY_TEXT } : text;                                    // 보여 줄 옵션이 없으면 "-"
         }
 
@@ -235,6 +254,8 @@ namespace LostArkMultiTool::Views
         , m_categoryBox{ m_host.Emplace<UI::ComboBox>() }
         , m_qualityLabel{ m_host.Emplace<UI::Label>(std::wstring{ QUALITY_LABEL_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
         , m_qualityBox{ m_host.Emplace<UI::ComboBox>() }
+        , m_mainStatLabel{ m_host.Emplace<UI::Label>(std::wstring{ MAIN_STAT_LABEL_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
+        , m_mainStatBox{ m_host.Emplace<UI::TextBox>(platform, std::wstring{ MAIN_STAT_PLACEHOLDER }) }
         , m_searchButton{ m_host.Emplace<UI::Button>(std::wstring{ SEARCH_TEXT }, UI::ButtonStyle::BUTTON_PRIMARY, nullptr) }
         , m_statusLabel{ m_host.Emplace<UI::Label>(std::wstring{ INITIAL_STATUS_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
         , m_optionLabel{ m_host.Emplace<UI::Label>(std::wstring{ OPTION_LABEL_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
@@ -254,6 +275,15 @@ namespace LostArkMultiTool::Views
         m_qualityBox.SetItems(MakeQualityItems());
         m_qualityBox.SetSelectedIndex(0);
         SetOptionNames({});   // 옵션을 불러오기 전에는 "선택 안 함"만
+
+        // 주스탯 칸: 숫자만 (영문 · 숫자 입력), Enter로 바로 검색
+        m_mainStatBox.SetMaxLength(MAIN_STAT_MAX_LENGTH);
+        m_mainStatBox.SetIMEAllowed(false);
+        m_mainStatBox.SetInputFilter([](wchar_t character) { return character >= L'0' && character <= L'9'; });   // 숫자만 받음
+        m_mainStatBox.SetOnSubmit([this]
+        {
+            if (!m_isBusy) if (const auto onSearch{ m_onSearch }) onSearch();   // 조회 중이 아니면 검색
+        });
 
         m_searchButton.SetOnClick([this]
         {
@@ -326,6 +356,21 @@ namespace LostArkMultiTool::Views
         const int quality{ QUALITY_OPTIONS[index < QUALITY_COUNT ? index : 0] };
         if (quality == ANY_QUALITY) return std::nullopt;
         return quality;
+    }
+
+    std::optional<int> AccessoryFinderView::GetMinMainStat() const
+    {
+        const std::wstring& text{ m_mainStatBox.GetText() };                                 // 입력한 글자 (숫자만 받음)
+        int value{};                                                                         // 읽은 수치
+        const wchar_t* const first{ text.data() };                                           // 글자 시작
+        const wchar_t* const last{ first + text.size() };                                    // 글자 끝
+        for (const wchar_t* cursor{ first }; cursor != last; ++cursor)                       // 자릿수가 작아서(최대 6) 넘침 없음
+        {
+            if (*cursor < L'0' || *cursor > L'9') return std::nullopt;                       // 숫자가 아니면 조건 없음
+            value = value * DECIMAL_BASE + static_cast<int>(*cursor - L'0');                // 다음 자리
+        }
+        if (value <= 0) return std::nullopt;                                                 // 비었거나 0이면 조건 없음
+        return value;
     }
 
     void AccessoryFinderView::SetOptionNames(const std::vector<std::wstring>& optionNames)
@@ -520,11 +565,13 @@ namespace LostArkMultiTool::Views
             x += width + gapAfter;
         } };
 
-        // 첫 줄: 분류 [목걸이] 품질 [전체] [검색] 상태
+        // 첫 줄: 분류 [목걸이] 품질 [전체] 주스탯 [최소 수치] [검색] 상태
         place(m_categoryLabel, SHORT_LABEL_WIDTH, LABEL_GAP);
         place(m_categoryBox, CATEGORY_BOX_WIDTH, GROUP_GAP);
         place(m_qualityLabel, SHORT_LABEL_WIDTH, LABEL_GAP);
-        place(m_qualityBox, QUALITY_BOX_WIDTH, SECTION_GAP);
+        place(m_qualityBox, QUALITY_BOX_WIDTH, GROUP_GAP);
+        place(m_mainStatLabel, MAIN_STAT_LABEL_WIDTH, LABEL_GAP);   // 주스탯
+        place(m_mainStatBox, MAIN_STAT_BOX_WIDTH, SECTION_GAP);     // [최소 수치]
         place(m_searchButton, SEARCH_BUTTON_WIDTH, SECTION_GAP);
         m_statusLabel.SetBounds(Core::RectF{ x, rowTop, std::max(x, right), rowTop + Theme::CONTROL_HEIGHT });
 

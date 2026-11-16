@@ -62,6 +62,10 @@ export namespace LostArkMultiTool::Views
         void SelectRow();        // 표에서 고른 행의 각인서를 그래프 대상으로
         void RefreshChart();     // 고른 각인서의 일별 최저가 그래프
 
+        // ===== 즐겨찾기 =====
+        void ToggleFavorite();          // 고른 각인서 즐겨찾기 추가 ↔ 해제 + 저장
+        void RefreshFavoriteButton();   // 고른 각인서에 맞게 [즐겨찾기] 버튼 글자 · 활성 상태
+
         Core::ToolContext* m_context{};   // Application이 소유 (Initialize ~ Shutdown 동안만 유효)
 
         // 선언 순서 = 생성 순서 (화면은 서비스 결과를 쓰므로 반대 순서로 해제)

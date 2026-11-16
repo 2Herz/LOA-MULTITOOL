@@ -64,6 +64,10 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view PLUS_SIGN{ L"+" };
         constexpr std::wstring_view PERCENT_SUFFIX{ L"%" };
         constexpr std::wstring_view CHART_VALUE_SUFFIX{ L" 골드" };   // 말풍선 값 뒤 단위
+        constexpr std::wstring_view FAVORITE_ADD_TEXT{ L"☆ 즐겨찾기" };      // 고른 각인서가 즐겨찾기가 아닐 때 버튼 글자
+        constexpr std::wstring_view FAVORITE_REMOVE_TEXT{ L"★ 해제" };       // 고른 각인서가 즐겨찾기일 때 버튼 글자
+        constexpr std::wstring_view FAVORITE_ONLY_TEXT{ L"즐겨찾기만" };     // 즐겨찾기만 보기 체크 상자
+        constexpr std::wstring_view FAVORITE_NAME_PREFIX{ L"★ " };          // 즐겨찾기 각인서 이름 앞 표시
 
         // ===== 통계 카드 =====
         constexpr std::size_t STAT_CARD_COUNT{ 4 };   // 위쪽 통계 카드 수
@@ -97,6 +101,8 @@ namespace LostArkMultiTool::Views
         constexpr float SEARCH_BOX_WIDTH{ 220.0f };
         constexpr float CLEAR_BUTTON_WIDTH{ 32.0f };
         constexpr float SORT_BOX_WIDTH{ 150.0f };
+        constexpr float FAVORITE_BUTTON_WIDTH{ 104.0f };   // [☆ 즐겨찾기] 버튼
+        constexpr float FAVORITE_ONLY_WIDTH{ 110.0f };     // [즐겨찾기만] 체크 상자
         constexpr float HALF{ 0.5f };                      // 세로 가운데 계산
         constexpr float TABLE_WIDTH_WEIGHT{ 1.65f };       // 표 카드 : 그래프 카드 너비 비율
         constexpr float CHART_WIDTH_WEIGHT{ 1.0f };
@@ -168,6 +174,8 @@ namespace LostArkMultiTool::Views
         , m_searchBox{ m_host.Emplace<UI::TextBox>(platform, std::wstring{ SEARCH_PLACEHOLDER }) }
         , m_clearButton{ m_host.Emplace<UI::Button>(std::wstring{ CLEAR_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY, nullptr) }
         , m_sortBox{ m_host.Emplace<UI::ComboBox>() }
+        , m_favoriteButton{ m_host.Emplace<UI::Button>(std::wstring{ FAVORITE_ADD_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY, nullptr) }
+        , m_favoriteOnlyBox{ m_host.Emplace<UI::CheckBox>(std::wstring{ FAVORITE_ONLY_TEXT }, [this](bool) { NotifyFilterChanged(); }) }   // 바꾸면 표를 다시 거름
         , m_statusLabel{ m_host.Emplace<UI::Label>(std::wstring{ INITIAL_STATUS_TEXT }, BAR_TEXT_STYLE, Theme::MUTED_TEXT_COLOR) }
         , m_priceGrid{ m_host.Emplace<UI::Grid>(platform, MakeColumns(), 0) }
         , m_chart{ m_host.Emplace<UI::LineChart>() }
@@ -193,6 +201,13 @@ namespace LostArkMultiTool::Views
         m_sortBox.SetItems(MakeSortItems());
         m_sortBox.SetSelectedIndex(DEFAULT_SORT_INDEX);
         m_sortBox.SetOnSelectionChanged([this] { NotifyFilterChanged(); });
+
+        // 즐겨찾기 버튼: 고른 행이 있을 때만 누를 수 있음 (처음엔 고른 행이 없음)
+        m_favoriteButton.SetOnClick([this]
+        {
+            if (const auto onFavoriteToggled{ m_onFavoriteToggled }) onFavoriteToggled();   // 매니저가 추가 ↔ 해제
+        });
+        m_favoriteButton.SetEnabled(false);
 
         // 시세 표: 읽기 전용, 행 단위 선택, 새 디자인 행 높이
         m_priceGrid.SetSelectionMode(UI::GridSelectionMode::SELECT_ROW);
@@ -227,6 +242,22 @@ namespace LostArkMultiTool::Views
     void EngravingFinderView::SetOnRowSelected(std::function<void()> onRowSelected)
     {
         m_onRowSelected = std::move(onRowSelected);
+    }
+
+    void EngravingFinderView::SetOnFavoriteToggled(std::function<void()> onFavoriteToggled)
+    {
+        m_onFavoriteToggled = std::move(onFavoriteToggled);
+    }
+
+    bool EngravingFinderView::IsFavoriteOnly() const noexcept
+    {
+        return m_favoriteOnlyBox.IsChecked();   // 즐겨찾기만 보기
+    }
+
+    void EngravingFinderView::SetFavoriteButton(bool hasSelection, bool isFavorite)
+    {
+        m_favoriteButton.SetEnabled(hasSelection);                                                           // 고른 행이 없으면 비활성
+        m_favoriteButton.SetText(std::wstring{ hasSelection && isFavorite ? FAVORITE_REMOVE_TEXT : FAVORITE_ADD_TEXT });   // 추가 / 해제 글자
     }
 
     std::optional<std::size_t> EngravingFinderView::GetSelectedRow() const noexcept
@@ -290,7 +321,7 @@ namespace LostArkMultiTool::Views
             const UI::GridCellStyle mutedStyle{ Theme::CELL_BACK_COLOR, Theme::MUTED_TEXT_COLOR };
 
             // 이름 (조회 대상이 유물 각인서뿐이라 유물 등급색 + 굵게, 앞에 이름 첫 글자 배지)
-            m_priceGrid.SetCellText(row, COL_NAME, engraving.m_name);
+            m_priceGrid.SetCellText(row, COL_NAME, engraving.m_isFavorite ? std::wstring{ FAVORITE_NAME_PREFIX } + engraving.m_name : engraving.m_name);   // 즐겨찾기면 앞에 ★
             m_priceGrid.SetCellStyle(row, COL_NAME, UI::GridCellStyle{ Theme::CELL_BACK_COLOR, Theme::GRADE_RELIC_COLOR, Core::FontWeight::BOLD,
                 UI::GridDecoration::DECORATION_BADGE, engraving.m_name.substr(0, BADGE_LETTER_LENGTH), Theme::GRADE_RELIC_COLOR });
 
@@ -389,7 +420,7 @@ namespace LostArkMultiTool::Views
         m_statBounds = PageLayout::SplitColumns(PageLayout::TakeTop(remaining, PageLayout::STAT_CARD_HEIGHT), STAT_CARD_COUNT, PageLayout::CARD_GAP);   // 통계 카드 4장
         m_filterBounds = PageLayout::TakeTop(remaining, PageLayout::FILTER_BAR_HEIGHT);                                                                 // 검색 · 정렬 줄
 
-        // 검색 줄: [시세 갱신] [5분마다 자동 갱신] [검색] [✕] [정렬] 상태 (카드 안 세로 가운데)
+        // 검색 줄: [시세 갱신] [5분마다 자동 갱신] [검색] [✕] [정렬] [☆ 즐겨찾기] [즐겨찾기만] 상태 (카드 안 세로 가운데)
         const float controlTop{ m_filterBounds.m_top + (PageLayout::FILTER_BAR_HEIGHT - PageLayout::CONTROL_HEIGHT) * HALF };
         const float controlBottom{ controlTop + PageLayout::CONTROL_HEIGHT };
         const float right{ m_filterBounds.m_right - PageLayout::CARD_PADDING };
@@ -404,6 +435,8 @@ namespace LostArkMultiTool::Views
         place(m_searchBox, SEARCH_BOX_WIDTH, CONTROL_GAP);
         place(m_clearButton, CLEAR_BUTTON_WIDTH, GROUP_GAP);
         place(m_sortBox, SORT_BOX_WIDTH, GROUP_GAP);
+        place(m_favoriteButton, FAVORITE_BUTTON_WIDTH, CONTROL_GAP);   // [☆ 즐겨찾기]
+        place(m_favoriteOnlyBox, FAVORITE_ONLY_WIDTH, GROUP_GAP);      // [즐겨찾기만]
         m_statusLabel.SetBounds(Core::RectF{ x, controlTop, std::max(x, right), controlBottom });
 
         // 본문: 시세 표 카드 | 그래프 카드

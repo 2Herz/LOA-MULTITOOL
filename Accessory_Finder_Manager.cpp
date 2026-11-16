@@ -303,7 +303,7 @@ namespace LostArkMultiTool::Views
         UpdatePageInfo();
     }
 
-    // 화면에서 고른 조건 (등급은 고대 고정, 옵션을 고른 칸만, 값을 고르지 않았으면 값 조건 없이)
+    // 화면에서 고른 조건 (등급은 고대 고정, 옵션을 고른 칸만, 값을 고르지 않았으면 값 조건 없이, 주스탯은 적었을 때만)
     Models::AccessorySearchQuery AccessoryFinderManager::BuildQuery() const
     {
         Models::AccessorySearchQuery query{ m_view->GetCategoryCode(), std::string{ Core::APPConstants::ANCIENT_GRADE_NAME }, m_view->GetMinQuality(), {}, FIRST_PAGE };
@@ -320,6 +320,13 @@ namespace LostArkMultiTool::Views
             {
                 filter.m_minValue = option.m_values[*valueIndex].m_value;
             }
+        }
+
+        // 주스탯(힘 · 민첩 · 지능) 최소 수치를 적었으면 '장신구 기본 효과' 조건으로 추가
+        if (const std::optional<int> minMainStat{ m_view->GetMinMainStat() }; minMainStat.has_value())
+        {
+            query.m_options.push_back(Models::AccessoryOptionFilter{ Core::APPConstants::ACCESSORY_BASE_OPTION_GROUP,
+                Core::APPConstants::MAIN_STAT_OPTION_CODE, minMainStat });   // 서버에서 걸러짐
         }
         return query;
     }

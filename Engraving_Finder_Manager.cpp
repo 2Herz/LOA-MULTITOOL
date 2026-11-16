@@ -165,6 +165,7 @@ namespace LostArkMultiTool::Views
         });
         m_view->SetOnFilterChanged([this] { RefreshTable(); });
         m_view->SetOnRowSelected([this] { SelectRow(); });   // 표 행을 고르면 그 각인서의 그래프
+        m_view->SetOnFavoriteToggled([this] { ToggleFavorite(); });   // [즐겨찾기] 버튼 → 고른 각인서 추가 ↔ 해제
 
         RefreshTable();
     }
@@ -382,20 +383,26 @@ namespace LostArkMultiTool::Views
 
         const std::vector<Models::EngravingQuote>& quotes{ m_service->GetQuotes() };
         const std::wstring keyword{ RemoveSpaces(m_view->GetSearchText()) };
+        const Models::PriceHistory& history{ m_historyRepository->GetHistory() };   // 기록 · 즐겨찾기
+        const bool isFavoriteOnly{ m_view->IsFavoriteOnly() };                      // 즐겨찾기만 보기
 
         std::vector<EngravingRow> rows;
         rows.reserve(quotes.size());
         for (const Models::EngravingQuote& quote : quotes)
         {
+            const bool isFavorite{ history.IsFavorite(quote.GetName()) };          // 즐겨찾기 각인서인지
+            if (isFavoriteOnly && !isFavorite) continue;                            // 즐겨찾기만 보기면 나머지는 숨김
+
             std::wstring name{ ToWideMessage(quote.GetName().c_str()) };
             if (!keyword.empty() && !RemoveSpaces(name).contains(keyword)) continue;
 
             rows.push_back(EngravingRow{ std::move(name), quote.GetCurrentMinPrice(), quote.GetDiff(),
                 quote.GetYesterdayAvgPrice(), quote.GetRecentPrice(), quote.GetDayChangeRate(), quote.GetName(),
-                MakeTrend(m_historyRepository->GetHistory().GetDays(quote.GetName())) });   // 추이 선 = 일별 최저가 기록
+                MakeTrend(history.GetDays(quote.GetName())), isFavorite });   // 추이 선 = 일별 최저가 기록
         }
 
         SortRows(rows, m_view->GetSortOrder());
+        std::ranges::stable_partition(rows, &EngravingRow::m_isFavorite);   // 즐겨찾기를 맨 위로 (정렬 순서는 그대로)
         m_view->ShowRows(rows, quotes.size());
         m_view->SetStats(BuildStats(quotes));   // 위쪽 통계 카드 (검색과 상관없이 전체 시세 기준)
 
@@ -412,6 +419,7 @@ namespace LostArkMultiTool::Views
         }
         m_view->SelectRow(selectedRow);
         RefreshChart();   // 시세가 바뀌면 그래프도 새 기록으로
+        RefreshFavoriteButton();   // 고른 행이 사라졌거나 즐겨찾기 상태가 바뀌었을 수 있음
 
         // 상태: 조회 중이면 그대로, 아니면 종류 수 + 마지막 갱신 시각
         if (m_refreshTask.IsRunning()) return;
@@ -476,6 +484,27 @@ namespace LostArkMultiTool::Views
 
         m_selectedKey = m_rowKeys[*row];
         RefreshChart();
+        RefreshFavoriteButton();   // 고른 각인서에 맞게 추가 / 해제 글자
+    }
+
+    // 고른 각인서를 즐겨찾기에 추가하거나 해제하고 바로 저장 (표에 보이는 행만 대상)
+    void EngravingFinderManager::ToggleFavorite()
+    {
+        const std::optional<std::size_t> row{ m_view->GetSelectedRow() };
+        if (!row.has_value() || *row >= m_rowKeys.size()) return;   // 고른 행이 없으면 무시
+
+        m_historyRepository->GetHistory().ToggleFavorite(m_rowKeys[*row]);   // 추가 ↔ 해제
+        SaveHistory();                                                       // 즐겨찾기는 바로 저장 (실패하면 다음 기회에 다시)
+        RefreshTable();                                                      // ★ 표시 · 순서 · 버튼 글자 갱신
+    }
+
+    // [즐겨찾기] 버튼: 표에서 고른 행이 있을 때만 활성, 즐겨찾기면 "해제"
+    void EngravingFinderManager::RefreshFavoriteButton()
+    {
+        if (!m_view) return;
+        const std::optional<std::size_t> row{ m_view->GetSelectedRow() };          // 표에서 고른 행
+        const bool hasSelection{ row.has_value() && *row < m_rowKeys.size() };     // 고른 행이 표에 있는지
+        m_view->SetFavoriteButton(hasSelection, hasSelection && m_historyRepository->GetHistory().IsFavorite(m_rowKeys[*row]));
     }
 
     // 고른 각인서의 일별 최저가 그래프 (고르지 않았으면 안내 문구)

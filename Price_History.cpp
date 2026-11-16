@@ -62,4 +62,25 @@ namespace LostArkMultiTool::Models
         }
         return isChanged;
     }
+
+    bool PriceHistory::IsFavorite(std::string_view itemKey) const
+    {
+        return m_favorites.contains(itemKey);   // 즐겨찾기 모음에 있으면 true
+    }
+
+    void PriceHistory::ToggleFavorite(const std::string& itemKey)
+    {
+        if (const auto found{ m_favorites.find(itemKey) }; found != m_favorites.end()) m_favorites.erase(found);   // 있으면 해제
+        else m_favorites.insert(itemKey);                                                                          // 없으면 추가
+    }
+
+    PriceHistory::FavoriteSet& PriceHistory::GetFavorites() noexcept
+    {
+        return m_favorites;   // 저장소가 읽어서 채움
+    }
+
+    const PriceHistory::FavoriteSet& PriceHistory::GetFavorites() const noexcept
+    {
+        return m_favorites;   // 저장할 때 읽음
+    }
 }

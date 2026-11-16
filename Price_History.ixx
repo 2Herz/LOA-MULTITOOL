@@ -25,7 +25,16 @@ export namespace LostArkMultiTool::Models
         // 보관 기간이 지난 기록 정리 (바뀐 게 있으면 true, oldestKeptKey = 남길 가장 오래된 날짜 키)
         bool Prune(std::string_view oldestKeptKey);
 
+        // ===== 즐겨찾기 (유각 시세 검색기에서 사용, 기록과 같은 파일에 저장) =====
+        using FavoriteSet = std::set<std::string, std::less<>>;                     // 즐겨찾기 품목 키 모음
+
+        [[nodiscard]] bool IsFavorite(std::string_view itemKey) const;               // 즐겨찾기인지
+        void ToggleFavorite(const std::string& itemKey);                             // 즐겨찾기 추가 ↔ 해제
+        [[nodiscard]] FavoriteSet& GetFavorites() noexcept;                          // 전체 즐겨찾기 (저장소가 읽고 쓸 때 사용)
+        [[nodiscard]] const FavoriteSet& GetFavorites() const noexcept;              // 전체 즐겨찾기 (읽기 전용)
+
     private:
-        HistoryMap m_history;   // 품목별 일별 기록
+        HistoryMap m_history;     // 품목별 일별 기록
+        FavoriteSet m_favorites;  // 즐겨찾기 품목 키
     };
 }
