@@ -52,6 +52,10 @@ export namespace LostArkMultiTool::Core
         [[nodiscard]] virtual std::uint64_t GetPriceRevision() const noexcept = 0;             // 가격 · 귀속이 바뀔 때마다 1씩 (비용표 캐시 확인용)
         [[nodiscard]] virtual const std::optional<std::int64_t>& GetLastUpdated() const noexcept = 0;   // 마지막 시세 갱신 시각 (UTC 초)
 
+        // ===== 보유 재료 =====
+        [[nodiscard]] virtual const Models::MaterialAmounts& GetHoldings() const noexcept = 0;              // 재료별 보유 수량 (RefineMaterial 순서)
+        virtual void SetHolding(Models::RefineData::RefineMaterial material, double amount) = 0;            // 보유 수량 직접 입력 · 불러오기 (음수는 0)
+
         // 거래소에서 재료 시세 조회 (데이터를 건드리지 않아 백그라운드 스레드에서 호출해도 안전, 매물이 없는 재료는 빠짐)
         [[nodiscard]] virtual std::vector<RefinePriceQuote> FetchPrices(MarketAPI& api) const = 0;
         virtual void ApplyPrices(const std::vector<RefinePriceQuote>& quotes) = 0;

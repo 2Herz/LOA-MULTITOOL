@@ -28,8 +28,8 @@ namespace LostArkMultiTool::Views
 
         // ===== 재료 표 =====
         constexpr std::size_t MATERIAL_COLUMN_COUNT{ static_cast<std::size_t>(RefineMaterialColumn::COLUMN_COUNT) };
-        constexpr std::array<std::wstring_view, MATERIAL_COLUMN_COUNT> MATERIAL_HEADERS{ L"재료", L"가격", L"거래", L"예상 소모", L"예상 골드" };
-        constexpr std::array<float, MATERIAL_COLUMN_COUNT> MATERIAL_WEIGHTS{ 2.0f, 0.9f, 0.8f, 1.1f, 1.1f };
+        constexpr std::array<std::wstring_view, MATERIAL_COLUMN_COUNT> MATERIAL_HEADERS{ L"재료", L"가격", L"거래", L"보유", L"예상 소모", L"예상 골드" };
+        constexpr std::array<float, MATERIAL_COLUMN_COUNT> MATERIAL_WEIGHTS{ 2.0f, 0.9f, 0.8f, 1.0f, 1.1f, 1.1f };
 
         // ===== 경로 표 =====
         constexpr std::size_t ROUTE_COL_ORDER{ 0 };
@@ -398,7 +398,7 @@ namespace LostArkMultiTool::Views
         }
     }
 
-    // 재료 표 다시 채우기 (가격 = 편집 칸, 거래 칸 = 귀속이면 강조)
+    // 재료 표 다시 채우기 (가격 · 보유 = 편집 칸, 거래 칸 = 귀속이면 강조, 보유 부족 = 예상 소모 빨간 글자)
     void RefineSimulatorView::ShowMaterials(const std::vector<RefineMaterialRow>& rows)
     {
         const UI::GridCellStyle readonlyStyle{ Theme::READONLY_BACK_COLOR, Theme::TEXT_COLOR };
@@ -420,7 +420,9 @@ namespace LostArkMultiTool::Views
             setCell(RefineMaterialColumn::COLUMN_TRADE, material.m_trade,
                 UI::GridCellStyle{ Theme::CELL_BACK_COLOR, material.m_isBound ? Theme::CAUTION_TEXT_COLOR : Theme::NOTICE_SUCCESS_COLOR, Core::FontWeight::BOLD,
                     UI::GridDecoration::DECORATION_CHIP, std::wstring{}, material.m_isBound ? Theme::CAUTION_TEXT_COLOR : Theme::NOTICE_SUCCESS_COLOR }, false);   // 거래 · 귀속 칩
-            setCell(RefineMaterialColumn::COLUMN_AMOUNT, material.m_amount, readonlyStyle, false);
+            setCell(RefineMaterialColumn::COLUMN_OWNED, material.m_owned, UI::GridCellStyle{ Theme::CELL_BACK_COLOR, Theme::TEXT_COLOR }, true);   // 보유 수량 = 편집 칸
+            setCell(RefineMaterialColumn::COLUMN_AMOUNT, material.m_amount,
+                material.m_isShort ? UI::GridCellStyle{ Theme::READONLY_BACK_COLOR, Theme::UP_TEXT_COLOR } : readonlyStyle, false);   // 보유가 모자라면 빨간 글자
             setCell(RefineMaterialColumn::COLUMN_COST, material.m_cost, UI::GridCellStyle{ Theme::READONLY_BACK_COLOR, Theme::HIGHLIGHT_TEXT_COLOR }, false);
         }
     }

@@ -65,7 +65,7 @@ export namespace LostArkMultiTool::Views
 
         [[nodiscard]] std::vector<const Models::Character*> GetDisplayedCharacters() const;
         [[nodiscard]] double CalculateRosterTotal() const;   // 모든 캐릭터의 상위 + 하위 재료값 합계
-        void ShowRosterQuantities();                         // 재료마다 모든 캐릭터의 상위 · 하위 보유수량 합계 → ★ 원정대 자산 ★ 행
+        void ShowRosterQuantities();                         // 재료마다 모든 캐릭터의 상위 · 하위 보유수량 합계 → ★ 원정대 자산 ★ 행 (파편 · 숨결은 총합 하나)
         [[nodiscard]] std::optional<std::string> GetSelectedCharacterName() const;
         void TrySave();
 

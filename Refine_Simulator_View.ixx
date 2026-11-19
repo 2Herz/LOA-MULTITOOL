@@ -35,6 +35,7 @@ export namespace LostArkMultiTool::Views
         COLUMN_NAME,
         COLUMN_PRICE,               // 직접 입력
         COLUMN_TRADE,               // 누르면 거래 ↔ 귀속
+        COLUMN_OWNED,               // 보유 수량 (직접 입력 · 귀속재료 계산기에서 불러오기)
         COLUMN_AMOUNT,
         COLUMN_COST,
         COLUMN_COUNT
@@ -68,7 +69,9 @@ export namespace LostArkMultiTool::Views
         bool m_isPriceEditable{};            // 골드는 1 고정
         std::wstring m_trade;                // "거래" · "귀속" (골드: "일반 골드" · "귀속 골드")
         bool m_isBound{};
+        std::wstring m_owned;                // 보유 수량 (편집 칸)
         std::wstring m_amount;               // 예상 소모 (없으면 "-")
+        bool m_isShort{};                    // 보유가 예상 소모보다 적음 (예상 소모 칸 강조)
         std::wstring m_cost;                 // 예상 골드 (귀속이면 "-")
     };
 

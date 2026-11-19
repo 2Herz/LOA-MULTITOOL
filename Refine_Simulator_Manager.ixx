@@ -71,6 +71,7 @@ export namespace LostArkMultiTool::Views
         void RequestLookup(const std::wstring& characterName);   // 캐릭터 이름으로 무기고 조회 시작 (백그라운드)
         void FinishLookup();                                      // 조회가 끝났을 때 (화면 스레드에서)
         void ApplyArmory(const Models::CharacterArmory& armory);  // 무기고 장비 → 시작 상태 (표를 직접 고친 것과 같은 경로)
+        [[nodiscard]] bool LoadRosterHoldings(const std::wstring& characterName);   // 귀속재료 계산기에 같은 캐릭터가 있으면 보유량 불러오기 (없으면 false)
         void OnTargetModeSelected(std::size_t modeIndex);
         void OnTargetItemLevelChanged(const std::wstring& text);
         void OnSlotCellClicked(std::size_t row, RefineSlotColumn column);

@@ -37,6 +37,10 @@ namespace LostArkMultiTool::Views
         constexpr std::size_t FIRST_MATERIAL_INDEX{ 1 };     // MAT_KEYS 0번은 구분 열
         constexpr int AMOUNT_DECIMALS{ 0 };
 
+        // ★ 원정대 자산 ★ 행에서 상위 · 하위를 나누지 않고 총합만 보여 줄 재료 (운명의 파편 · 용암의 숨결 · 빙하의 숨결 = 상위 · 하위가 같은 아이템)
+        constexpr std::size_t SUM_ONLY_MATERIAL_COUNT{ 3 };   // 총합만 표시할 재료 수
+        constexpr std::array<std::string_view, SUM_ONLY_MATERIAL_COUNT> SUM_ONLY_MATERIAL_KEYS{ "Shard", "Yong", "Bing" };
+
         // ===== 문구 =====
         constexpr std::wstring_view CHART_TITLE_TEXT{ L"날짜별 원정대 총 자산 (골드)" };   // 총자산 숫자는 카드 머리말 오른쪽에 따로 표시
         constexpr std::wstring_view SYNC_RUNNING_TEXT{ L"원정대 불러오는 중..." };          // 동기화 진행 상태
@@ -603,6 +607,13 @@ namespace LostArkMultiTool::Views
                 const Models::ItemData& item{ entry.second.GetMaterial(Core::APPConstants::MAT_KEYS[index]) };
                 topQuantity += item.GetTopQty();
                 bottomQuantity += item.GetBottomQty();
+            }
+
+            // 파편 · 숨결은 상위 · 하위 구분 없이 총합 하나로 표시 (하위를 0으로 넘기면 View가 숫자 하나만 씀)
+            if (std::ranges::contains(SUM_ONLY_MATERIAL_KEYS, Core::APPConstants::MAT_KEYS[index]))
+            {
+                topQuantity += bottomQuantity;   // 상위 + 하위 합계
+                bottomQuantity = 0.0;            // 하위 칸은 비움
             }
             m_view->ShowRosterQuantity(index, topQuantity, bottomQuantity);
         }

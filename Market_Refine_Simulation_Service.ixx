@@ -14,7 +14,8 @@ export namespace LostArkMultiTool::Services
     //         "Starts": [ { "Slot": "무기", "Tier": "세르카", "Enhancement": 11, "Advanced": 0 }, ... ],
     //         "Targets": [ ... ],
     //         "Prices": { "아비도스 융화 재료": 192.0, ... }, "Bound": [ "골드", ... ], "LastUpdated": 1790000000,
-    //         "CharacterName": "캐릭터 이름" }   (CharacterName은 없어도 됨 = 빈 이름)
+    //         "CharacterName": "캐릭터 이름", "Holdings": { "운명의 파편": 120000, ... } }
+    //         (CharacterName · Holdings는 없어도 됨 = 빈 이름 · 보유 0)
     class MarketRefineSimulationService final : public Core::RefineSimulationService
     {
     public:
@@ -37,6 +38,9 @@ export namespace LostArkMultiTool::Services
         [[nodiscard]] std::uint64_t GetPriceRevision() const noexcept override;
         [[nodiscard]] const std::optional<std::int64_t>& GetLastUpdated() const noexcept override;
 
+        [[nodiscard]] const Models::MaterialAmounts& GetHoldings() const noexcept override;               // 재료별 보유 수량
+        void SetHolding(Models::RefineData::RefineMaterial material, double amount) override;            // 보유 수량 설정 (저장은 Save)
+
         [[nodiscard]] std::vector<Core::RefinePriceQuote> FetchPrices(Core::MarketAPI& api) const override;
         void ApplyPrices(const std::vector<Core::RefinePriceQuote>& quotes) override;
 
@@ -54,5 +58,6 @@ export namespace LostArkMultiTool::Services
         std::optional<std::int64_t> m_lastUpdated;
         std::optional<std::string> m_loadWarning;
         std::wstring m_characterName;   // 마지막으로 조회한 캐릭터 이름 (저장 파일에 없으면 빈 글자)
+        Models::MaterialAmounts m_holdings{};   // 재료별 보유 수량 (저장 파일에 없으면 모두 0)
     };
 }

@@ -15,11 +15,15 @@ import LostArkMultiTool.Core.RefineSimulationService;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Core.ToolContext;
+import LostArkMultiTool.Models.Character;
 import LostArkMultiTool.Models.CharacterArmory;
 import LostArkMultiTool.Models.CombatState;
 import LostArkMultiTool.Models.RateLimitState;
 import LostArkMultiTool.Models.RefineData;
+import LostArkMultiTool.Models.ItemData;
 import LostArkMultiTool.Models.RefinePlan;
+import LostArkMultiTool.Models.UserData;
+import LostArkMultiTool.Services.JSONDataRepository;
 import LostArkMultiTool.Services.MarketRefineSimulationService;
 import LostArkMultiTool.Services.RefineCalculator;
 import LostArkMultiTool.Views.RefineSimulatorView;
@@ -122,6 +126,26 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view CALCULATE_DONE_FORMAT{ L"재련 계산 완료 · {}" };   // 계산 완료 토스트 ({} = 요약)
         constexpr std::wstring_view CALCULATE_FAILED_TEXT{ L"재련 계산을 마쳤지만 목표에 도달할 수 없어요. 요약을 확인해 주세요." };   // 목표 도달 불가 토스트
         constexpr std::wstring_view EMPTY_NAME_TEXT{ L"캐릭터 이름을 입력해 주세요." };   // 이름 입력 요청 안내
+        constexpr std::wstring_view HOLDINGS_LOADED_FORMAT{ L"귀속재료 계산기에서 {}의 보유량을 불러왔어요." };   // 보유량 불러오기 완료 안내
+
+        // 귀속재료 계산기 재료 키(MAT_KEYS) → 재련 시뮬레이터 재료 (상위 행 · 하위 행, 둘이 같으면 합산)
+        struct RosterMaterialLink
+        {
+            std::string_view m_key;      // 귀속재료 계산기 재료 키
+            RefineMaterial m_top;        // 상위 행 수량이 들어갈 재료 (결정 · 위대한 · 상급)
+            RefineMaterial m_bottom;     // 하위 행 수량이 들어갈 재료
+        };
+        constexpr std::size_t ROSTER_LINK_COUNT{ 7 };   // 귀속재료 계산기 재료 열 수 (운파 ~ 빙숨)
+        constexpr std::array<RosterMaterialLink, ROSTER_LINK_COUNT> ROSTER_MATERIAL_LINKS
+        { {
+            { "Shard", RefineMaterial::MATERIAL_DESTINY_SHARD, RefineMaterial::MATERIAL_DESTINY_SHARD },                               // 운명의 파편 (상 · 하위 합산)
+            { "Dest", RefineMaterial::MATERIAL_DESTRUCTION_CRYSTAL, RefineMaterial::MATERIAL_DESTINY_DESTRUCTION_STONE },              // 파괴석 결정 / 운명의 파괴석
+            { "Guard", RefineMaterial::MATERIAL_GUARDIAN_CRYSTAL, RefineMaterial::MATERIAL_DESTINY_GUARDIAN_STONE },                   // 수호석 결정 / 운명의 수호석
+            { "Leap", RefineMaterial::MATERIAL_GREAT_DESTINY_LEAPSTONE, RefineMaterial::MATERIAL_DESTINY_LEAPSTONE },                  // 위대한 돌파석 / 운명의 돌파석
+            { "Fusion", RefineMaterial::MATERIAL_SUPERIOR_ABIDOS_FUSION, RefineMaterial::MATERIAL_ABIDOS_FUSION },                     // 상급 아비도스 / 아비도스
+            { "Yong", RefineMaterial::MATERIAL_LAVA_BREATH, RefineMaterial::MATERIAL_LAVA_BREATH },                                    // 용암의 숨결 (상 · 하위 합산)
+            { "Bing", RefineMaterial::MATERIAL_GLACIER_BREATH, RefineMaterial::MATERIAL_GLACIER_BREATH }                               // 빙하의 숨결 (상 · 하위 합산)
+        } };
         constexpr std::wstring_view LOOKUP_RATE_SHORTAGE_FORMAT{ L"남은 호출이 부족해서 이번 조회는 건너뛰었어요.\n{} 이후 다시 시도해 주세요." };   // 호출 한도 부족 안내
         constexpr std::wstring_view LOOKING_UP_FORMAT{ L"'{}' 조회 중..." };   // 조회 중 상태 줄
         constexpr std::wstring_view LOOKUP_DONE_FORMAT{ L"'{}' 장비를 불러왔어요 (아이템 레벨 {})" };   // 성공 상태 줄
@@ -699,6 +723,14 @@ namespace LostArkMultiTool::Views
         }
         if (m_armoryTask.IsRunning()) return;   // 이미 조회 중이면 겹치지 않게 건너뜀
 
+        // 귀속재료 계산기에 같은 이름의 캐릭터가 있으면 보유량 불러오기 (API 호출 없이 저장 파일만 읽음 → 한도와 상관없이)
+        if (LoadRosterHoldings(std::wstring{ trimmedName }))
+        {
+            SaveData();            // 불러온 보유량 저장
+            RefreshMaterials();    // 재료 표의 보유 칸 갱신
+            m_context->m_notifier.ShowToast(std::format(HOLDINGS_LOADED_FORMAT, trimmedName), Core::NoticeKind::NOTICE_SUCCESS);   // 완료 알림
+        }
+
         // 남은 호출이 안전 여유분 이하면 건너뜀 (다른 툴과 키를 함께 쓰므로)
         const std::int64_t now{ Core::LocalTime::GetUnixSeconds() };   // 현재 시각(초)
         const Models::RateLimitState rate{ m_context->m_marketAPI.GetRateLimit() };   // API 호출 한도 상태
@@ -754,6 +786,39 @@ namespace LostArkMultiTool::Views
         RefreshStatus();   // 상태 줄 갱신
 
         if (keyError.has_value()) HandleAPIKeyError(*keyError);   // 조회가 끝난 뒤에 키 재입력 안내
+    }
+
+    // 귀속재료 계산기 저장 파일에서 같은 이름의 캐릭터 보유 수량을 읽어 보유 칸에 반영 (없으면 false, 연결된 재료만 덮어씀)
+    bool RefineSimulatorManager::LoadRosterHoldings(const std::wstring& characterName)
+    {
+        try
+        {
+            const Services::JSONDataRepository repository;   // 읽기 전용으로 저장 파일을 엶 (계산기는 수정할 때마다 저장하므로 최신 값)
+            const Models::Character* character{ repository.GetData().FindCharacter(Core::TextEncoding::WideToUTF8(characterName)) };   // 이름은 UTF-8 키
+            if (character == nullptr) return false;   // 계산기에 없는 캐릭터
+
+            Models::MaterialAmounts holdings{ m_service->GetHoldings() };   // 지금 보유 수량 (연결되지 않은 재료는 그대로 유지)
+            for (const RosterMaterialLink& link : ROSTER_MATERIAL_LINKS)   // 연결된 재료를 먼저 0으로 (같은 재료에 상 · 하위를 합산하므로)
+            {
+                holdings[Models::RefineData::ToIndex(link.m_top)] = 0.0;
+                holdings[Models::RefineData::ToIndex(link.m_bottom)] = 0.0;
+            }
+            for (const RosterMaterialLink& link : ROSTER_MATERIAL_LINKS)   // 상위 · 하위 수량 더하기
+            {
+                const Models::ItemData& item{ character->GetMaterial(link.m_key) };   // 계산기의 재료 칸
+                holdings[Models::RefineData::ToIndex(link.m_top)] += item.GetTopQty();         // 상위 행
+                holdings[Models::RefineData::ToIndex(link.m_bottom)] += item.GetBottomQty();   // 하위 행
+            }
+            for (std::size_t index{}; index < Models::RefineData::MATERIAL_COUNT; ++index)   // 서비스에 반영
+            {
+                m_service->SetHolding(static_cast<RefineMaterial>(index), holdings[index]);
+            }
+            return true;
+        }
+        catch (const std::exception&)
+        {
+            return false;   // 파일을 읽지 못하면 불러오기만 건너뜀 (무기고 조회는 그대로 진행)
+        }
     }
 
     // 무기고의 여섯 부위를 시작 상태로 반영 (읽을 수 없는 부위는 지금 값 유지 + 이유를 상태 줄에 안내)
@@ -881,10 +946,25 @@ namespace LostArkMultiTool::Views
         MarkChanged(true);
     }
 
-    // 가격 직접 입력 (다음 시세 갱신 때 거래소 시세로 덮어씀)
+    // 가격 직접 입력 (다음 시세 갱신 때 거래소 시세로 덮어씀) · 보유 수량 직접 입력
     void RefineSimulatorManager::OnMaterialCellEdited(std::size_t row, RefineMaterialColumn column, const std::wstring& text)
     {
-        if (row >= Models::RefineData::MATERIAL_COUNT || column != RefineMaterialColumn::COLUMN_PRICE) return;
+        if (row >= Models::RefineData::MATERIAL_COUNT) return;   // 경계 검사
+
+        if (column == RefineMaterialColumn::COLUMN_OWNED)   // 보유 수량 칸
+        {
+            const std::wstring_view trimmed{ TrimSpaces(text) };   // 양 끝 공백 제거
+            const std::optional<double> owned{ trimmed.empty() ? std::optional<double>{ 0.0 } : ParseNumber(std::wstring{ trimmed }) };   // 비우면 0
+            if (owned.has_value())   // 숫자일 때만 반영
+            {
+                m_service->SetHolding(static_cast<RefineMaterial>(row), *owned);   // 보유 수량 설정
+                SaveData();   // 바로 저장 (계산 결과는 그대로라 다시 계산하지 않음)
+            }
+            RefreshMaterials();   // 잘못 입력했으면 원래 값으로, 맞으면 부족 표시 갱신
+            return;
+        }
+
+        if (column != RefineMaterialColumn::COLUMN_PRICE) return;   // 그 밖의 칸은 편집 없음
         const std::optional<double> value{ ParseNumber(text) };
         if (!value.has_value())
         {
@@ -1036,7 +1116,10 @@ namespace LostArkMultiTool::Views
             row.m_isPriceEditable = !isGold;
             row.m_isBound = isBound;
             row.m_trade = std::wstring{ isGold ? (isBound ? GOLD_BOUND_TEXT : GOLD_TRADE_TEXT) : (isBound ? BOUND_TEXT : TRADE_TEXT) };
+            const double owned{ m_service->GetHoldings()[index] };   // 보유 수량
+            row.m_owned = Core::NumberFormat::FormatNumber(owned, GOLD_DECIMALS);   // 보유 칸 (0도 그대로 표시)
             row.m_amount = FormatAmount(amount);
+            row.m_isShort = amount >= MIN_SHOWN_AMOUNT && owned < amount;   // 예상 소모보다 적게 가지고 있으면 강조
             row.m_cost = (isBound || amount < MIN_SHOWN_AMOUNT) ? std::wstring{ EMPTY_TEXT } : FormatGold(amount * prices.m_prices[index]);
             rows.push_back(std::move(row));
         }

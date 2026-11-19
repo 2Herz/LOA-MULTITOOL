@@ -33,6 +33,7 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view KEY_BOUND{ "Bound" };
         constexpr std::string_view KEY_LAST_UPDATED{ "LastUpdated" };
         constexpr std::string_view KEY_CHARACTER_NAME{ "CharacterName" };   // 마지막으로 조회한 캐릭터 이름 (옛 저장 파일에는 없음)
+        constexpr std::string_view KEY_HOLDINGS{ "Holdings" };              // 재료별 보유 수량 (옛 저장 파일에는 없음)
         constexpr std::string_view MODE_ITEM_LEVEL{ "ItemLevel" };
         constexpr std::string_view MODE_STAGE{ "Stage" };
         constexpr std::string_view TIER_AEGIR_NAME{ "에기르" };
@@ -47,6 +48,7 @@ namespace LostArkMultiTool::Services
         constexpr int MAX_TARGET_ITEM_LEVEL{ 1800 };       // 세르카 +25 여섯 부위
         constexpr double GOLD_PRICE{ 1.0 };                // 골드 1 = 1골드
         constexpr double MAX_MATERIAL_PRICE{ 99'999'999.0 };
+        constexpr double MAX_HOLDING_AMOUNT{ 9'999'999'999.0 };   // 보유 수량 최대값 (골드 보유까지 담을 수 있게)
 
         [[nodiscard]] Models::RefineStates MakeUniformStates(const EquipmentState& state)
         {
@@ -128,6 +130,7 @@ namespace LostArkMultiTool::Services
         bool hasPrices{};
         std::optional<std::int64_t> lastUpdated;
         std::wstring characterName;   // 읽은 캐릭터 이름 (필드가 없으면 빈 글자)
+        Models::MaterialAmounts holdings{};   // 읽은 보유 수량 (필드가 없으면 모두 0)
 
         JSONLoadResult result{ m_fileStore.Load([&](const JSONValue& root)
         {
@@ -162,6 +165,16 @@ namespace LostArkMultiTool::Services
             const JSONValue& nameValue{ root.FindMember(KEY_CHARACTER_NAME) };   // 없으면 GetString이 빈 글자를 돌려줌
             characterName = Core::TextEncoding::UTF8ToWide(nameValue.GetString());   // 저장은 UTF-8, 화면은 와이드 문자
 
+            const JSONValue& holdingObject{ root.FindMember(KEY_HOLDINGS) };   // 없으면 키 · 값 목록이 비어 있음
+            const std::vector<std::string>& holdingNames{ holdingObject.GetKeys() };      // 재료 이름 목록
+            const std::vector<JSONValue>& holdingValues{ holdingObject.GetValues() };     // 보유 수량 목록
+            for (std::size_t index{}; index < std::min(holdingNames.size(), holdingValues.size()); ++index)   // 경계 검사 (짧은 쪽까지만)
+            {
+                const std::optional<RefineMaterial> material{ FindMaterial(holdingNames[index]) };   // 이름 → 재료
+                if (!material.has_value()) continue;   // 모르는 재료는 건너뜀
+                holdings[Models::RefineData::ToIndex(*material)] = std::clamp(holdingValues[index].GetNumber(), 0.0, MAX_HOLDING_AMOUNT);   // 범위 안으로
+            }
+
             loadedRequest = request;
             loadedPrices = prices;
         }) };
@@ -174,6 +187,7 @@ namespace LostArkMultiTool::Services
         m_hasPrices = hasPrices;
         m_lastUpdated = lastUpdated;
         m_characterName = std::move(characterName);   // 변환이 끝까지 성공했을 때만 반영
+        m_holdings = holdings;                        // 보유 수량도 함께 반영
     }
 
     const Models::RefineRequest& MarketRefineSimulationService::GetRequest() const noexcept
@@ -249,6 +263,16 @@ namespace LostArkMultiTool::Services
     const std::optional<std::int64_t>& MarketRefineSimulationService::GetLastUpdated() const noexcept
     {
         return m_lastUpdated;
+    }
+
+    const Models::MaterialAmounts& MarketRefineSimulationService::GetHoldings() const noexcept
+    {
+        return m_holdings;   // 재료별 보유 수량
+    }
+
+    void MarketRefineSimulationService::SetHolding(RefineMaterial material, double amount)
+    {
+        m_holdings.at(Models::RefineData::ToIndex(material)) = std::clamp(amount, 0.0, MAX_HOLDING_AMOUNT);   // 음수 · 너무 큰 값은 범위 안으로 (경계 검사)
     }
 
     // 재료마다 거래소 시세 (최근 거래가 → 없으면 현재 최저가, 묶음은 1개 단가, 파편은 주머니 ÷ 3000)
@@ -330,6 +354,20 @@ namespace LostArkMultiTool::Services
         {
             keys.emplace_back(KEY_CHARACTER_NAME);   // 캐릭터 이름 키
             values.push_back(JSONValue::CreateString(Core::TextEncoding::WideToUTF8(m_characterName)));   // UTF-8로 저장
+        }
+
+        std::vector<std::string> holdingKeys;     // 보유 재료 이름
+        std::vector<JSONValue> holdingValues;     // 보유 수량
+        for (std::size_t index{}; index < Models::RefineData::MATERIAL_COUNT; ++index)   // 재료 순서대로
+        {
+            if (m_holdings[index] <= 0.0) continue;   // 0은 저장하지 않음
+            holdingKeys.emplace_back(Models::RefineData::GetMaterialInfo(static_cast<RefineMaterial>(index)).m_name);   // 재료 이름 키
+            holdingValues.push_back(JSONValue::CreateNumber(m_holdings[index]));                                         // 수량 값
+        }
+        if (!holdingKeys.empty())   // 보유가 하나라도 있을 때만 저장 (없으면 필드 생략 = 옛 형식과 같음)
+        {
+            keys.emplace_back(KEY_HOLDINGS);   // 보유 수량 키
+            values.push_back(JSONValue::CreateObject(std::move(holdingKeys), std::move(holdingValues)));   // { 이름: 수량 }
         }
 
         m_fileStore.Save(WriteJSONText(JSONValue::CreateObject(std::move(keys), std::move(values))));
