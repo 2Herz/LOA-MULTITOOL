@@ -404,8 +404,9 @@
 - WinHTTP (API 통신) · DPAPI (API 키 암호화)
 - [로스트아크 Open API](https://developer-lostark.game.onstove.com/)
 - 자체 검사 : `LOA-MULTITOOL.exe --self-test` (build_all이 빌드 직후 실행) → 계수 · 재련 표 검사 + lopec 회귀 검사
-	- lopec 회귀는 `Verify\lopec_results`(측정 CSV, 저장소에 안 올림)와 `python tools/Fetch-RegressionArmory.py`로 받은 무기고를 앱 엔진으로 다시 계산해요. 데이터가 없는 PC면 건너뛰어요.
+	- lopec 회귀는 `Verify\lopec_results\lopec_all.csv`(모든 측정을 모은 한 파일, 저장소에 안 올림 · 캐릭터마다 가장 최근 측정 회차)와 `python tools/Fetch-RegressionArmory.py`로 받은 무기고를 앱 엔진으로 다시 계산해요. 데이터가 없는 PC면 건너뛰어요.
 	- 줄마다 결과는 `Verify\lopec_results\regression\last_result.csv`에 남아요.
+	- 측정 도구 : `tools/Pick-LopecSamples.py`(로펙 랭킹에서 직업 · 각인 · 레벨별 샘플 고르기) → `tools/Crawl-LopecSimulator.py --names-file …`(측정을 lopec_all.csv에 이어 씀) · `tools/Merge-LopecResults.py`(예전 캐릭터별 CSV를 합치고 archive/로 옮김)
 
 ---
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """회귀 테스트용 무기고 받기 (아크 패시브 트리 랭크 · 레벨)
 
-lopec 측정 CSV(Verify/lopec_results/로펙_*.csv)에 나오는 캐릭터마다 로스트아크 API 무기고를 받아서
+lopec 측정 CSV(Verify/lopec_results/lopec_all.csv · 예전 로펙_*.csv)에 나오는 캐릭터마다 로스트아크 API 무기고를 받아서
 Verify/lopec_results/regression/armory/<이름>.json으로 저장한다. (받은 시각 FetchedAt 추가)
 앱의 자체 검사(LOA-MULTITOOL.exe --self-test)가 이 파일을 앱의 무기고 해석기로 읽고, CSV의 lopec 값과 실제 C++ 엔진 예측을 비교한다.
 
@@ -69,9 +69,13 @@ def load_stored_key() -> str:
 
 def passive_characters() -> list[str]:
     names = set()
-    for path in glob.glob(os.path.join(RESULTS_DIR, '로펙_*.csv')):
-        for row in csv.DictReader(open(path, encoding='utf-8-sig')):
-            if row.get('계통') in PASSIVE_GROUPS: names.add(row['캐릭터'])                   # 아크 패시브를 측정한 캐릭터
+    paths = [os.path.join(RESULTS_DIR, 'lopec_all.csv')]                                        # 모든 측정을 모은 한 파일
+    paths += glob.glob(os.path.join(RESULTS_DIR, '로펙_*.csv'))                                 # 아직 합치지 않은 예전 파일 (있으면)
+    for path in paths:
+        if not os.path.exists(path): continue                                                   # 없는 파일은 건너뜀
+        with open(path, encoding='utf-8-sig', newline='') as handle:
+            for row in csv.DictReader(handle):
+                if row.get('계통') in PASSIVE_GROUPS: names.add(row['캐릭터'])               # 아크 패시브를 측정한 캐릭터
     return sorted(names)
 
 

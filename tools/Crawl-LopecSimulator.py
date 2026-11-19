@@ -20,7 +20,11 @@
     COMBO_GEAR: 6부위 재련 + 품질을 동시에 무작위 (기본 250)
     COMBO_DEAL: 악세 연마 · 주스탯 + 팔찌 효과 + 스톤 각인을 동시에 무작위 (기본 250)
 
-결과: Verify/lopec_results/로펙_<캐릭터>_<날짜>.csv (utf-8-sig)
+결과: Verify/lopec_results/lopec_all.csv 한 파일에 이어 씀 (utf-8-sig)
+      줄마다 "측정" 열(YYYY-MM-DD_HHMMSS = 캐릭터 측정을 시작한 시각)이 붙어서, 같은 캐릭터를 여러 번 재도 회차를 구분함
+      (예전 로펙_<캐릭터>_<날짜>.csv 파일들은 tools/Merge-LopecResults.py로 합친 뒤 archive/로 옮김)
+샘플 목록으로 돌리기:
+    python tools/Crawl-LopecSimulator.py --names-file Verify/lopec_results/samples/lopec_samples.csv --only BASELINE,ARK_PASSIVE --resume
 """
 import argparse
 import csv
@@ -37,6 +41,9 @@ from playwright.sync_api import sync_playwright
 SIMULATOR_URL = "https://lopec.kr/character/simulator/{name}"   # 캐릭터 시뮬레이터 주소
 DEFAULT_CHARACTERS = ["핢머니", "리퍼는지켜줘야해", "필례"]   # 기준 + 검증 캐릭터
 OUTPUT_DIR = "Verify/lopec_results"                                      # CSV 저장 폴더
+OUTPUT_FILE = "lopec_all.csv"                                            # 모든 측정을 모으는 한 파일
+MEASURE_COLUMN = "측정"                                                   # 회차 열 (YYYY-MM-DD_HHMMSS)
+SAMPLE_NAME_COLUMN = "캐릭터"                                             # 샘플 CSV의 캐릭터 이름 열
 PROFILE_DIR = "Verify/lopec_browser_profile"                             # 브라우저 프로필 (쿠키 유지)
 AD_MARKER = "google_vignette"                                     # 전면 광고가 뜨면 주소에 붙는 표시
 NO_THROTTLE_ARGS = ["--disable-background-timer-throttling",      # 가려진 창의 타이머 억제 끄기
@@ -131,7 +138,7 @@ SKIP_SUFFIXES = ("-willpower",)
 
 CSV_HEADER = ["번호", "캐릭터", "계통", "컨트롤", "항목", "변경 전", "변경 후",
               "기준 로펙", "기준 전투력", "로펙 점수", "예상 전투력", "아이템 레벨",
-              "전투력 증감", "전투력 배율", "로펙 증감", "메모"]
+              "전투력 증감", "전투력 배율", "로펙 증감", "메모", MEASURE_COLUMN]
 
 # ===== 페이지 안 도우미 (한 번 심어 두고 호출) =====
 HELPER_JS = r"""
@@ -428,13 +435,16 @@ def is_skipped(control):
 class ResultWriter:
     """CSV 한 파일 (줄마다 바로 저장해서 중간에 멈춰도 결과가 남음)"""
 
-    def __init__(self, path, name, baseline):
-        self.m_handle = open(path, "w", newline="", encoding="utf-8-sig")
+    def __init__(self, path, name, baseline, measure):
+        is_new = not os.path.exists(path) or os.path.getsize(path) == 0      # 처음 만드는 파일이면 머리글부터
+        self.m_handle = open(path, "a", newline="", encoding="utf-8-sig" if is_new else "utf-8")   # 이어 쓰기 (BOM은 맨 앞에 한 번만)
         self.m_writer = csv.writer(self.m_handle)
         self.m_name = name
         self.m_baseline = baseline
+        self.m_measure = measure                                             # 이 캐릭터 측정 회차
         self.m_count = 0
-        self.m_writer.writerow(CSV_HEADER)
+        if is_new:
+            self.m_writer.writerow(CSV_HEADER)
         self.row("BASELINE", "", "기준 (변경 없음)", "", "", baseline, "")
 
     def row(self, group, key, label, before, after, scores, memo):
@@ -447,7 +457,7 @@ class ResultWriter:
             lopec, combat, scores.get("level"),
             round(combat - base["combat"], VALUE_DIGITS) if ok else "",
             round(combat / base["combat"], RATIO_DIGITS) if ok else "",
-            round(lopec - base["lopec"], VALUE_DIGITS) if lopec is not None else "", memo])
+            round(lopec - base["lopec"], VALUE_DIGITS) if lopec is not None else "", memo, self.m_measure])
         self.m_handle.flush()
         self.m_count += 1
 
@@ -957,10 +967,10 @@ def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_cou
         return None
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    # 같은 날 여러 번 돌려도 덮어쓰지 않게 시각(시분초)까지 붙임
-    stamp = datetime.now().strftime(OUTPUT_TIME_FORMAT)
-    path = os.path.join(OUTPUT_DIR, f"로펙_{name}_{date.today().isoformat()}_{stamp}.csv")
-    writer = ResultWriter(path, name, baseline)
+    # 같은 날 여러 번 재도 구분되게 시각(시분초)까지 붙인 회차 이름
+    measure = f"{date.today().isoformat()}_{datetime.now().strftime(OUTPUT_TIME_FORMAT)}"
+    path = os.path.join(OUTPUT_DIR, OUTPUT_FILE)
+    writer = ResultWriter(path, name, baseline, measure)
     try:
         # 교차 검증 캐릭터처럼 조합만 필요하면 --skip-single로 단일 변경을 건너뜀
         if not skip_single:
@@ -991,8 +1001,18 @@ def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_cou
             run_combo_groups(page, name, writer, set(combo_groups), combo_count)
     finally:
         writer.close()
-    print(f"저장: {path} ({writer.m_count}줄)")
+    print(f"저장: {path} ({name} {measure}, {writer.m_count}줄)")
     return path
+
+
+def measured_today():
+    """lopec_all.csv에서 오늘 측정 회차가 있는 캐릭터 이름들."""
+    path = os.path.join(OUTPUT_DIR, OUTPUT_FILE)
+    if not os.path.exists(path):
+        return set()
+    today = date.today().isoformat()                                      # 회차 이름 앞부분
+    with open(path, encoding="utf-8-sig", newline="") as handle:
+        return {row["캐릭터"] for row in csv.DictReader(handle) if row.get(MEASURE_COLUMN, "").startswith(today)}
 
 
 def run():
@@ -1018,11 +1038,20 @@ def run():
                              " EFG: 전설 이름 × 레벨 · 전설 칸 수 · 전설 두 칸 레벨 쌍)")
     parser.add_argument("--skip-single", action="store_true", help="단일 변경 · 상급 재련을 건너뛰고 조합만")
     parser.add_argument("--profile", default=PROFILE_DIR, help="브라우저 프로필 폴더 (동시에 여러 개 돌릴 때 서로 다르게)")
+    parser.add_argument("--names-file", default="", help="캐릭터 이름을 이 CSV의 '캐릭터' 열에서 읽음 (예: 샘플 CSV, --name 대신)")
+    parser.add_argument("--resume", action="store_true", help="오늘 이미 lopec_all.csv에 측정한 캐릭터는 건너뜀 (중간에 멈춘 뒤 이어 돌리기)")
     parser.add_argument("--list", action="store_true", help="실험 수만 세고 끝냄")
     parser.add_argument("--first", type=int, default=0, help="캐릭터 목록 앞에서 N명만 (한글 입력 없이 시험할 때)")
     args = parser.parse_args()
     only = {item.strip().upper() for item in args.only.split(",") if item.strip()}
     names = [item.strip() for item in args.name.split(",") if item.strip()]
+    if args.names_file:                                                   # 샘플 CSV에서 이름 읽기
+        with open(args.names_file, encoding="utf-8-sig", newline="") as handle:
+            names = [row[SAMPLE_NAME_COLUMN].strip() for row in csv.DictReader(handle) if row.get(SAMPLE_NAME_COLUMN, "").strip()]
+    if args.resume:                                                       # 오늘 이미 잰 캐릭터 건너뛰기
+        done = measured_today()
+        names = [name for name in names if name not in done]
+        print(f"이어 돌리기: 오늘 측정한 {len(done)}명 제외 → {len(names)}명")
     if args.first > 0:
         names = names[:args.first]
 

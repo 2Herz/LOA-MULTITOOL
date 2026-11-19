@@ -3,7 +3,7 @@
 import std;
 
 // lopec 측정값 대비 전투력 엔진 회귀 검사 (자체 검사 --self-test에서 호출)
-// Verify/lopec_results의 lopec CSV와 regression/armory의 무기고 응답을 읽어, 실제 앱 엔진(무기고 해석기 → 아크 패시브 배율 요소)으로
+// Verify/lopec_results/lopec_all.csv(캐릭터별 가장 최근 측정 회차)와 regression/armory의 무기고 응답을 읽어, 실제 앱 엔진(무기고 해석기 → 아크 패시브 배율 요소)으로
 // 같은 변경을 다시 계산하고 lopec 배율과의 오차가 허용치 안인지 확인 (측정 데이터는 gitignore → 데이터가 없는 PC면 건너뜀)
 export namespace LostArkMultiTool::Core::CombatRegression
 {
@@ -36,6 +36,6 @@ export namespace LostArkMultiTool::Core::CombatRegression
     // start에서 위로 올라가며 측정 데이터 폴더(Verify/lopec_results)를 찾음 (없으면 nullopt)
     [[nodiscard]] std::optional<std::filesystem::path> FindDataDirectory(const std::filesystem::path& start);
 
-    // 측정 데이터 폴더의 lopec CSV 전체를 다시 계산해 결과 반환
+    // 측정 데이터 폴더의 lopec_all.csv 전체를 다시 계산해 결과 반환
     [[nodiscard]] RegressionResult Run(const std::filesystem::path& dataDirectory);
 }

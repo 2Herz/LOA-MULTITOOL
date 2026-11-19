@@ -22,8 +22,7 @@ namespace LostArkMultiTool::Core::CombatRegression
         constexpr std::string_view DETAIL_FILE{ "last_result.csv" };            // 줄마다 예측 · lopec · 오차 (원인 분석용, 실행마다 덮어씀)
         constexpr std::string_view DETAIL_HEADER{ "캐릭터,랭크,컨트롤,변경 전,변경 후,lopec 배율,lopec 기준 보정,엔진 배율,오차(%),허용(%)\n" };   // 상세 파일 머리글
         constexpr std::string_view EXCEPTIONS_FILE{ "exceptions.json" };         // lopec 특이점 제외 목록 {"이름" 또는 "*": ["컨트롤", ...]}
-        constexpr std::string_view CSV_PREFIX{ "로펙_" };                         // lopec CSV 파일 이름 앞부분
-        constexpr std::string_view CSV_EXTENSION{ ".csv" };                      // CSV 확장자
+        constexpr std::string_view ALL_RESULTS_FILE{ "lopec_all.csv" };          // 모든 lopec 측정을 모은 한 파일 (tools/Crawl-LopecSimulator.py · Merge-LopecResults.py)
         constexpr std::string_view JSON_EXTENSION{ ".json" };                    // JSON 확장자
         constexpr std::string_view UTF8_BOM{ "\xEF\xBB\xBF" };                    // UTF-8 BOM
         constexpr std::string_view ALL_CHARACTERS{ "*" };                         // 제외 목록에서 모든 캐릭터
@@ -33,6 +32,7 @@ namespace LostArkMultiTool::Core::CombatRegression
         constexpr std::string_view COLUMN_CONTROL{ "컨트롤" };                    // CSV 열: lopec 컨트롤 id
         constexpr std::string_view COLUMN_BEFORE{ "변경 전" };                    // CSV 열: 변경 전 값
         constexpr std::string_view COLUMN_AFTER{ "변경 후" };                     // CSV 열: 변경 후 값 (조합이면 "키=값 | 키=값")
+        constexpr std::string_view COLUMN_MEASURE{ "측정" };                      // CSV 열: 측정 회차 (YYYY-MM-DD_HHMMSS, 글자 순 = 시간 순)
         constexpr std::string_view COLUMN_RATIO{ "전투력 배율" };                 // CSV 열: lopec 예상 전투력 ÷ 기준 전투력
 
         constexpr std::string_view GROUP_PASSIVE{ "ARK_PASSIVE" };                // 아크 패시브 단일 변경
@@ -70,12 +70,13 @@ namespace LostArkMultiTool::Core::CombatRegression
             std::size_t m_before{};      // 변경 전
             std::size_t m_after{};       // 변경 후
             std::size_t m_ratio{};       // 전투력 배율
+            std::size_t m_measure{};     // 측정 회차
         };
 
-        // 한 캐릭터의 가장 최근 측정 파일
+        // 한 캐릭터의 가장 최근 측정 회차
         struct CharacterMeasure
         {
-            std::string m_fileName;        // 파일 이름 (UTF-8, 같은 캐릭터면 이름 순 = 시간 순)
+            std::string m_measure;         // 측정 회차 (YYYY-MM-DD_HHMMSS, 글자 순 = 시간 순)
             std::vector<CsvRow> m_rows;    // 아크 패시브 측정 줄
             CsvColumns m_columns;          // 열 번호
         };
@@ -143,9 +144,9 @@ namespace LostArkMultiTool::Core::CombatRegression
                 if (found == header.end()) return std::nullopt;                                    // 없음
                 return static_cast<std::size_t>(std::distance(header.begin(), found));             // 번호
             } };
-            const std::array columns{ find(COLUMN_CHARACTER), find(COLUMN_GROUP), find(COLUMN_CONTROL), find(COLUMN_BEFORE), find(COLUMN_AFTER), find(COLUMN_RATIO) };   // 모든 열
+            const std::array columns{ find(COLUMN_CHARACTER), find(COLUMN_GROUP), find(COLUMN_CONTROL), find(COLUMN_BEFORE), find(COLUMN_AFTER), find(COLUMN_RATIO), find(COLUMN_MEASURE) };   // 모든 열
             if (std::ranges::any_of(columns, [](const std::optional<std::size_t>& column) { return !column.has_value(); })) return std::nullopt;   // 빠진 열
-            return CsvColumns{ *columns[0], *columns[1], *columns[2], *columns[3], *columns[4], *columns[5] };   // 순서대로
+            return CsvColumns{ *columns[0], *columns[1], *columns[2], *columns[3], *columns[4], *columns[5], *columns[6] };   // 순서대로
         }
 
         // 칸 값 (줄이 짧으면 빈 글자)
@@ -173,34 +174,29 @@ namespace LostArkMultiTool::Core::CombatRegression
             return value;                                                                          // 수
         }
 
-        // 측정 데이터 폴더의 모든 CSV → 캐릭터별 가장 최근 아크 패시브 측정
+        // 측정 한 파일(lopec_all.csv) → 캐릭터별 가장 최근 회차의 아크 패시브 측정
         [[nodiscard]] std::map<std::string, CharacterMeasure> LoadMeasures(const std::filesystem::path& dataDirectory)
         {
             std::map<std::string, CharacterMeasure> measures;                                      // 캐릭터 → 측정
-            for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator{ dataDirectory })
-            {
-                const std::string fileName{ ToText(entry.path().filename()) };                     // 파일 이름
-                if (!entry.is_regular_file() || !fileName.starts_with(CSV_PREFIX) || !fileName.ends_with(CSV_EXTENSION)) continue;   // lopec CSV만
-                const std::optional<std::string> text{ ReadText(entry.path()) };                   // 본문
-                if (!text.has_value()) continue;                                                   // 못 읽음
-                std::vector<CsvRow> rows{ ParseCsv(*text) };                                       // 줄들
-                if (rows.empty()) continue;                                                        // 빈 파일
-                const std::optional<CsvColumns> columns{ FindColumns(rows.front()) };              // 머리글
-                if (!columns.has_value()) continue;                                                // 예전 형식
+            const std::optional<std::string> text{ ReadText(dataDirectory / ToPath(ALL_RESULTS_FILE)) };   // 본문
+            if (!text.has_value()) return measures;                                                // 파일 없음
+            std::vector<CsvRow> rows{ ParseCsv(*text) };                                           // 줄들
+            if (rows.empty()) return measures;                                                     // 빈 파일
+            const std::optional<CsvColumns> columns{ FindColumns(rows.front()) };                  // 머리글
+            if (!columns.has_value()) return measures;                                             // 예전 형식
 
-                std::map<std::string, std::vector<CsvRow>> passiveRows;                            // 이 파일의 캐릭터별 아크 패시브 줄
-                for (CsvRow& row : rows | std::views::drop(1))                                     // 머리글 다음부터
-                {
-                    const std::string_view group{ GetField(row, columns->m_group) };               // 계통
-                    if (group != GROUP_PASSIVE && group != GROUP_PASSIVE_COMBO) continue;          // 아크 패시브만
-                    passiveRows[std::string{ GetField(row, columns->m_character) }].push_back(std::move(row));   // 캐릭터별로 모음
-                }
-                for (auto& [character, characterRows] : passiveRows)
-                {
-                    CharacterMeasure& saved{ measures[character] };                                // 이 캐릭터의 측정
-                    if (!saved.m_fileName.empty() && saved.m_fileName > fileName) continue;        // 더 최근 파일이 이미 있음
-                    saved = CharacterMeasure{ fileName, std::move(characterRows), *columns };      // 최근 파일로 교체
-                }
+            std::map<std::pair<std::string, std::string>, std::vector<CsvRow>> passiveRows;        // (캐릭터, 회차) → 아크 패시브 줄
+            for (CsvRow& row : rows | std::views::drop(1))                                         // 머리글 다음부터
+            {
+                const std::string_view group{ GetField(row, columns->m_group) };                   // 계통
+                if (group != GROUP_PASSIVE && group != GROUP_PASSIVE_COMBO) continue;              // 아크 패시브만
+                std::pair<std::string, std::string> key{ std::string{ GetField(row, columns->m_character) },
+                    std::string{ GetField(row, columns->m_measure) } };                            // 캐릭터 · 회차
+                passiveRows[std::move(key)].push_back(std::move(row));                             // 회차별로 모음
+            }
+            for (auto& [key, characterRows] : passiveRows)                                         // 회차 글자 순 = 시간 순으로 돌므로
+            {
+                measures[key.first] = CharacterMeasure{ key.second, std::move(characterRows), *columns };   // 뒤(최근) 회차가 앞 회차를 덮어씀
             }
             return measures;                                                                       // 결과
         }
