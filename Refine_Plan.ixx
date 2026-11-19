@@ -120,5 +120,7 @@ export namespace LostArkMultiTool::Models
         double m_startItemLevel{};            // 평균 아이템 레벨
         double m_achievedItemLevel{};
         MaterialAmounts m_materials{};        // 기대 소모 재료 합계
+        MaterialAmounts m_usedHoldings{};     // 경로 순서대로 먼저 쓴 보유 재료 (재료별, 예상 소모를 넘지 않음)
+        double m_holdingSavings{};            // 보유 재료를 써서 줄어든 골드 (m_totalCost는 이미 뺀 값)
     };
 }

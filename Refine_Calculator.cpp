@@ -853,4 +853,41 @@ namespace LostArkMultiTool::Services::RefineCalculator
         result.m_achievedItemLevel = static_cast<double>(finalSum) / static_cast<double>(Models::REFINE_SLOT_COUNT);
         return result;
     }
+
+    void ApplyHoldings(Models::RefineRouteResult& result, const Models::RefineCostCatalog& catalog,
+        const Models::RefinePrices& prices, const Models::MaterialAmounts& holdings)
+    {
+        if (result.m_failure != Models::RefineFailure::FAILURE_NONE) return;   // 실패한 결과는 그대로
+
+        const std::size_t goldIndex{ Models::RefineData::ToIndex(RefineMaterial::MATERIAL_GOLD) };   // 골드 칸 번호
+        Models::MaterialAmounts remaining{ holdings };   // 아직 쓰지 않은 보유 수량
+        result.m_usedHoldings = {};                       // 다시 계산하므로 비움
+        result.m_holdingSavings = 0.0;
+
+        for (Models::RefineSlotPlan& plan : result.m_slots) plan.m_expectedCost = 0.0;   // 부위 비용은 걸음 비용 합으로 다시 채움
+        result.m_totalCost = 0.0;
+
+        for (Models::RefineStep& step : result.m_steps)   // 진행 순서대로 (먼저 하는 재련부터 보유분 사용)
+        {
+            Models::MaterialAmounts stepMaterials{};                  // 이 걸음의 기대 재료
+            AddStepMaterials(stepMaterials, step, catalog);
+
+            double stepSavings{};   // 이 걸음에서 줄어든 골드
+            for (std::size_t index{}; index < stepMaterials.size(); ++index)
+            {
+                if (index == goldIndex) continue;   // 골드 보유는 비용을 줄이지 않음 (비용 자체가 골드)
+                const double used{ std::min(remaining[index], stepMaterials[index]) };   // 보유분에서 쓸 수 있는 만큼
+                if (used <= 0.0) continue;
+
+                remaining[index] -= used;                    // 남은 보유 수량
+                result.m_usedHoldings[index] += used;        // 재료별 사용량 기록
+                stepSavings += used * GetCostPrice(prices, static_cast<RefineMaterial>(index));   // 귀속 재료는 가격 0 → 절약 0
+            }
+
+            step.m_expectedCost = std::max(0.0, step.m_expectedCost - stepSavings);   // 걸음 비용 (음수 방지)
+            result.m_holdingSavings += stepSavings;
+            result.m_totalCost += step.m_expectedCost;
+            result.m_slots[ToSlotIndex(step.m_slot)].m_expectedCost += step.m_expectedCost;   // 부위 비용 다시 합산
+        }
+    }
 }

@@ -89,6 +89,7 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view INHERIT_ROUTE_FORMAT{ L"{} 계승 (에기르 +{} → 세르카 +{})" };
         constexpr std::wstring_view ORDER_RANGE_FORMAT{ L"{}~{}" };
         constexpr std::wstring_view TOTAL_FORMAT{ L"총 소요 재화  {} G   ({} → {})" };
+        constexpr std::wstring_view TOTAL_HOLDING_FORMAT{ L"총 소요 재화  {} G   (보유 재료 −{} G 반영 · {} → {})" };   // 보유 재료로 줄어든 골드 포함
         constexpr std::wstring_view TOTAL_EMPTY_TEXT{ L"총 소요 재화  -" };
         constexpr std::wstring_view SUMMARY_FORMAT{ L"평균 {} → {}" };
         constexpr std::wstring_view SUMMARY_TARGET_FORMAT{ L"평균 {} → {} (목표 {})" };
@@ -633,11 +634,12 @@ namespace LostArkMultiTool::Views
 
         const std::uint64_t revision{ m_service->GetPriceRevision() };
         std::shared_ptr<const Models::RefineCostCatalog> catalog{ m_catalog && m_catalogRevision == revision ? m_catalog : nullptr };
-        m_calculationTask.Start([request = m_service->GetRequest(), prices = m_service->GetPrices(), catalog = std::move(catalog), revision]
+        m_calculationTask.Start([request = m_service->GetRequest(), prices = m_service->GetPrices(), holdings = m_service->GetHoldings(), catalog = std::move(catalog), revision]
         {
             std::shared_ptr<const Models::RefineCostCatalog> usedCatalog{ catalog
                 ? catalog : std::make_shared<const Models::RefineCostCatalog>(Services::RefineCalculator::BuildCostCatalog(prices)) };
             Models::RefineRouteResult result{ Services::RefineCalculator::CalculateRoute(request, *usedCatalog) };
+            Services::RefineCalculator::ApplyHoldings(result, *usedCatalog, prices, holdings);   // 보유 재료만큼 골드 비용 차감 (경로 순서대로)
             return CalculationOutput{ std::move(usedCatalog), revision, request, std::move(result) };
         });
         RefreshStatus();
@@ -726,8 +728,7 @@ namespace LostArkMultiTool::Views
         // 귀속재료 계산기에 같은 이름의 캐릭터가 있으면 보유량 불러오기 (API 호출 없이 저장 파일만 읽음 → 한도와 상관없이)
         if (LoadRosterHoldings(std::wstring{ trimmedName }))
         {
-            SaveData();            // 불러온 보유량 저장
-            RefreshMaterials();    // 재료 표의 보유 칸 갱신
+            MarkChanged(true);     // 불러온 보유량 저장 + 보유 반영해서 다시 계산 + 재료 표 갱신 (가격표 캐시는 그대로)
             m_context->m_notifier.ShowToast(std::format(HOLDINGS_LOADED_FORMAT, trimmedName), Core::NoticeKind::NOTICE_SUCCESS);   // 완료 알림
         }
 
@@ -958,9 +959,10 @@ namespace LostArkMultiTool::Views
             if (owned.has_value())   // 숫자일 때만 반영
             {
                 m_service->SetHolding(static_cast<RefineMaterial>(row), *owned);   // 보유 수량 설정
-                SaveData();   // 바로 저장 (계산 결과는 그대로라 다시 계산하지 않음)
+                MarkChanged(true);    // 저장 + 보유 반영해서 다시 계산 + 재료 표 갱신 (가격표 캐시는 그대로)
+                return;
             }
-            RefreshMaterials();   // 잘못 입력했으면 원래 값으로, 맞으면 부족 표시 갱신
+            RefreshMaterials();   // 잘못 입력했으면 원래 값으로 되돌림
             return;
         }
 
@@ -1120,7 +1122,9 @@ namespace LostArkMultiTool::Views
             row.m_owned = Core::NumberFormat::FormatNumber(owned, GOLD_DECIMALS);   // 보유 칸 (0도 그대로 표시)
             row.m_amount = FormatAmount(amount);
             row.m_isShort = amount >= MIN_SHOWN_AMOUNT && owned < amount;   // 예상 소모보다 적게 가지고 있으면 강조
-            row.m_cost = (isBound || amount < MIN_SHOWN_AMOUNT) ? std::wstring{ EMPTY_TEXT } : FormatGold(amount * prices.m_prices[index]);
+            const double used{ (hasResult && !isGold) ? m_result->m_usedHoldings[index] : 0.0 };   // 보유분에서 쓴 수량 (골드는 차감 없음)
+            const double purchase{ std::max(0.0, amount - used) };                                // 새로 사야 하는 수량
+            row.m_cost = (isBound || purchase < MIN_SHOWN_AMOUNT) ? std::wstring{ EMPTY_TEXT } : FormatGold(purchase * prices.m_prices[index]);   // 부족분만 골드로
             rows.push_back(std::move(row));
         }
         m_view->ShowMaterials(rows);
@@ -1197,8 +1201,13 @@ namespace LostArkMultiTool::Views
             firstRun = lastRun + 1;
         }
 
-        m_view->ShowRoute(std::format(TOTAL_FORMAT, Core::NumberFormat::FormatNumber(m_result->m_totalCost, GOLD_DECIMALS),
-            FormatLevel(m_result->m_startItemLevel), FormatLevel(m_result->m_achievedItemLevel)), rows);
+        const std::wstring totalGold{ Core::NumberFormat::FormatNumber(m_result->m_totalCost, GOLD_DECIMALS) };   // 보유 반영 후 총 골드
+        const std::wstring startLevel{ FormatLevel(m_result->m_startItemLevel) };
+        const std::wstring achievedLevel{ FormatLevel(m_result->m_achievedItemLevel) };
+        std::wstring totalText{ m_result->m_holdingSavings >= MIN_SHOWN_AMOUNT   // 보유 재료로 줄어든 골드가 있으면 함께 표시
+            ? std::format(TOTAL_HOLDING_FORMAT, totalGold, Core::NumberFormat::FormatNumber(m_result->m_holdingSavings, GOLD_DECIMALS), startLevel, achievedLevel)
+            : std::format(TOTAL_FORMAT, totalGold, startLevel, achievedLevel) };
+        m_view->ShowRoute(std::move(totalText), rows);
     }
 
     // 상단 상태: 조회 중 · 계산 중 · 가격 없음 · 마지막 갱신 시각
