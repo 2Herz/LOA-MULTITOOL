@@ -58,6 +58,8 @@ namespace LostArkMultiTool::Core::CombatRegression
         constexpr double PERCENT{ 100.0 };                        // 비율 → %
         constexpr std::size_t EVOLUTION_TREE{ 0 };                // 아크 패시브 트리 번호: 0 진화 (딜러는 레벨 효과 없음, lopec 기준 어긋남 측정용)
         constexpr std::size_t LEAP_TREE{ 2 };                     // 아크 패시브 트리 번호: 2 도약 (서포터는 레벨 효과 없음, 서포터 기준 어긋남 측정용)
+        constexpr double ROLE_FLAT_SPREAD{ 1e-4 };                // 도약 레벨 슬라이더 줄의 lopec 배율 폭이 이 값 이하면 측정 당시 서포터 (서포터는 도약 레벨 효과 없음)
+        constexpr std::size_t MIN_ROLE_ROWS{ 3 };                 // 측정 당시 역할을 판단할 최소 도약 슬라이더 줄 수
         constexpr double COMBO_OFFSET_SPREAD_PERCENT{ 0.3 };      // 조합 줄 lopec ÷ 엔진 비가 이 폭(%) 안에서 일정해야 조합 기준 어긋남으로 봄
         constexpr std::size_t MIN_OFFSET_ROWS{ 3 };               // lopec 슬라이더 기준 어긋남을 판단할 최소 줄 수
         constexpr double OFFSET_SPREAD_PERCENT{ 0.05 };           // 이 폭(%) 안에서 일정해야 기준 어긋남으로 봄 (엔진 기울기 오차는 값에 따라 달라짐, 6랭크 허용치의 절반)
@@ -436,6 +438,21 @@ namespace LostArkMultiTool::Core::CombatRegression
             return GetWorstError(comboRows, offset) < GetWorstError(comboRows, 1.0) ? offset : 1.0;   // 배수를 적용하는 쪽이 더 맞을 때만
         }
 
+        // 측정 당시 역할 (도약 레벨 슬라이더만 바꾼 줄의 lopec 배율이 일정하면 서포터, 달라지면 딜러, 줄이 부족하면 nullopt)
+        [[nodiscard]] std::optional<Models::CombatRole> FindMeasuredRole(const CharacterMeasure& measure)
+        {
+            const std::string leapSlider{ std::format("{}{}", CONTROL_TREE_LEVEL, LEAP_TREE) };    // 도약 트리 레벨 슬라이더
+            std::vector<double> ratios;                                                            // 도약 슬라이더 줄의 lopec 배율
+            for (const CsvRow& row : measure.m_rows)                                               // 측정 줄 순회
+            {
+                if (GetField(row, measure.m_columns.m_group) != GROUP_PASSIVE || GetField(row, measure.m_columns.m_control) != leapSlider) continue;   // 도약 단일 줄만
+                if (const std::optional<double> ratio{ ParseNumber<double>(GetField(row, measure.m_columns.m_ratio)) }) ratios.push_back(*ratio);   // 배율 기록
+            }
+            if (ratios.size() < MIN_ROLE_ROWS) return std::nullopt;                                // 판단할 줄이 부족
+            const auto [low, high]{ std::ranges::minmax(ratios) };                                 // 최소 · 최대 배율
+            return high - low <= ROLE_FLAT_SPREAD ? Models::CombatRole::ROLE_SUPPORTER : Models::CombatRole::ROLE_DEALER;   // 일정하면 서포터
+        }
+
         // 비정상 캐릭터 (장신구를 하나도 끼지 않음 → lopec 기준이 불안정) 이유, 정상이면 nullopt
         [[nodiscard]] std::optional<std::string> FindAbnormalReason(const Models::CombatState& state)
         {
@@ -473,6 +490,13 @@ namespace LostArkMultiTool::Core::CombatRegression
                 return;
             }
             const bool isSupporter{ current.m_extra.m_role == Models::CombatRole::ROLE_SUPPORTER };   // 서포터 계수로 계산하는지
+            if (const std::optional<Models::CombatRole> measuredRole{ FindMeasuredRole(measure) }; measuredRole.has_value() && *measuredRole != current.m_extra.m_role)   // 측정 뒤 딜러 ↔ 서포터 전환
+            {
+                result.m_notes.push_back(std::format("{} 건너뜀: 측정 뒤 역할이 바뀜 ({} → {}) → 다시 측정 필요", character,
+                    *measuredRole == Models::CombatRole::ROLE_SUPPORTER ? "서포터" : "딜러", isSupporter ? "서포터" : "딜러"));   // 안내
+                ++result.m_abnormalCount;                                                          // 건너뛴 수 (비정상으로 셈)
+                return;
+            }
             if (const std::optional<std::string> stale{ FindStaleLevel(measure, current.m_extra.m_passive) })   // 측정 뒤 성장
             {
                 result.m_notes.push_back(std::format("{} 건너뜀: 측정 뒤 아크 패시브가 바뀜 ({}) → 다시 측정 필요", character, *stale));
