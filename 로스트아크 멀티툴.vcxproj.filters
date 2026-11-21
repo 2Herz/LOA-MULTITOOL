@@ -278,6 +278,18 @@
     <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\9. 전투력 시뮬레이터 매니저">
       <UniqueIdentifier>{ef8e90db-879a-4305-b700-2439eaa27ec0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="2. 모델\1. 데이터\12. 이관">
+      <UniqueIdentifier>{5b0e2c1a-7f43-4d8e-9a61-2c3d4e5f6a71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3. 서비스\16. 이관">
+      <UniqueIdentifier>{6c1f3d2b-8054-4e9f-ab72-3d4e5f6a7b82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\14. 이관계산기">
+      <UniqueIdentifier>{7d204e3c-9165-4fa0-bc83-4e5f6a7b8c93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 계산기 매니저">
+      <UniqueIdentifier>{8e315f4d-a276-40b1-cd94-5f6a7b8c9da4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="APP_Constants.ixx">
@@ -1016,10 +1028,10 @@
       <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
     </ClCompile>
     <ClCompile Include="Combat_Supporter_Data.ixx">
-      <Filter>2. 모델. 데이터	. 전투력</Filter>
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
     </ClCompile>
     <ClCompile Include="Combat_Supporter_Data.cpp">
-      <Filter>2. 모델. 데이터	. 전투력</Filter>
+      <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
     </ClCompile>
     <ClCompile Include="Combat_State.ixx">
       <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
@@ -1080,6 +1092,30 @@
     </ClCompile>
     <ClCompile Include="Combat_Simulator_Manager.cpp">
       <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\9. 전투력 시뮬레이터 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_Data.ixx">
+      <Filter>2. 모델\1. 데이터\12. 이관</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_Data.cpp">
+      <Filter>2. 모델\1. 데이터\12. 이관</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_Calculator.ixx">
+      <Filter>3. 서비스\16. 이관</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_Calculator.cpp">
+      <Filter>3. 서비스\16. 이관</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_View.ixx">
+      <Filter>4. 뷰\14. 이관계산기</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_View.cpp">
+      <Filter>4. 뷰\14. 이관계산기</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_Manager.ixx">
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 계산기 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Transfer_Manager.cpp">
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 계산기 매니저</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

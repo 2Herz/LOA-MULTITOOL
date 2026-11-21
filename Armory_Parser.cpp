@@ -40,6 +40,9 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
 
         // ===== 툴팁 글자 =====
         constexpr std::string_view ADVANCED_MARKER{ "[상급 재련]" };  // 상급 재련 표시 글자
+        constexpr std::string_view ITEM_LEVEL_MARKER{ "아이템 레벨" };  // 장비 아이템 레벨 표시 글자 (툴팁 제목 줄)
+        constexpr std::string_view ITEM_TIER_MARKER{ "아이템 티어" };   // 장신구 · 팔찌 · 스톤 티어 표시 글자
+        constexpr std::string_view ELA_STAGE_MARKER{ "엘라 부여" };     // 에스더 무기 엘라 단계 표시 글자
         constexpr std::string_view BASIC_EFFECT_MARKER{ "기본 효과" };  // 기본 효과 구간 표시 글자
         constexpr std::string_view EFFECT_WORD{ "효과" };                        // 다음 묶음 제목 ("추가 효과" 등) = 기본 효과 구간 끝
         constexpr std::array<std::string_view, 3> MAIN_STAT_MARKERS{ "힘 +", "민첩 +", "지능 +" };  // 주스탯 표시 글자 (힘 · 민첩 · 지능)
@@ -607,6 +610,9 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
 
         const std::string text{ StripTags(joined) };  // 태그를 지운 글자
         item.m_advancedEnhancement = static_cast<int>(ReadNumberAfter(text, ADVANCED_MARKER, 0, text.size()).value_or(0));  // 상급 재련 단계 읽기
+        item.m_itemLevel = static_cast<int>(ReadNumberAfter(text, ITEM_LEVEL_MARKER, 0, text.size()).value_or(0));  // 아이템 레벨 읽기 (제목 줄이 먼저 나옴)
+        item.m_tier = static_cast<int>(ReadNumberAfter(text, ITEM_TIER_MARKER, 0, text.size()).value_or(0));  // 아이템 티어 읽기 (장비 부위는 없음)
+        item.m_elaStage = static_cast<int>(ReadNumberAfter(text, ELA_STAGE_MARKER, 0, text.size()).value_or(0));  // 에스더 엘라 단계 읽기 (없으면 0)
 
         // 주스탯: 기본 효과 구간에서 힘 · 민첩 · 지능 중 처음 나오는 것
         if (const auto basic{ FindBasicEffect(text) }; basic.has_value())  // 기본 효과 구간을 찾으면
@@ -683,7 +689,16 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             armory.m_totalMainStat += item.m_mainStat;  // 주스탯 합계에 더함
 
             // 악세서리 · 팔찌 · 스톤 · 완갑은 따로 정리
+            const std::size_t earringsBefore{ earringCount };  // 이 장비를 읽기 전 귀걸이 수 (슬롯 번호 계산용)
+            const std::size_t ringsBefore{ ringCount };        // 이 장비를 읽기 전 반지 수
             ParseEquipmentExtra(item, entry.FindMember(KEY_TOOLTIP).GetString(), armory.m_extra, earringCount, ringCount);  // 악세서리 · 팔찌 · 스톤 · 완갑 정보 읽기
+
+            // 장신구 · 팔찌 · 스톤 장비 정보 (2부 이관 계산용 등급 · 품질 · 티어, 슬롯 번호는 ParseEquipmentExtra와 같은 규칙)
+            if (item.m_type == ACCESSORY_TYPE_NECKLACE) armory.m_accessoryItems[ACCESSORY_NECKLACE_SLOT] = item;  // 목걸이
+            else if (item.m_type == ACCESSORY_TYPE_EARRING && earringCount > earringsBefore) armory.m_accessoryItems[ACCESSORY_FIRST_EARRING_SLOT + earringsBefore] = item;  // 귀걸이 (순서대로)
+            else if (item.m_type == ACCESSORY_TYPE_RING && ringCount > ringsBefore) armory.m_accessoryItems[ACCESSORY_FIRST_RING_SLOT + ringsBefore] = item;  // 반지 (순서대로)
+            else if (item.m_type == BRACELET_TYPE && !armory.m_braceletItem.has_value()) armory.m_braceletItem = item;  // 팔찌
+            else if (item.m_type == STONE_TYPE && !armory.m_stoneItem.has_value()) armory.m_stoneItem = item;  // 어빌리티 스톤
 
             if (!part.has_value()) continue;  // 대상 부위가 아니면 다음으로
             std::optional<Models::GearItem>& slot{ armory.m_gears[Models::ToGearIndex(*part)] };  // 부위 칸 참조

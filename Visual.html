@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.6.7 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-21</div>
+      <div class="sub">C++23 모듈 · v1.7.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-22</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -474,10 +474,11 @@ const MODULES = [
    "LostArkMultiTool.Views.RefineSimulatorManager",
    "LostArkMultiTool.Views.ServerCheckDialog",
    "LostArkMultiTool.Views.Theme",
-   "LostArkMultiTool.Views.TrackerManager"
+   "LostArkMultiTool.Views.TrackerManager",
+   "LostArkMultiTool.Views.TransferManager"
   ],
   "lines": 142,
-  "cppLines": 1207,
+  "cppLines": 1211,
   "hasCpp": true,
   "filter": "소스 파일\\1. 앱",
   "desc": "프로그램 본체 (xmind의 Main)",
@@ -615,7 +616,7 @@ const MODULES = [
    "LostArkMultiTool.Models.CombatSupporterData"
   ],
   "lines": 17,
-  "cppLines": 734,
+  "cppLines": 749,
   "hasCpp": true,
   "filter": "3. 서비스\\15. 전투력",
   "desc": "무기고 응답 해석 (API /armories/characters/{이름}?filters=profiles+equipment+gems)",
@@ -909,7 +910,7 @@ const MODULES = [
    "LostArkMultiTool.Models.CombatExtraState"
   ],
   "cppImports": [],
-  "lines": 63,
+  "lines": 69,
   "cppLines": 44,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",
@@ -1243,7 +1244,7 @@ const MODULES = [
   "lines": 72,
   "cppLines": 410,
   "hasCpp": true,
-  "filter": "2. 모델\u0001. 데이터\t. 전투력",
+  "filter": "2. 모델\\1. 데이터\\11. 전투력",
   "desc": "서포터 전투력 계수 (lopec 시뮬레이터 서포터 9명 측정, 2026-11-21, Verify/live/서포터_계수_분석.md)",
   "types": [
    "SupporterBook",
@@ -2827,11 +2828,16 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Core.CombatRegression",
+   "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CombatCoefficientData",
-   "LostArkMultiTool.Models.RefineData"
+   "LostArkMultiTool.Models.RefineData",
+   "LostArkMultiTool.Models.TransferData",
+   "LostArkMultiTool.Services.ArmoryParser",
+   "LostArkMultiTool.Services.JSONValue",
+   "LostArkMultiTool.Services.TransferCalculator"
   ],
   "lines": 15,
-  "cppLines": 257,
+  "cppLines": 357,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
@@ -3083,6 +3089,116 @@ const MODULES = [
    "WeekStats",
    "RosterEntry",
    "TrackerView"
+  ]
+ },
+ {
+  "file": "Transfer_Calculator.ixx",
+  "module": "LostArkMultiTool.Services.TransferCalculator",
+  "imports": [
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Models.TransferData"
+  ],
+  "cppImports": [],
+  "lines": 101,
+  "cppLines": 412,
+  "hasCpp": true,
+  "filter": "3. 서비스\\16. 이관",
+  "desc": "2부 슬롯 하나의 이관 결과 (장비 쪽 8칸 · 장신구 쪽 8칸 공용)",
+  "types": [
+   "TransferSlotResult",
+   "ScrollResult",
+   "BraceletLineResult",
+   "GemResult",
+   "StoneResult",
+   "TransferResult",
+   "TransferCalculator"
+  ]
+ },
+ {
+  "file": "Transfer_Data.ixx",
+  "module": "LostArkMultiTool.Models.TransferData",
+  "imports": [],
+  "cppImports": [],
+  "lines": 131,
+  "cppLines": 177,
+  "hasCpp": true,
+  "filter": "2. 모델\\1. 데이터\\12. 이관",
+  "desc": "2부(겨울 업데이트) 기존 성장 이관 표 (2026-11-20 로스트아크 On Air 슬라이드 기준)",
+  "types": [
+   "GearTransferRow",
+   "EstherTransferRow",
+   "SlotPair",
+   "PolishTier",
+   "AccessoryRule",
+   "BraceletRule",
+   "BraceletStatRule",
+   "StoneTransferRow"
+  ]
+ },
+ {
+  "file": "Transfer_Manager.ixx",
+  "module": "LostArkMultiTool.Views.TransferManager",
+  "imports": [
+   "LostArkMultiTool.Core.BackgroundTask",
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Core.Singleton",
+   "LostArkMultiTool.Core.ToolContext",
+   "LostArkMultiTool.Core.ToolManager",
+   "LostArkMultiTool.Models.CharacterArmory",
+   "LostArkMultiTool.Services.TransferCalculator",
+   "LostArkMultiTool.Views.TransferView"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPExceptions",
+   "LostArkMultiTool.Core.LocalTime",
+   "LostArkMultiTool.Core.MarketAPI",
+   "LostArkMultiTool.Core.Notifier",
+   "LostArkMultiTool.Core.Platform",
+   "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Models.RateLimitState",
+   "LostArkMultiTool.Models.TransferData"
+  ],
+  "lines": 69,
+  "cppLines": 548,
+  "hasCpp": true,
+  "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\10. 2부 이관 계산기 매니저",
+  "desc": "2부 이관 최상위 매니저 (캐릭터 무기고 조회 → 2부에서 받을 장비 · 슬롯 재련 · 장신구/인장 주문서 · 광휘/성휘 · 각인 업그레이드)",
+  "types": [
+   "TransferManager"
+  ]
+ },
+ {
+  "file": "Transfer_View.ixx",
+  "module": "LostArkMultiTool.Views.TransferView",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Platform",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.UI.Button",
+   "LostArkMultiTool.Views.UI.ControlHost",
+   "LostArkMultiTool.Views.UI.Grid",
+   "LostArkMultiTool.Views.UI.Label",
+   "LostArkMultiTool.Views.UI.TextBox"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.PageLayout",
+   "LostArkMultiTool.Views.Theme",
+   "LostArkMultiTool.Views.UI.Control"
+  ],
+  "lines": 140,
+  "cppLines": 367,
+  "hasCpp": true,
+  "filter": "4. 뷰\\14. 이관계산기",
+  "desc": "이관 화면의 카드 (위 줄: 장비 · 장신구 슬롯 · 장신구 주문서, 아래 줄: 팔찌 · 보석/스톤 · 그 밖)",
+  "types": [
+   "TransferCell",
+   "TransferSummaryText",
+   "TransferView",
+   "Panel",
+   "TableCard"
   ]
  },
  {

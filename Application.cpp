@@ -33,6 +33,7 @@ import LostArkMultiTool.Views.PageLayout;
 import LostArkMultiTool.Views.RefineBookFinderManager;
 import LostArkMultiTool.Views.RefineSimulatorManager;
 import LostArkMultiTool.Views.ServerCheckDialog;
+import LostArkMultiTool.Views.TransferManager;
 import LostArkMultiTool.Views.Theme;
 import LostArkMultiTool.Views.TrackerManager;
 import LostArkMultiTool.Views.UI.Button;
@@ -175,7 +176,7 @@ namespace LostArkMultiTool::Views
         constexpr std::string_view LAST_TOOL_FILE_NAME{ "LastTool.txt" };                // 마지막으로 쓴 도구 번호 (사용자 데이터 폴더)
         constexpr float TOP_STATUS_WIDTH{ 240.0f };                                       // 위 막대 오른쪽 상태 · 버전 칸 너비
 
-        constexpr std::size_t TAB_TEXT_COUNT{ 9 };   // 탭별 아이콘 · 머리말 문구 수 (Application::TOOL_COUNT와 같은지 RenderPageHeader에서 검사)
+        constexpr std::size_t TAB_TEXT_COUNT{ 10 };   // 탭별 아이콘 · 머리말 문구 수 (Application::TOOL_COUNT와 같은지 RenderPageHeader에서 검사)
 
         // 탭별 메뉴 아이콘 (탭 순서 = m_tools 순서, 이미지 없이 유니코드 기호 → DirectWrite가 기호 글꼴로 대체해서 그림)
         constexpr std::array<std::wstring_view, TAB_TEXT_COUNT> TAB_ICONS{
@@ -187,7 +188,8 @@ namespace LostArkMultiTool::Views
             L"▣",   // 강화책 검색기
             L"◈",   // 젬 시세 검색기
             L"⚔",   // 전투력 시뮬레이터
-            L"⚒"    // 재련 시뮬레이터
+            L"⚒",   // 재련 시뮬레이터
+            L"⇄"    // 2부 이관 계산기
         };
 
         // 탭별 페이지 머리말 영문 소제목 (탭 순서 = m_tools 순서)
@@ -200,7 +202,8 @@ namespace LostArkMultiTool::Views
             L"HONING BOOK",         // 강화책 검색기
             L"ARK PASSIVE GEM",     // 젬 시세 검색기
             L"COMBAT LAB",          // 전투력 시뮬레이터
-            L"HONING SIMULATOR"     // 재련 시뮬레이터
+            L"HONING SIMULATOR",    // 재련 시뮬레이터
+            L"SEASON 2 TRANSFER"    // 2부 이관 계산기
         };
 
         // 탭별 페이지 머리말 설명 (각 탭이 실제로 하는 일, 탭 순서 = m_tools 순서)
@@ -213,7 +216,8 @@ namespace LostArkMultiTool::Views
             L"야금술 · 재봉술 강화책 시세를 단계별로 확인해요.",                                  // 강화책 검색기
             L"질서 · 혼돈 젬 시세를 확인하고, 원정대 귀속 젬 가치를 계산해요.",                    // 젬 시세 검색기
             L"장비 · 보석 · 각인 · 아크패시브를 바꿨을 때의 예상 전투력을 비교해요.",              // 전투력 시뮬레이터
-            L"시작 → 목표 단계까지 필요한 재료 · 골드와 재련 경로를 계산해요."                     // 재련 시뮬레이터
+            L"시작 → 목표 단계까지 필요한 재료 · 골드와 재련 경로를 계산해요.",                    // 재련 시뮬레이터
+            L"2부 업데이트 때 지금 장비 · 장신구 · 팔찌 · 보석 · 스톤이 무엇으로 이관되는지 계산해요."   // 2부 이관 계산기
         };
 
         constexpr Core::TextStyle LOGO_TITLE_STYLE{ Theme::FONT_SIZE_TAB, Core::FontWeight::BOLD, Core::TextAlign::LEADING };        // 로고 큰 글자
@@ -288,7 +292,7 @@ namespace LostArkMultiTool::Views
     }
 
     Application::Application()
-        : m_tools{ CalculatorManager::GetInstance(), GemFinderManager::GetInstance(), TrackerManager::GetInstance(), EngravingFinderManager::GetInstance(), AccessoryFinderManager::GetInstance(), RefineBookFinderManager::GetInstance(), ArkGemFinderManager::GetInstance(), CombatSimulatorManager::GetInstance(), RefineSimulatorManager::GetInstance() }  // 탭 순서대로 매니저 목록 초기화 (전투력 시뮬레이터 탭 등록 포함, 매니저는 싱글톤이 소유)
+        : m_tools{ CalculatorManager::GetInstance(), GemFinderManager::GetInstance(), TrackerManager::GetInstance(), EngravingFinderManager::GetInstance(), AccessoryFinderManager::GetInstance(), RefineBookFinderManager::GetInstance(), ArkGemFinderManager::GetInstance(), CombatSimulatorManager::GetInstance(), RefineSimulatorManager::GetInstance(), TransferManager::GetInstance() }  // 탭 순서대로 매니저 목록 초기화 (2부 이관 계산기 탭 등록 포함, 매니저는 싱글톤이 소유)
     {
         // 창을 만드는 도중에도 WM_SIZE가 OnResize로 들어오므로, 모든 unique_ptr가 비어 있는 상태로 만들어진 뒤에 생성
         m_window = std::make_unique<MainWindow>(BuildWindowTitle(), WINDOW_WIDTH, WINDOW_HEIGHT, *this);

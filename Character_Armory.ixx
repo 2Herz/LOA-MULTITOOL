@@ -30,6 +30,9 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
         std::optional<int> m_quality;       // 품질 (툴팁 qualityValue, 없거나 -1이면 nullopt)
         double m_mainStat{};                // 기본 효과의 힘 · 민첩 · 지능 (없으면 0)
         double m_weaponAttack{};            // 기본 효과의 무기 공격력 (무기만, 없으면 0)
+        int m_itemLevel{};                  // 툴팁 "아이템 레벨 1745" (없으면 0, 2부 이관 표의 기준)
+        int m_tier{};                       // 툴팁 "아이템 티어 4" (장신구 · 팔찌 · 스톤, 없으면 0)
+        int m_elaStage{};                   // 에스더 무기 "엘라 부여 3 단계" (없으면 0)
     };
 
     // 캐릭터 무기고 (API /armories/characters/{이름} → profiles + equipment + gems)
@@ -45,6 +48,9 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
         double m_gemBaseAttackRate{};                                // 보석 기본 공격력 총합 ("기본 공격력 총합 : 6.60%" → 0.066, 없으면 0)
         std::vector<std::string> m_gemKinds;                         // 보석 종류 ("겁화" · "작열" ..., 모르면 빈 문자열, m_gemLevels와 같은 순서)
         ExtraState m_extra;                                          // 악세서리 · 팔찌 · 스톤 · 각인서 · 아바타 · 아크 그리드 · 아크 패시브 · 완갑 (API 현재 값)
+        std::array<std::optional<GearItem>, ACCESSORY_SLOT_COUNT> m_accessoryItems;   // 장신구 장비 정보 (등급 · 품질 · 티어, 슬롯 순서 = m_extra.m_accessories)
+        std::optional<GearItem> m_braceletItem;                      // 팔찌 장비 정보 (등급 · 티어, 없으면 nullopt)
+        std::optional<GearItem> m_stoneItem;                         // 어빌리티 스톤 장비 정보 (등급 · 티어, 없으면 nullopt)
     };
 
     // API 장비 Type 글자("무기" · "투구" ...) → 부위 (전투력 시뮬레이터 대상이 아니면 nullopt)

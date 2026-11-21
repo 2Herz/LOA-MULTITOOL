@@ -12,6 +12,11 @@ import LostArkMultiTool.Core.APPConstants;
 import LostArkMultiTool.Core.CombatRegression;
 import LostArkMultiTool.Models.CombatCoefficientData;
 import LostArkMultiTool.Models.RefineData;
+import LostArkMultiTool.Models.CharacterArmory;
+import LostArkMultiTool.Models.TransferData;
+import LostArkMultiTool.Services.ArmoryParser;
+import LostArkMultiTool.Services.JSONValue;
+import LostArkMultiTool.Services.TransferCalculator;
 
 namespace LostArkMultiTool::Core::SelfTest
 {
@@ -201,6 +206,99 @@ namespace LostArkMultiTool::Core::SelfTest
         }
 
 
+        // ===== 2부 이관 규칙 검사용 방송 예시 =====
+        constexpr int TRANSFER_EXAMPLE_LEVEL{ 1720 };          // 방송 예시 장비 레벨 (→ 희귀 4연마 1720)
+        constexpr int TRANSFER_EXAMPLE_POLISH{ 4 };            // 방송 예시 연마 단계
+        constexpr std::string_view TRANSFER_EXAMPLE_GRADE{ "희귀" };   // 방송 예시 등급
+        constexpr int TRANSFER_TOP_SOURCE_LEVEL{ 1800 };       // 25강 무기 레벨
+        constexpr int TRANSFER_TOP_TARGET_LEVEL{ 1815 };       // 25강 무기 이관 레벨
+        constexpr int ESTHER_EXAMPLE_LEVEL{ 1830 };            // 10단계 엘라3 에스더 무기 레벨
+        constexpr int ESTHER_EXAMPLE_STAGE{ 4 };               // 이관 엘라 단계
+        constexpr int ESTHER_EXAMPLE_POLISH{ 5 };              // 이관 연마 단계
+        constexpr int ESTHER_EXAMPLE_TARGET_LEVEL{ 1865 };     // 이관 레벨
+        constexpr int STONE_EXAMPLE_HIGH{ 3 };                 // 9/7돌 높은 쪽 활성화 포인트
+        constexpr int STONE_EXAMPLE_LOW{ 2 };                  // 9/7돌 낮은 쪽 활성화 포인트
+        constexpr int STONE_FULL_POINT{ 4 };                   // 4+4 활성화 포인트
+
+        // ===== 2부 이관 규칙 (방송 슬라이드 예시와 같은 답이 나오는지) =====
+        void CheckTransferRules(Reporter& reporter)
+        {
+            namespace Transfer = Models::TransferData;   // 이관 표
+            using Calculator = Services::TransferCalculator;   // 이관 계산기
+
+            const std::span<const Transfer::GearTransferRow> gearTable{ Transfer::GetGearTable() };   // 장비 이관 표
+            const bool isGearSorted{ std::ranges::is_sorted(gearTable, {}, &Transfer::GearTransferRow::m_maxLevel) };   // 레벨 오름차순
+            const std::optional<Transfer::GearTransferRow> example{ Calculator::FindGearRow(TRANSFER_EXAMPLE_LEVEL) };   // 방송 예시: 1720 → 희귀 4연마 1720
+            const std::optional<Transfer::GearTransferRow> top{ Calculator::FindGearRow(TRANSFER_TOP_SOURCE_LEVEL) };       // 25강 무기: 1800 → 고대 3연마 1815
+            const bool isExample{ example.has_value() && example->m_grade == TRANSFER_EXAMPLE_GRADE && example->m_polish == TRANSFER_EXAMPLE_POLISH && example->m_level == TRANSFER_EXAMPLE_LEVEL };   // 예시 일치
+            const bool isTop{ top.has_value() && top->m_level == TRANSFER_TOP_TARGET_LEVEL };   // 최고 구간 일치
+            reporter.Check(isGearSorted && isExample && isTop && !Calculator::FindGearRow(Transfer::GEAR_MIN_EXCLUSIVE_LEVEL).has_value(),
+                "2부 장비 이관 표 (1720 → 희귀 4연마 · 1800 → 1815 · 1600 이하 없음)", std::format("{}줄", gearTable.size()));
+
+            const std::optional<Transfer::EstherTransferRow> esther{ Calculator::FindEstherRow(ESTHER_EXAMPLE_LEVEL) };   // 10단계 엘라3
+            reporter.Check(esther.has_value() && esther->m_elaStage == ESTHER_EXAMPLE_STAGE && esther->m_polish == ESTHER_EXAMPLE_POLISH && esther->m_level == ESTHER_EXAMPLE_TARGET_LEVEL, "2부 에스더 이관 (1830 → 엘라 4단계 5연마 1865)");
+
+            std::string key;   // 연마 표 키
+            const bool isHigh{ Calculator::RankPolishLine("적에게 주는 피해 +2.00%", key) == Transfer::PolishRank::RANK_HIGH && key == "적에게주는피해" };   // 상
+            const bool isMiddle{ Calculator::RankPolishLine("공격력 +195", key) == Transfer::PolishRank::RANK_MIDDLE && key == "공격력+" };                 // 중 (고정값)
+            const bool isLow{ Calculator::RankPolishLine("무기 공격력 +0.80%", key) == Transfer::PolishRank::RANK_LOW && key == "무기공격력%" };          // 하 (퍼센트)
+            reporter.Check(isHigh && isMiddle && isLow, "2부 장신구 연마 상 · 중 · 하 판정");
+
+            reporter.Check(Calculator::FindStoneResult(STONE_EXAMPLE_HIGH, STONE_EXAMPLE_LOW) == "슬롯 2개 7단계" && Calculator::FindStoneResult(STONE_FULL_POINT, STONE_FULL_POINT) == "슬롯 5개 7단계 +@", "2부 스톤 이관 표 (9/7돌 → 슬롯 2개 7단계)");
+        }
+
+        // ===== 2부 이관 계산 (저장된 무기고 응답 전부, 개발 PC에만 있음) =====
+        void CheckTransferArmories(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            const std::optional<std::filesystem::path> dataDirectory{ CombatRegression::FindDataDirectory(reportPath.parent_path()) };   // Verify/lopec_results
+            const std::filesystem::path armoryDirectory{ dataDirectory.value_or(std::filesystem::path{}) / "regression" / "armory" };   // 무기고 폴더
+            if (!dataDirectory.has_value() || !std::filesystem::is_directory(armoryDirectory))
+            {
+                reporter.Check(true, "2부 이관 계산 (건너뜀)", "저장된 무기고 응답 없음");   // 데이터 없는 PC
+                return;
+            }
+
+            const Services::TransferCalculator calculator;   // 이관 계산기
+            std::size_t characterCount{};   // 계산한 캐릭터 수
+            std::size_t missingSlotCount{}; // 1600 초과인데 이관 장비를 못 찾은 슬롯 수
+            std::size_t estherCount{};      // 에스더 무기 캐릭터 수
+            std::size_t scrollCount{};      // 주문서 대상 장신구 수
+            std::size_t stoneCount{};       // 스톤 표 안에 든 캐릭터 수
+            std::set<std::string> unknownBracelet;   // 티어를 못 정한 팔찌 옵션 (체력 · 제압 등 점수 없는 옵션)
+            std::map<int, std::size_t> gradeCounts;  // 주문서 등급별 장신구 수
+            for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator{ armoryDirectory })   // 무기고 파일마다
+            {
+                if (entry.path().extension() != ".json") continue;   // JSON만
+                std::ifstream file{ entry.path(), std::ios::binary };   // 파일
+                const std::string text{ std::istreambuf_iterator<char>{ file }, std::istreambuf_iterator<char>{} };   // 내용
+                const Models::CharacterArmory armory{ Services::ParseArmory(Services::ParseJSONText(text)) };   // 실제 앱 해석기
+                const Services::TransferResult result{ calculator.Calculate(armory) };   // 이관 계산
+                ++characterCount;   // 캐릭터 수
+                for (const Services::TransferSlotResult& slot : result.m_armorSlots)   // 장비 쪽 슬롯
+                {
+                    if (slot.m_sourceLevel > Models::TransferData::GEAR_MIN_EXCLUSIVE_LEVEL && slot.GetTargetLevel() <= 0) ++missingSlotCount;   // 표가 비었음
+                }
+                if (result.m_isEsther) ++estherCount;   // 에스더
+                for (const Services::ScrollResult& scroll : result.m_scrolls)   // 장신구마다
+                {
+                    if (!scroll.m_scrollGrade.has_value()) continue;   // 대상 아님
+                    ++scrollCount;                                     // 주문서 대상
+                    ++gradeCounts[*scroll.m_scrollGrade];              // 등급별 개수
+                }
+                if (!result.m_stone.m_result.empty()) ++stoneCount;   // 스톤 표 안
+                for (const Services::BraceletLineResult& line : result.m_braceletLines)   // 팔찌 줄
+                {
+                    if (line.m_label.empty()) unknownBracelet.insert(line.m_text);   // 분류 못 한 옵션
+                }
+            }
+            std::string gradeText;   // "1등급 12 · 2등급 30 ..."
+            for (const auto& [grade, count] : gradeCounts) gradeText += std::format("{}{}등급 {}", gradeText.empty() ? "" : " · ", grade, count);   // 등급 분포
+            reporter.Note(std::format("2부 장신구 주문서 등급 분포 : {}", gradeText));   // 안내
+            reporter.Check(characterCount > 0 && missingSlotCount == 0, "2부 이관 계산 · 저장된 무기고",
+                std::format("{}명 · 에스더 {}명 · 주문서 대상 장신구 {}개 · 스톤 표 안 {}명 · 빈 슬롯 {}개 · 분류 못 한 팔찌 옵션 {}종",
+                    characterCount, estherCount, scrollCount, stoneCount, missingSlotCount, unknownBracelet.size()));   // 요약
+        }
+
         // ===== lopec 회귀 (실제 엔진 예측 vs lopec 측정, 측정 데이터가 없는 PC면 건너뜀) =====
         void CheckLopecRegression(Reporter& reporter, const std::filesystem::path& reportPath)
         {
@@ -241,6 +339,8 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckCombatCoefficients(reporter);                   // 전투력 계수
             CheckRefineTables(reporter);                         // 재련 표
             CheckVersionResource(reporter);                      // 실행 파일 버전 정보
+            CheckTransferRules(reporter);                        // 2부 이관 표 규칙
+            CheckTransferArmories(reporter, reportPath);         // 2부 이관 계산 (저장된 무기고)
             CheckLopecRegression(reporter, reportPath);          // lopec 회귀
         }
         catch (const std::exception& exception)
