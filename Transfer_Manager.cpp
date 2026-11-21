@@ -24,7 +24,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     {
         namespace Data = Models::TransferData;   // 이관 표 네임스페이스 줄임
 
-        constexpr std::wstring_view TAB_TITLE{ L"2부 이관 계산기" };   // 탭 제목
+        constexpr std::wstring_view TAB_TITLE{ L"2부 이관" };   // 탭 제목
 
         // ===== 알림 =====
         constexpr std::wstring_view NOTICE_TITLE{ L"알림" };   // 알림 제목
@@ -40,9 +40,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
         // ===== 상태 · 요약 =====
         constexpr std::wstring_view SEARCHING_FORMAT{ L"'{}' 무기고 조회 중..." };   // 조회 중
-        constexpr std::wstring_view NOT_SEARCHED_TEXT{ L"캐릭터 이름을 넣고 [조회]를 누르면 2부에서 받을 장비 · 주문서를 계산해요." };   // 조회 전
+        constexpr std::wstring_view NOT_SEARCHED_TEXT{ L"캐릭터 이름을 넣고 [조회]를 누르면 2부에서 받을 장비 · 주문서를 보여줘요." };   // 조회 전
         constexpr std::wstring_view SEARCH_ERROR_FORMAT{ L"조회하지 못했어요: {}" };   // 조회 실패
-        constexpr std::wstring_view SEARCH_DONE_FORMAT{ L"'{}' 이관 계산을 마쳤어요." };   // 조회 완료 토스트
+        constexpr std::wstring_view SEARCH_DONE_FORMAT{ L"'{}' 이관 결과를 불러왔어요." };   // 조회 완료 토스트
         constexpr std::wstring_view STATUS_FORMAT{ L"{} · {} · {} · 아이템 레벨 {:.2f}" };   // 상태 줄
         constexpr std::wstring_view DEALER_TEXT{ L"딜러" };       // 딜러
         constexpr std::wstring_view SUPPORTER_TEXT{ L"서포터" };  // 서포터

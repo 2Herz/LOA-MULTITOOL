@@ -287,7 +287,7 @@
     <Filter Include="4. 뷰\14. 이관계산기">
       <UniqueIdentifier>{7d204e3c-9165-4fa0-bc83-4e5f6a7b8c93}</UniqueIdentifier>
     </Filter>
-    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 계산기 매니저">
+    <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 매니저">
       <UniqueIdentifier>{8e315f4d-a276-40b1-cd94-5f6a7b8c9da4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -1112,10 +1112,10 @@
       <Filter>4. 뷰\14. 이관계산기</Filter>
     </ClCompile>
     <ClCompile Include="Transfer_Manager.ixx">
-      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 계산기 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 매니저</Filter>
     </ClCompile>
     <ClCompile Include="Transfer_Manager.cpp">
-      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 계산기 매니저</Filter>
+      <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 매니저</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

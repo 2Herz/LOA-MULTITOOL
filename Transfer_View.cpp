@@ -66,7 +66,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view NAME_PLACEHOLDER{ L"캐릭터 이름" };   // 이름 입력 칸 안내
         constexpr std::wstring_view SEARCH_TEXT{ L"조회" };   // 조회 버튼 글자
         constexpr std::wstring_view SEARCH_BUSY_TEXT{ L"조회 중..." };   // 조회 중 버튼 글자
-        constexpr std::wstring_view INITIAL_STATUS_TEXT{ L"캐릭터 이름을 넣고 [조회]를 누르면 2부에서 받을 장비 · 주문서를 계산해요." };   // 처음 상태 글자
+        constexpr std::wstring_view INITIAL_STATUS_TEXT{ L"캐릭터 이름을 넣고 [조회]를 누르면 2부에서 받을 장비 · 주문서를 보여줘요." };   // 처음 상태 글자
         constexpr std::wstring_view CAPTION_CURRENT{ L"지금 평균 아이템 레벨" };   // 이름표 1
         constexpr std::wstring_view CAPTION_TRANSFER{ L"이관 뒤 16부위 평균 (추정)" };   // 이름표 2
         constexpr std::wstring_view CAPTION_SCROLL{ L"최고 장신구 주문서" };   // 이름표 3
