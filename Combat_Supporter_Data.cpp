@@ -206,6 +206,30 @@ namespace LostArkMultiTool::Models::CombatSupporterData  // 서포터 계수 네
         constexpr double INTERACTION_CONSTANT_LN{ -0.00405066 };   // 랭크 · 깨달음 둘 다 최대가 아닐 때 상수 ln (서포터 조합 205줄)
         constexpr double INTERACTION_CROSS_LN{ -0.42114313 };      // 교차항 계수 × (1 - 랭크 배율) × (1 - 깨달음 배율)
         constexpr Data::PassiveInteraction PASSIVE_INTERACTION{ INTERACTION_CONSTANT_LN, INTERACTION_CROSS_LN };   // 상호작용 묶음
+
+        // ===== 전투력 수준별 (서포터 20명 · 전투력 2,216 ~ 10,946, 2026-11-21) =====
+        struct PowerScale
+        {
+            double m_power{};   // 전투력
+            double m_scale{};   // 랭크 · 깨달음 구성 ln 배수 (랭크 0 측정 ln ÷ 표 ln, 같은 전투력 중앙값)
+        };
+        constexpr std::array<PowerScale, 10> RANK_SCALES{ {   // 전투력 오름차순 (사이는 직선 보간, 바깥은 끝값)
+            PowerScale{ 2200.0, 0.755 },    // 카던 세팅 서포터 2명
+            PowerScale{ 2500.0, 0.757 },    // 전투력 · 배수
+            PowerScale{ 4600.0, 0.899 },    // 전투력 · 배수
+            PowerScale{ 5050.0, 0.938 },    // 전투력 · 배수
+            PowerScale{ 6000.0, 0.956 },    // 6천대 3명
+            PowerScale{ 7000.0, 0.973 },    // 7천대 4명
+            PowerScale{ 7500.0, 0.989 },    // 전투력 · 배수
+            PowerScale{ 8000.0, 0.993 },    // 전투력 · 배수
+            PowerScale{ 8500.0, 1.009 },    // 전투력 · 배수
+            PowerScale{ 9250.0, 1.011 },    // 9천 이상 5명
+        } };   // RANK_SCALES 끝
+        constexpr double EVOLUTION_POWER{ 33.6 };                  // 진화 레벨 1 → 30이 올리는 고정 전투력 (19명 평균, 전투력 × |진화 Lv1 ln|)
+        constexpr double ENLIGHTENMENT_FULL_LN{ -0.013218 };       // 깨달음 레벨 30 → 1의 ln (전투력이 아주 높을 때)
+        constexpr double ENLIGHTENMENT_HALF_POWER{ 1460.0 };       // 깨달음 레벨 효과 = 최대 × 전투력 / (전투력 + 이 값)
+        constexpr double PASSIVE_LEVEL_STEPS{ 29.0 };              // 레벨 1 → 30 단계 수
+        constexpr double DEFAULT_POWER{ 10000.0 };                 // 전투력을 모를 때 쓰는 기준 전투력
     }
 
     // 서포터 칭호 목록
@@ -344,6 +368,37 @@ namespace LostArkMultiTool::Models::CombatSupporterData  // 서포터 계수 네
     const Data::PassiveInteraction& GetPassiveInteraction() noexcept
     {
         return PASSIVE_INTERACTION;   // 상호작용 묶음 반환
+    }
+
+    // 랭크 · 깨달음 구성 ln 배수 (전투력 표 직선 보간)
+    double GetRankScale(double combatPower) noexcept
+    {
+        const double power{ combatPower > 0.0 ? combatPower : DEFAULT_POWER };   // 모르면 기준 전투력
+        if (power <= RANK_SCALES.front().m_power) return RANK_SCALES.front().m_scale;   // 표보다 낮으면 첫 값
+        for (std::size_t index{ 1 }; index < RANK_SCALES.size(); ++index)   // 구간 찾기
+        {
+            const PowerScale& low{ RANK_SCALES[index - 1] };   // 구간 아래
+            const PowerScale& high{ RANK_SCALES[index] };       // 구간 위
+            if (power > high.m_power) continue;                 // 더 위 구간
+            const double fraction{ (power - low.m_power) / (high.m_power - low.m_power) };   // 구간 안 위치 (0 ~ 1)
+            return low.m_scale + (high.m_scale - low.m_scale) * fraction;   // 직선 보간
+        }
+        return RANK_SCALES.back().m_scale;   // 표보다 높으면 끝값
+    }
+
+    // 진화 레벨 1당 감소 비율 (고정 전투력 ÷ 전투력 ÷ 단계 수)
+    double GetEvolutionSlope(double combatPower) noexcept
+    {
+        const double power{ combatPower > 0.0 ? combatPower : DEFAULT_POWER };   // 모르면 기준 전투력
+        return -std::expm1(-EVOLUTION_POWER / power) / PASSIVE_LEVEL_STEPS;      // (1 - e^(-K/전투력)) ÷ 29
+    }
+
+    // 깨달음 레벨 1당 감소 비율
+    double GetEnlightenmentSlope(double combatPower) noexcept
+    {
+        const double power{ combatPower > 0.0 ? combatPower : DEFAULT_POWER };   // 모르면 기준 전투력
+        const double fullLn{ ENLIGHTENMENT_FULL_LN * power / (power + ENLIGHTENMENT_HALF_POWER) };   // 이 전투력에서 레벨 30 → 1 ln
+        return -std::expm1(fullLn) / PASSIVE_LEVEL_STEPS;                          // (1 - e^ln) ÷ 29
     }
 
     // 서포터 아크 패시브 트리 레벨 기울기

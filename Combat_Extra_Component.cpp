@@ -517,8 +517,10 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         double factor{ NO_CHANGE_FACTOR };  // 배율 초기값 (변화 없음)
         const bool isSupporter{ IsSupporter(current.m_extra) };  // 서포터 표를 쓸지
         const std::span<const double> ranks{ isSupporter ? Supporter::GetPassiveRankRatios() : Data::GetPassiveRankRatios() };  // 역할별 랭크 배율 표
+        const double powerScale{ isSupporter ? Supporter::GetRankScale(current.m_combatPower) : FULL_PASSIVE_RATIO };  // 서포터는 전투력 수준별 ln 배수 (딜러 1)
+        const auto scaled{ [powerScale](double ratio) { return ratio > 0.0 ? std::pow(ratio, powerScale) : ratio; } };  // 표 배율의 ln에 배수를 곱한 배율
         const std::span<const double> shares{ Data::GetPassiveRankTreeShares() };  // 트리별 몫 (진화 · 깨달음 · 도약)
-        const auto rankRatio{ [&ranks](int rank) { return ranks.empty() ? FULL_PASSIVE_RATIO : ranks[static_cast<std::size_t>(std::clamp(rank, Models::MIN_VALUE, static_cast<int>(ranks.size()) - 1))]; } };  // 랭크를 표 범위 안으로 제한해 배율 조회 (표가 없으면 최대 취급)
+        const auto rankRatio{ [&ranks, &scaled](int rank) { return ranks.empty() ? FULL_PASSIVE_RATIO : scaled(ranks[static_cast<std::size_t>(std::clamp(rank, Models::MIN_VALUE, static_cast<int>(ranks.size()) - 1))]); } };  // 랭크를 표 범위 안으로 제한해 배율 조회 (표가 없으면 최대 취급)
         const auto treeRankRatio{ [&rankRatio, &shares](const Models::ArkPassiveState& state)  // 트리별 랭크 → 효과 랭크 배율
         {
             double rankLn{ NO_INTERACTION_LN };  // 가중 ln 합
@@ -541,16 +543,20 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         const Data::KeyedValue* toEnlightenment{ Data::FindKeyed(enlightenments, to.m_enlightenment) };  // 목표 구성 표 값
         if (fromEnlightenment != nullptr && toEnlightenment != nullptr && fromEnlightenment->m_value > 0.0 && fromRank > 0.0)  // 두 구성이 모두 표에 있고 값이 양수일 때만
         {
-            factor *= toEnlightenment->m_value / fromEnlightenment->m_value;  // 깨달음 구성 비율 반영
-            factor *= std::exp(GetPassiveInteractionLn(toEnlightenmentRank, toEnlightenment->m_value, isSupporter) - GetPassiveInteractionLn(fromEnlightenmentRank, fromEnlightenment->m_value, isSupporter));  // 상호작용 ln 차이 반영 (역할별, 깨달음 트리 랭크 기준, lopec 측정)
+            const double toValue{ scaled(toEnlightenment->m_value) };  // 목표 구성 배율 (서포터는 전투력 수준 반영)
+            const double fromValue{ scaled(fromEnlightenment->m_value) };  // 현재 구성 배율
+            factor *= toValue / fromValue;  // 깨달음 구성 비율 반영
+            factor *= std::exp(GetPassiveInteractionLn(toEnlightenmentRank, toValue, isSupporter) - GetPassiveInteractionLn(fromEnlightenmentRank, fromValue, isSupporter));  // 상호작용 ln 차이 반영 (역할별, 깨달음 트리 랭크 기준, lopec 측정)
         }
 
         // 서포터: 진화 · 깨달음 레벨 (도약 레벨은 효과 없음)
         if (isSupporter)
         {
-            const Supporter::SupporterPassiveSlopes& supporterSlopes{ Supporter::GetPassiveSlopes() };  // 서포터 트리 레벨 기울기
-            factor *= GetLevelRatio(supporterSlopes.m_evolution, to.m_levels[PASSIVE_EVOLUTION_TREE]) / GetLevelRatio(supporterSlopes.m_evolution, from.m_levels[PASSIVE_EVOLUTION_TREE]);  // 진화 트리 레벨 비율
-            factor *= GetLevelRatio(supporterSlopes.m_enlightenment, to.m_levels[PASSIVE_ENLIGHTENMENT_TREE]) / GetLevelRatio(supporterSlopes.m_enlightenment, from.m_levels[PASSIVE_ENLIGHTENMENT_TREE]);  // 깨달음 트리 레벨 비율
+            const Supporter::SupporterPassiveSlopes& supporterSlopes{ Supporter::GetPassiveSlopes() };  // 서포터 트리 레벨 기울기 (도약)
+            const double evolutionSlope{ Supporter::GetEvolutionSlope(current.m_combatPower) };  // 진화 기울기 (전투력 수준별)
+            const double enlightenmentSlope{ Supporter::GetEnlightenmentSlope(current.m_combatPower) };  // 깨달음 기울기 (전투력 수준별)
+            factor *= GetLevelRatio(evolutionSlope, to.m_levels[PASSIVE_EVOLUTION_TREE]) / GetLevelRatio(evolutionSlope, from.m_levels[PASSIVE_EVOLUTION_TREE]);  // 진화 트리 레벨 비율
+            factor *= GetLevelRatio(enlightenmentSlope, to.m_levels[PASSIVE_ENLIGHTENMENT_TREE]) / GetLevelRatio(enlightenmentSlope, from.m_levels[PASSIVE_ENLIGHTENMENT_TREE]);  // 깨달음 트리 레벨 비율
             factor *= GetLevelRatio(supporterSlopes.m_leap, to.m_levels[PASSIVE_LEAP_TREE]) / GetLevelRatio(supporterSlopes.m_leap, from.m_levels[PASSIVE_LEAP_TREE]);  // 도약 트리 레벨 비율 (기울기 0 = 1)
             return factor;  // 서포터 배율 반환
         }

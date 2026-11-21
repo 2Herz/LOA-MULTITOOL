@@ -29,6 +29,7 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
         double m_totalMainStat{};            // S0: 모든 장비 주스탯 합
         double m_weaponAttack{};             // 무기 툴팁 공격력 (W0 = 이 값 + 보정)
         double m_itemLevel{};                // API 평균 아이템 레벨
+        double m_combatPower{};              // API 전투력 (서포터 아크 패시브 계수가 전투력 수준에 따라 달라짐, 모르면 0)
         double m_gemBaseAttackRate{};        // 보석 기본 공격력 총합 (0.066 = 6.6%, 완갑 기본 공격력 배율의 A 추정에 사용)
         ExtraState m_extra;                  // 악세서리 · 팔찌 · 스톤 · 각인서 · 아바타 · 아크 그리드 · 아크 패시브 · 완갑
     };

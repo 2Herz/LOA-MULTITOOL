@@ -54,7 +54,7 @@ namespace LostArkMultiTool::Core::CombatRegression
 
         constexpr double FULL_RANK_MAX_ERROR_PERCENT{ 0.1 };      // 6랭크 캐릭터 허용 최대 오차 (%)
         constexpr double PARTIAL_RANK_MAX_ERROR_PERCENT{ 0.8 };   // 랭크가 덜 찬 캐릭터 허용 최대 오차 (%) (랭크 0 부캐 약 0.77%)
-        constexpr double SUPPORTER_MAX_ERROR_PERCENT{ 0.4 };      // 서포터 허용 최대 오차 (%) (전투력 9천 이상 서포터 0.14% 이내, 6천 ~ 7천대 서포터 최대 0.37% · 장비 수준별 차이는 아직 식에 없음)
+        constexpr double SUPPORTER_MAX_ERROR_PERCENT{ 0.2 };      // 서포터 허용 최대 오차 (%) (전투력 수준별 계수 반영 후 20명 최대 0.186%: 2천대 0.19% · 6천 이상 0.12% · 8천 이상 0.09%)
         constexpr double PERCENT{ 100.0 };                        // 비율 → %
         constexpr std::size_t EVOLUTION_TREE{ 0 };                // 아크 패시브 트리 번호: 0 진화 (딜러는 레벨 효과 없음, lopec 기준 어긋남 측정용)
         constexpr std::size_t LEAP_TREE{ 2 };                     // 아크 패시브 트리 번호: 2 도약 (서포터는 레벨 효과 없음, 서포터 기준 어긋남 측정용)
@@ -341,6 +341,7 @@ namespace LostArkMultiTool::Core::CombatRegression
                 const Models::CharacterArmory armory{ Services::ParseArmory(Services::ParseJSONText(*text)) };   // 실제 앱 해석기
                 Models::CombatState state;                                                         // 전투력 상태
                 state.m_extra = armory.m_extra;                                                    // 시뮬레이터와 같은 방식으로 복사
+                state.m_combatPower = armory.m_combatPower.value_or(0.0);                          // API 전투력 (서포터 계수용, 시뮬레이터와 같음)
                 return state;                                                                      // 현재 상태
             }
             catch (const std::exception& exception)

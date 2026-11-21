@@ -63,4 +63,9 @@ export namespace LostArkMultiTool::Models::CombatSupporterData  // 서포터 계
     [[nodiscard]] std::span<const CombatCoefficientData::KeyedValue> GetEnlightenmentRatios() noexcept; // 깨달음 포인트 구성 → 배율
     [[nodiscard]] const SupporterPassiveSlopes& GetPassiveSlopes() noexcept;                            // 트리 레벨 기울기
     [[nodiscard]] const CombatCoefficientData::PassiveInteraction& GetPassiveInteraction() noexcept;    // 랭크 · 깨달음 상호작용 (조합 측정)
+
+    // ===== 전투력 수준별 아크 패시브 (전투력을 모르면 0을 넘김 → 전투력 1만 기준 표 값) =====
+    [[nodiscard]] double GetRankScale(double combatPower) noexcept;            // 랭크 · 깨달음 구성 · 상호작용 ln에 곱하는 배수 (낮은 전투력일수록 작음)
+    [[nodiscard]] double GetEvolutionSlope(double combatPower) noexcept;       // 진화 레벨 1당 감소 비율 (전투력과 무관한 고정 전투력 → 전투력에 반비례)
+    [[nodiscard]] double GetEnlightenmentSlope(double combatPower) noexcept;   // 깨달음 레벨 1당 감소 비율
 }

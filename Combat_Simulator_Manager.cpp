@@ -563,6 +563,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         current.m_gemBaseAttackRate = armory.m_gemBaseAttackRate;  // 보석 기본 공격력 합 복사
         current.m_weaponAttack = weapon.has_value() ? weapon->m_weaponAttack : 0.0;  // 무기 툴팁 공격력 기록
         current.m_itemLevel = armory.m_itemAvgLevel;  // 평균 아이템 레벨 기록
+        current.m_combatPower = armory.m_combatPower.value_or(0.0);  // API 전투력 기록 (서포터 계수용)
         current.m_extra = armory.m_extra;  // 추가 장착 상태 복사
         current.m_extra.m_isEstherWeapon = isEstherWeapon;   // 완갑 표 · 무기 공격력 옵션 계수 선택
 
