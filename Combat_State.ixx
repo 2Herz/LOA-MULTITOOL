@@ -23,6 +23,7 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
     {
         std::array<GearState, GEAR_PART_COUNT> m_gears;  // 부위별 재련 상태 (GearPart 순서)
         std::optional<int> m_weaponQuality;  // 무기 품질 (에스더 무기 · 모름 = nullopt)
+        std::array<std::optional<int>, GEAR_PART_COUNT> m_armorQualities{};  // 부위별 품질 (서포터 방어구 품질용, 무기 칸은 쓰지 않음, 모름 = nullopt)
         std::vector<int> m_gemLevels;        // 보석 레벨들 (0 = 보석 없음)
         std::vector<std::string> m_gemKinds; // 보석 종류들 ("겁화" · "작열" · "멸화" · "홍염", m_gemLevels와 같은 순서, 모르면 빈 글자)
         double m_totalMainStat{};            // S0: 모든 장비 주스탯 합

@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.6.6 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-19</div>
+      <div class="sub">C++23 모듈 · v1.6.6 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-21</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -268,8 +268,8 @@ const MODULES = [
    "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 126,
-  "cppLines": 647,
+  "lines": 129,
+  "cppLines": 668,
   "hasCpp": true,
   "filter": "4. 뷰\\9. 악세검색기",
   "desc": "악세 검색기 화면 구성",
@@ -611,10 +611,11 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Core.APIFormatMonitor",
    "LostArkMultiTool.Models.CombatCoefficientData",
-   "LostArkMultiTool.Models.CombatExtraState"
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Models.CombatSupporterData"
   ],
   "lines": 17,
-  "cppLines": 730,
+  "cppLines": 734,
   "hasCpp": true,
   "filter": "3. 서비스\\15. 전투력",
   "desc": "무기고 응답 해석 (API /armories/characters/{이름}?filters=profiles+equipment+gems)",
@@ -676,7 +677,7 @@ const MODULES = [
    "LostArkMultiTool.Core.APPConstants"
   ],
   "lines": 23,
-  "cppLines": 180,
+  "cppLines": 191,
   "hasCpp": true,
   "filter": "3. 서비스\\11. 악세",
   "desc": "경매장 기반 악세 검색 (연마 효과 선택지는 API 검색 옵션에서 골라냄 → 게임 패치로 옵션이 바뀌어도 그대로 따라감)",
@@ -982,10 +983,11 @@ const MODULES = [
    "LostArkMultiTool.Models.CombatState"
   ],
   "cppImports": [
-   "LostArkMultiTool.Models.CombatCoefficientData"
+   "LostArkMultiTool.Models.CombatCoefficientData",
+   "LostArkMultiTool.Models.CombatSupporterData"
   ],
   "lines": 80,
-  "cppLines": 465,
+  "cppLines": 565,
   "hasCpp": true,
   "filter": "1. 코어\\12. 전투력",
   "desc": "악세서리 연마 옵션: 슬롯마다 옵션 3줄의 ln을 합산 → 배율 = exp(목표 합 - 현재 합)",
@@ -1029,7 +1031,7 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Models.CombatCoefficientData"
   ],
-  "lines": 177,
+  "lines": 185,
   "cppLines": 181,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",
@@ -1054,10 +1056,11 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CombatCoefficientData",
-   "LostArkMultiTool.Models.CombatExtraState"
+   "LostArkMultiTool.Models.CombatExtraState",
+   "LostArkMultiTool.Models.CombatSupporterData"
   ],
   "lines": 64,
-  "cppLines": 131,
+  "cppLines": 170,
   "hasCpp": true,
   "filter": "1. 코어\\12. 전투력",
   "desc": "전투력 배율 요소 종류 (화면의 배율 내역 순서)",
@@ -1102,8 +1105,8 @@ const MODULES = [
    "LostArkMultiTool.Services.ArmoryParser",
    "LostArkMultiTool.Services.JSONValue"
   ],
-  "lines": 42,
-  "cppLines": 489,
+  "lines": 45,
+  "cppLines": 586,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "lopec 측정값 대비 전투력 엔진 회귀 검사 (자체 검사 --self-test에서 호출)",
@@ -1144,7 +1147,7 @@ const MODULES = [
    "LostArkMultiTool.Models.RateLimitState"
   ],
   "lines": 88,
-  "cppLines": 951,
+  "cppLines": 1019,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\9. 전투력 시뮬레이터 매니저",
   "desc": "전투력 시뮬레이터 최상위 매니저 (캐릭터 무기고 조회 → 목표 재련 · 품질 · 보석 · 악세서리 · 팔찌 · 스톤/각인서 · 아바타 · 아크 그리드/패시브 · 완갑 → 예상 전투력)",
@@ -1164,8 +1167,8 @@ const MODULES = [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Services.JSONValue"
   ],
-  "lines": 50,
-  "cppLines": 334,
+  "lines": 51,
+  "cppLines": 341,
   "hasCpp": true,
   "filter": "3. 서비스\\15. 전투력",
   "desc": "저장된 부위 목표 하나",
@@ -1220,7 +1223,7 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Models.CombatCoefficientData"
   ],
-  "lines": 60,
+  "lines": 61,
   "cppLines": 170,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\11. 전투력",
@@ -1228,6 +1231,23 @@ const MODULES = [
   "types": [
    "GearState",
    "CombatState"
+  ]
+ },
+ {
+  "file": "Combat_Supporter_Data.ixx",
+  "module": "LostArkMultiTool.Models.CombatSupporterData",
+  "imports": [
+   "LostArkMultiTool.Models.CombatCoefficientData"
+  ],
+  "cppImports": [],
+  "lines": 67,
+  "cppLines": 355,
+  "hasCpp": true,
+  "filter": "2. 모델\u0001. 데이터\t. 전투력",
+  "desc": "서포터 전투력 계수 (lopec 시뮬레이터 서포터 9명 측정, 2026-11-21, Verify/live/서포터_계수_분석.md)",
+  "types": [
+   "SupporterBook",
+   "SupporterPassiveSlopes"
   ]
  },
  {

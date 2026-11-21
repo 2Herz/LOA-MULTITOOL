@@ -33,6 +33,8 @@ namespace LostArkMultiTool::Core::CombatRegression
         constexpr std::string_view COLUMN_BEFORE{ "변경 전" };                    // CSV 열: 변경 전 값
         constexpr std::string_view COLUMN_AFTER{ "변경 후" };                     // CSV 열: 변경 후 값 (조합이면 "키=값 | 키=값")
         constexpr std::string_view COLUMN_MEASURE{ "측정" };                      // CSV 열: 측정 회차 (YYYY-MM-DD_HHMMSS, 글자 순 = 시간 순)
+        constexpr std::string_view COLUMN_BASE_COMBAT{ "기준 전투력" };          // CSV 열: 측정 기준 전투력 (lopec 예상 전투력, API와 비교)
+        constexpr double BASELINE_TOLERANCE{ 0.01 };                              // 측정 기준 전투력이 API와 이 비율 넘게 다르면 lopec 상태가 꼬인 회차로 봄
         constexpr std::string_view COLUMN_RATIO{ "전투력 배율" };                 // CSV 열: lopec 예상 전투력 ÷ 기준 전투력
 
         constexpr std::string_view GROUP_PASSIVE{ "ARK_PASSIVE" };                // 아크 패시브 단일 변경
@@ -52,8 +54,11 @@ namespace LostArkMultiTool::Core::CombatRegression
 
         constexpr double FULL_RANK_MAX_ERROR_PERCENT{ 0.1 };      // 6랭크 캐릭터 허용 최대 오차 (%)
         constexpr double PARTIAL_RANK_MAX_ERROR_PERCENT{ 0.8 };   // 랭크가 덜 찬 캐릭터 허용 최대 오차 (%) (랭크 0 부캐 약 0.77%)
+        constexpr double SUPPORTER_MAX_ERROR_PERCENT{ 0.4 };      // 서포터 허용 최대 오차 (%) (전투력 9천 이상 서포터 0.14% 이내, 6천 ~ 7천대 서포터 최대 0.37% · 장비 수준별 차이는 아직 식에 없음)
         constexpr double PERCENT{ 100.0 };                        // 비율 → %
-        constexpr std::size_t EVOLUTION_TREE{ 0 };                // 아크 패시브 트리 번호: 0 진화 (레벨 효과 없음, lopec 기준 어긋남 측정용)
+        constexpr std::size_t EVOLUTION_TREE{ 0 };                // 아크 패시브 트리 번호: 0 진화 (딜러는 레벨 효과 없음, lopec 기준 어긋남 측정용)
+        constexpr std::size_t LEAP_TREE{ 2 };                     // 아크 패시브 트리 번호: 2 도약 (서포터는 레벨 효과 없음, 서포터 기준 어긋남 측정용)
+        constexpr double COMBO_OFFSET_SPREAD_PERCENT{ 0.3 };      // 조합 줄 lopec ÷ 엔진 비가 이 폭(%) 안에서 일정해야 조합 기준 어긋남으로 봄
         constexpr std::size_t MIN_OFFSET_ROWS{ 3 };               // lopec 슬라이더 기준 어긋남을 판단할 최소 줄 수
         constexpr double OFFSET_SPREAD_PERCENT{ 0.05 };           // 이 폭(%) 안에서 일정해야 기준 어긋남으로 봄 (엔진 기울기 오차는 값에 따라 달라짐, 6랭크 허용치의 절반)
         constexpr double OFFSET_MIN_PERCENT{ 0.05 };              // 이보다 작은 어긋남은 반올림 차이로 보고 보정하지 않음 (%)
@@ -71,6 +76,7 @@ namespace LostArkMultiTool::Core::CombatRegression
             std::size_t m_after{};       // 변경 후
             std::size_t m_ratio{};       // 전투력 배율
             std::size_t m_measure{};     // 측정 회차
+            std::optional<std::size_t> m_baseCombat;   // 기준 전투력 (예전 형식에는 없음)
         };
 
         // 한 캐릭터의 가장 최근 측정 회차
@@ -146,7 +152,7 @@ namespace LostArkMultiTool::Core::CombatRegression
             } };
             const std::array columns{ find(COLUMN_CHARACTER), find(COLUMN_GROUP), find(COLUMN_CONTROL), find(COLUMN_BEFORE), find(COLUMN_AFTER), find(COLUMN_RATIO), find(COLUMN_MEASURE) };   // 모든 열
             if (std::ranges::any_of(columns, [](const std::optional<std::size_t>& column) { return !column.has_value(); })) return std::nullopt;   // 빠진 열
-            return CsvColumns{ *columns[0], *columns[1], *columns[2], *columns[3], *columns[4], *columns[5], *columns[6] };   // 순서대로
+            return CsvColumns{ *columns[0], *columns[1], *columns[2], *columns[3], *columns[4], *columns[5], *columns[6], find(COLUMN_BASE_COMBAT) };   // 순서대로 (기준 전투력은 있으면)
         }
 
         // 칸 값 (줄이 짧으면 빈 글자)
@@ -175,9 +181,9 @@ namespace LostArkMultiTool::Core::CombatRegression
         }
 
         // 측정 한 파일(lopec_all.csv) → 캐릭터별 가장 최근 회차의 아크 패시브 측정
-        [[nodiscard]] std::map<std::string, CharacterMeasure> LoadMeasures(const std::filesystem::path& dataDirectory)
+        [[nodiscard]] std::map<std::string, std::vector<CharacterMeasure>> LoadMeasures(const std::filesystem::path& dataDirectory)
         {
-            std::map<std::string, CharacterMeasure> measures;                                      // 캐릭터 → 측정
+            std::map<std::string, std::vector<CharacterMeasure>> measures;                         // 캐릭터 → 측정 회차들 (오래된 것부터)
             const std::optional<std::string> text{ ReadText(dataDirectory / ToPath(ALL_RESULTS_FILE)) };   // 본문
             if (!text.has_value()) return measures;                                                // 파일 없음
             std::vector<CsvRow> rows{ ParseCsv(*text) };                                           // 줄들
@@ -196,7 +202,7 @@ namespace LostArkMultiTool::Core::CombatRegression
             }
             for (auto& [key, characterRows] : passiveRows)                                         // 회차 글자 순 = 시간 순으로 돌므로
             {
-                measures[key.first] = CharacterMeasure{ key.second, std::move(characterRows), *columns };   // 뒤(최근) 회차가 앞 회차를 덮어씀
+                measures[key.first].push_back(CharacterMeasure{ key.second, std::move(characterRows), *columns });   // 시간 순으로 쌓음
             }
             return measures;                                                                       // 결과
         }
@@ -286,6 +292,44 @@ namespace LostArkMultiTool::Core::CombatRegression
         }
 
         // 무기고 파일 → 앱 해석기로 만든 현재 상태 (실패하면 이유)
+        // 무기고 응답의 API 전투력 (없거나 읽을 수 없으면 nullopt)
+        [[nodiscard]] std::optional<double> LoadApiPower(const std::filesystem::path& path)
+        {
+            const std::optional<std::string> text{ ReadText(path) };                               // 무기고 응답
+            if (!text.has_value()) return std::nullopt;                                            // 아직 안 받음
+            try
+            {
+                return Services::ParseArmory(Services::ParseJSONText(*text)).m_combatPower;       // 실제 앱 해석기로 전투력
+            }
+            catch (const std::exception&)
+            {
+                return std::nullopt;                                                               // 해석 실패
+            }
+        }
+
+        // 측정 회차의 기준 전투력 (열이 없거나 비면 nullopt)
+        [[nodiscard]] std::optional<double> GetMeasureBaseline(const CharacterMeasure& measure)
+        {
+            if (!measure.m_columns.m_baseCombat.has_value()) return std::nullopt;                  // 예전 형식
+            for (const CsvRow& row : measure.m_rows)                                               // 첫 숫자 줄
+            {
+                if (const std::optional<double> value{ ParseNumber<double>(GetField(row, *measure.m_columns.m_baseCombat)) }) return value;   // 기준 전투력
+            }
+            return std::nullopt;                                                                   // 없음
+        }
+
+        // API 전투력과 기준이 맞는 가장 최근 회차 (API · 기준을 모르거나 맞는 회차가 없으면 가장 최근 회차 = 측정 뒤 성장한 캐릭터)
+        [[nodiscard]] const CharacterMeasure* SelectMeasure(const std::vector<CharacterMeasure>& measures, std::optional<double> apiPower)
+        {
+            for (const CharacterMeasure& measure : measures | std::views::reverse)                 // 최근 회차부터
+            {
+                const std::optional<double> baseline{ GetMeasureBaseline(measure) };               // 측정 기준 전투력
+                if (!apiPower.has_value() || !baseline.has_value() || *apiPower <= 0.0) return &measure;   // 비교할 수 없으면 최근 회차
+                if (std::abs(*baseline / *apiPower - 1.0) <= BASELINE_TOLERANCE) return &measure;  // 기준이 API와 맞는 회차
+            }
+            return measures.empty() ? nullptr : &measures.back();                                  // 맞는 회차가 없으면 가장 최근 회차
+        }
+
         [[nodiscard]] std::expected<Models::CombatState, std::string> LoadCurrentState(const std::filesystem::path& path)
         {
             const std::optional<std::string> text{ ReadText(path) };                               // 무기고 응답
@@ -350,14 +394,14 @@ namespace LostArkMultiTool::Core::CombatRegression
         // lopec 레벨 슬라이더 기준 어긋남 (슬라이더 → 배수)
         // 1) 진화 레벨은 엔진 · lopec 모두 효과가 없어야 하는데, 진화 슬라이더를 건드린 lopec 값이 값과 상관없이 일정하게 1이 아니면 lopec 쪽 기준 차이 → 그 배수를 잼
         // 2) 다른 슬라이더는 그 배수를 적용할지 말지 두 가지 중 오차가 작은 쪽을 고름 (lopec이 슬라이더마다 기준 차이를 넣거나 안 넣음, 배수를 새로 맞추지는 않음)
-        [[nodiscard]] std::map<std::string, double> FindSliderOffsets(const std::vector<RowResult>& rows)
+        [[nodiscard]] std::map<std::string, double> FindSliderOffsets(const std::vector<RowResult>& rows, std::size_t referenceTree)
         {
             std::map<std::string, std::vector<const RowResult*>> sliderRows;                      // 슬라이더 하나만 바꾼 줄들
             for (const RowResult& row : rows)
             {
                 if (row.m_control != COMBO_CONTROL && row.m_sliders.size() == 1 && row.m_predicted > 0.0) sliderRows[row.m_control].push_back(&row);   // 단일 슬라이더 줄
             }
-            const std::string evolutionSlider{ std::format("{}{}", CONTROL_TREE_LEVEL, EVOLUTION_TREE) };   // 진화 트리 레벨 슬라이더
+            const std::string evolutionSlider{ std::format("{}{}", CONTROL_TREE_LEVEL, referenceTree) };   // 기준 슬라이더 (딜러 진화 · 서포터 도약: 엔진 효과가 없는 트리)
             const auto evolution{ sliderRows.find(evolutionSlider) };                              // 진화 슬라이더 줄
             if (evolution == sliderRows.end() || evolution->second.size() < MIN_OFFSET_ROWS) return {};   // 판단할 줄이 부족
 
@@ -373,6 +417,34 @@ namespace LostArkMultiTool::Core::CombatRegression
                 if (GetWorstError(controlRows, offset) < GetWorstError(controlRows, 1.0)) offsets[slider] = offset;   // 배수를 적용하는 쪽이 더 맞으면 적용
             }
             return offsets;
+        }
+
+        // lopec 조합 줄 기준 어긋남 (조합 줄 모두 lopec ÷ 엔진이 일정하게 1이 아니면 lopec 조합 기준 차이 → 그 배수, 없으면 1)
+        [[nodiscard]] double FindComboOffset(const std::vector<RowResult>& rows)
+        {
+            std::vector<const RowResult*> comboRows;                                               // 조합 줄들
+            for (const RowResult& row : rows)                                                      // 모든 줄 순회
+            {
+                if (row.m_control == COMBO_CONTROL && row.m_predicted > 0.0) comboRows.push_back(&row);   // 엔진 예측이 있는 조합 줄만
+            }
+            if (comboRows.size() < MIN_OFFSET_ROWS) return 1.0;                                    // 판단할 줄이 부족
+            std::vector<double> ratios{ comboRows | std::views::transform([](const RowResult* row) { return row->m_lopecRatio / row->m_predicted; }) | std::ranges::to<std::vector>() };   // lopec ÷ 엔진
+            std::ranges::sort(ratios);                                                             // 중앙값 · 폭 계산용
+            const double offset{ ratios[ratios.size() / 2] };                                      // 중앙값 = 조합 기준 어긋남 배수
+            const double spread{ (ratios.back() - ratios.front()) / offset * PERCENT };           // 줄마다의 폭 (%)
+            if (spread > COMBO_OFFSET_SPREAD_PERCENT || std::abs(offset - 1.0) * PERCENT <= OFFSET_MIN_PERCENT) return 1.0;   // 일정하지 않거나 반올림 수준이면 보정 없음
+            return GetWorstError(comboRows, offset) < GetWorstError(comboRows, 1.0) ? offset : 1.0;   // 배수를 적용하는 쪽이 더 맞을 때만
+        }
+
+        // 비정상 캐릭터 (장신구를 하나도 끼지 않음 → lopec 기준이 불안정) 이유, 정상이면 nullopt
+        [[nodiscard]] std::optional<std::string> FindAbnormalReason(const Models::CombatState& state)
+        {
+            const bool hasAccessory{ std::ranges::any_of(state.m_extra.m_accessories, [](const Models::AccessoryState& accessory)   // 연마 옵션이 하나라도 있는 장신구
+            {
+                return std::ranges::any_of(accessory.m_options, [](const std::string& option) { return !Models::IsNone(option); });   // 빈 옵션이 아닌 줄
+            }) };
+            if (!hasAccessory) return std::string{ "장신구가 없음" };                             // 장신구 미착용
+            return std::nullopt;                                                                   // 정상
         }
 
         // 측정 한 줄에 적용할 어긋남 배수 (건드린 슬라이더 중 가장 크게 어긋난 값, 없으면 1)
@@ -394,6 +466,13 @@ namespace LostArkMultiTool::Core::CombatRegression
             std::expected<Models::CombatState, std::string> loaded{ LoadCurrentState(armoryDirectory / ToPath(character + std::string{ JSON_EXTENSION })) };   // 현재 상태
             if (!loaded.has_value()) { result.m_notes.push_back(std::format("{} 건너뜀: {}", character, loaded.error())); return; }   // 무기고 없음
             Models::CombatState& current{ *loaded };                                               // 현재 상태
+            if (const std::optional<std::string> abnormal{ FindAbnormalReason(current) })         // 비정상 캐릭터
+            {
+                result.m_notes.push_back(std::format("{} 건너뜀: 비정상 캐릭터 ({})", character, *abnormal));   // 안내
+                ++result.m_abnormalCount;                                                          // 건너뛴 수
+                return;
+            }
+            const bool isSupporter{ current.m_extra.m_role == Models::CombatRole::ROLE_SUPPORTER };   // 서포터 계수로 계산하는지
             if (const std::optional<std::string> stale{ FindStaleLevel(measure, current.m_extra.m_passive) })   // 측정 뒤 성장
             {
                 result.m_notes.push_back(std::format("{} 건너뜀: 측정 뒤 아크 패시브가 바뀜 ({}) → 다시 측정 필요", character, *stale));
@@ -418,7 +497,13 @@ namespace LostArkMultiTool::Core::CombatRegression
             }
 
             // 2단계: lopec 레벨 슬라이더 기준 어긋남을 재서 보정 (보정한 슬라이더는 안내에 남김)
-            const std::map<std::string, double> offsets{ FindSliderOffsets(rows) };                // 슬라이더별 어긋남
+            const std::map<std::string, double> offsets{ FindSliderOffsets(rows, isSupporter ? LEAP_TREE : EVOLUTION_TREE) };   // 슬라이더별 어긋남 (역할별 기준 트리)
+            const double comboOffset{ FindComboOffset(rows) };                                     // 조합 줄 기준 어긋남
+            if (comboOffset != 1.0)                                                                // 조합 기준을 보정했으면
+            {
+                result.m_notes.push_back(std::format("{} : lopec 조합 기준 어긋남 보정 (×{:.6f})", character, comboOffset));   // 안내
+                ++result.m_comboOffsetCharacterCount;                                              // 보정한 캐릭터 수
+            }
             if (!offsets.empty())
             {
                 const std::string text{ offsets | std::views::transform([](const auto& entry) { return std::format("{} ×{:.6f}", entry.first, entry.second); })
@@ -429,13 +514,15 @@ namespace LostArkMultiTool::Core::CombatRegression
 
             // 3단계: 허용치 비교
             const bool isFullRank{ std::ranges::all_of(current.m_extra.m_passive.m_treeRanks, [](int rank) { return rank == Models::MAX_PASSIVE_RANK; }) };   // 세 트리 모두 6랭크
-            const double limit{ isFullRank ? FULL_RANK_MAX_ERROR_PERCENT : PARTIAL_RANK_MAX_ERROR_PERCENT };   // 허용치
+            const double limit{ isSupporter ? std::max(SUPPORTER_MAX_ERROR_PERCENT, isFullRank ? FULL_RANK_MAX_ERROR_PERCENT : PARTIAL_RANK_MAX_ERROR_PERCENT)
+                : (isFullRank ? FULL_RANK_MAX_ERROR_PERCENT : PARTIAL_RANK_MAX_ERROR_PERCENT) };   // 허용치 (서포터는 서포터 허용치)
             const std::string ranks{ current.m_extra.m_passive.m_treeRanks | std::views::transform([](int rank) { return std::to_string(rank); })
                 | std::views::join_with(RANK_SEPARATOR) | std::ranges::to<std::string>() };       // 진화/깨달음/도약 랭크 ("6/6/6")
             ++result.m_characterCount;                                                             // 검사 캐릭터 수
+            if (isSupporter) ++result.m_supporterCount;                                            // 서포터 수
             for (const RowResult& row : rows)
             {
-                const double offset{ FindRowOffset(row, offsets) };                                // 이 줄의 lopec 기준 어긋남
+                const double offset{ row.m_control == COMBO_CONTROL && comboOffset != 1.0 ? comboOffset : FindRowOffset(row, offsets) };   // 이 줄의 lopec 기준 어긋남 (조합 기준을 잰 경우 조합 줄은 그 값, 아니면 슬라이더 기준)
                 const double lopecRatio{ row.m_lopecRatio / offset };                              // 보정한 lopec 배율
                 const double error{ std::abs(row.m_predicted / lopecRatio - 1.0) * PERCENT };      // 오차 (%)
                 double& worst{ isFullRank ? result.m_worstFullRankPercent : result.m_worstPartialRankPercent };   // 최대 오차 칸
@@ -475,11 +562,21 @@ namespace LostArkMultiTool::Core::CombatRegression
             return result;
         }
 
-        const std::map<std::string, CharacterMeasure> measures{ LoadMeasures(dataDirectory) };    // 캐릭터별 측정
+        const std::map<std::string, std::vector<CharacterMeasure>> measures{ LoadMeasures(dataDirectory) };   // 캐릭터별 측정 회차들
         const std::map<std::string, std::set<std::string>> exceptions{ LoadExceptions(regressionDirectory / EXCEPTIONS_FILE) };   // 제외 목록
         std::string detail{ UTF8_BOM };                                                            // 상세 결과 (엑셀에서 한글이 보이게 BOM)
         detail += DETAIL_HEADER;                                                                   // 머리글
-        for (const auto& [character, measure] : measures) CheckCharacter(character, measure, armoryDirectory, exceptions, result, detail);   // 캐릭터마다
+        for (const auto& [character, characterMeasures] : measures)                                // 캐릭터마다
+        {
+            const std::optional<double> apiPower{ LoadApiPower(armoryDirectory / ToPath(character + std::string{ JSON_EXTENSION })) };   // API 전투력
+            const CharacterMeasure* measure{ SelectMeasure(characterMeasures, apiPower) };         // 기준이 맞는 최근 회차
+            if (measure == nullptr)                                                                // 모든 회차가 API와 다름
+            {
+                result.m_notes.push_back(std::format("{} 건너뜀: 측정 회차 없음", character));   // 안내
+                continue;
+            }
+            CheckCharacter(character, *measure, armoryDirectory, exceptions, result, detail);     // 다시 계산
+        }
         std::ofstream{ regressionDirectory / DETAIL_FILE, std::ios::binary | std::ios::trunc } << detail;   // 상세 파일 (gitignore 폴더)
         std::ranges::sort(result.m_failures, std::greater{}, &RegressionFailure::m_errorPercent);  // 오차 큰 순
         if (result.m_characterCount == 0) { result.m_isSkipped = true; result.m_skipReason = "검사할 측정이 없음"; }   // 데이터 없음

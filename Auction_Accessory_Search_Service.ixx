@@ -16,7 +16,7 @@ export namespace LostArkMultiTool::Services
         AuctionAccessorySearchService();
 
         [[nodiscard]] std::vector<Models::AuctionOption> FetchOptions(Core::MarketAPI& api) const override;
-        [[nodiscard]] std::vector<Models::AuctionOption> FilterOptions(const std::vector<Models::AuctionOption>& options, int categoryCode) const override;
+        [[nodiscard]] std::vector<Models::AuctionOption> FilterOptions(const std::vector<Models::AuctionOption>& options, int categoryCode, bool isSupporter) const override;  // 부위 · 역할별 유효옵션 골라내기
         [[nodiscard]] Models::AccessorySearchPage Search(Core::MarketAPI& api, const Models::AccessorySearchQuery& query) const override;
     };
 }

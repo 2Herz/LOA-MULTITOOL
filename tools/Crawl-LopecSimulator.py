@@ -28,6 +28,9 @@
 """
 import argparse
 import csv
+import io
+import json
+import msvcrt
 import os
 import random
 import sys
@@ -60,6 +63,12 @@ CHARACTER_INTERVAL = 5.0         # 캐릭터 사이 쉬는 시간 (초)
 DRIFT_TOLERANCE = 0.005          # 원래대로 되돌렸을 때 허용 오차 (이보다 다르면 페이지 새로 열기)
 VALUE_DIGITS = 2                 # 화면 값 자릿수
 RATIO_DIGITS = 6                 # 배율 자릿수
+LOCK_SUFFIX = ".lock"            # 결과 CSV 잠금 파일 접미사 (병렬 크롤링용)
+LOCK_BYTES = 1                   # 잠그는 바이트 수
+LOCK_RETRY_SECONDS = 0.05        # 잠금 재시도 간격
+ARMORY_DIR = "Verify/lopec_results/regression/armory"   # 무기고 응답 폴더 (Fetch-RegressionArmory.py가 저장, 기준값 검사용)
+BASELINE_TOLERANCE = 0.01        # lopec 기준 전투력이 API 전투력과 이 비율 넘게 다르면 lopec 상태가 꼬인 것으로 보고 건너뜀
+UTF8_BOM = b"\xef\xbb\xbf"       # 새 CSV 맨 앞 BOM (엑셀 한글 표시용)
 
 # ===== 숫자 칸 측정 값 =====
 QUALITY_VALUES = range(0, 101, 5)            # 품질
@@ -122,6 +131,8 @@ ARK_GEM_OPTION_SLOTS = (1, 2)   # 젬 하나의 옵션 칸 번호 (option-1, opt
 ARK_GEM_DEAL_OPTIONS = ("공격력", "추가 피해", "보스 피해")   # 딜러 전투력에 들어가는 젬 옵션만 사용
 ARK_GEM_LEVELS = range(1, 6)    # 젬 옵션 레벨 Lv.1 ~ Lv.5
 ARK_GEM_POINTS = range(1, 6)    # 젬 하나의 포인트 1 ~ 5
+CORE_POINT_GROUP = "ARK_CORE_POINT"   # 코어 포인트 단일 변경 계통 (코어 종류 · 등급은 그대로, 포인트만 4 ~ 20)
+CORE_POINT_KEY = "ark-core-point-"    # 컨트롤 이름 앞부분 (뒤에 코어 번호)
 ARK_CORE_POINT_STEPS = (10, 14, 17, 18, 19, 20)   # 코어 효과가 바뀌는 포인트 (이 값들을 자주 뽑음)
 ARK_CORE_POINT_STEP_CHANCE = 0.5                  # 목표 포인트를 위 계단값에서 뽑을 확률 (나머지는 아무 값)
 COMBO_MIN_REFORGE = 10
@@ -433,36 +444,58 @@ def is_skipped(control):
 # 결과 기록
 # ---------------------------------------------------------------------------
 class ResultWriter:
-    """CSV 한 파일 (줄마다 바로 저장해서 중간에 멈춰도 결과가 남음)"""
+    """CSV 한 파일 (줄마다 바로 저장해서 중간에 멈춰도 결과가 남음, 여러 크롤러가 동시에 써도 줄이 섞이지 않음)"""
 
     def __init__(self, path, name, baseline, measure):
-        is_new = not os.path.exists(path) or os.path.getsize(path) == 0      # 처음 만드는 파일이면 머리글부터
-        self.m_handle = open(path, "a", newline="", encoding="utf-8-sig" if is_new else "utf-8")   # 이어 쓰기 (BOM은 맨 앞에 한 번만)
-        self.m_writer = csv.writer(self.m_handle)
+        self.m_path = path                                                   # 결과 CSV 경로
+        self.m_lock_path = path + LOCK_SUFFIX                                # 프로세스 간 잠금 파일
         self.m_name = name
         self.m_baseline = baseline
         self.m_measure = measure                                             # 이 캐릭터 측정 회차
         self.m_count = 0
-        if is_new:
-            self.m_writer.writerow(CSV_HEADER)
         self.row("BASELINE", "", "기준 (변경 없음)", "", "", baseline, "")
+
+    def append_line(self, fields):
+        """한 줄을 잠금 안에서 한 번에 이어 씀 (병렬 크롤링 때 줄이 찢어지지 않게)"""
+        buffer = io.StringIO()                                               # 줄 전체를 먼저 문자열로 만듦
+        csv.writer(buffer, lineterminator="\r\n").writerow(fields)
+        data = buffer.getvalue().encode("utf-8")
+        with open(self.m_lock_path, "a+b") as lock:                          # 모든 크롤러가 같은 잠금 파일을 씀
+            lock.seek(0)
+            while True:
+                try:
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, LOCK_BYTES)   # 첫 바이트 잠금 시도
+                    break
+                except OSError:
+                    time.sleep(LOCK_RETRY_SECONDS)                           # 다른 크롤러가 쓰는 중이면 잠깐 대기
+            try:
+                is_new = not os.path.exists(self.m_path) or os.path.getsize(self.m_path) == 0
+                with open(self.m_path, "ab") as handle:                      # 바이너리 이어 쓰기 (한 번의 write)
+                    if is_new:                                               # 처음이면 BOM + 머리글부터
+                        head = io.StringIO()
+                        csv.writer(head, lineterminator="\r\n").writerow(CSV_HEADER)
+                        handle.write(UTF8_BOM + head.getvalue().encode("utf-8"))
+                    handle.write(data)
+            finally:
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, LOCK_BYTES)   # 잠금 해제
 
     def row(self, group, key, label, before, after, scores, memo):
         """실험 한 줄"""
         base = self.m_baseline
         combat, lopec = scores.get("combat"), scores.get("lopec")
         ok = combat is not None and base["combat"]
-        self.m_writer.writerow([
+        self.append_line([
             self.m_count, self.m_name, group, key, label, before, after, base["lopec"], base["combat"],
             lopec, combat, scores.get("level"),
             round(combat - base["combat"], VALUE_DIGITS) if ok else "",
             round(combat / base["combat"], RATIO_DIGITS) if ok else "",
             round(lopec - base["lopec"], VALUE_DIGITS) if lopec is not None else "", memo, self.m_measure])
-        self.m_handle.flush()
         self.m_count += 1
 
     def close(self):
-        self.m_handle.close()
+        """줄마다 파일을 열고 닫으므로 따로 닫을 핸들이 없음"""
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -600,6 +633,32 @@ def split_core_point(rng, target):
         points[index] += 1
         remain -= 1
     return points
+
+
+def even_core_points(target):
+    """코어 포인트 목표값을 젬 4개에 고르게 나눔 (각 1 ~ 5, 앞 젬부터 1씩 더함)"""
+    low, high = min(ARK_GEM_POINTS), max(ARK_GEM_POINTS)                  # 젬 하나의 최소 · 최대 포인트
+    target = max(low * ARK_GEMS_PER_CORE, min(high * ARK_GEMS_PER_CORE, target))   # 가능한 범위로 제한
+    points = [low] * ARK_GEMS_PER_CORE                                     # 모두 최소에서 시작
+    for step in range(target - low * ARK_GEMS_PER_CORE):                   # 남은 포인트를
+        points[step % ARK_GEMS_PER_CORE] += 1                              # 돌아가며 하나씩 더함
+    return points
+
+
+def run_core_point_sweep(page, name, writer, baseline):
+    """코어 하나씩 포인트만 4 ~ 20으로 바꿔 잼 (코어 종류 · 등급 · 젬 옵션은 그대로, 매번 기준으로 되돌림)"""
+    snapshot = page.evaluate("() => window.__lp.snapshot()")                       # 기준 상태 저장
+    low, high = min(ARK_GEM_POINTS) * ARK_GEMS_PER_CORE, max(ARK_GEM_POINTS) * ARK_GEMS_PER_CORE   # 4 ~ 20
+    print(f"   {CORE_POINT_GROUP}: 코어 {ARK_CORE_SLOT_COUNT}개 × 포인트 {low} ~ {high}")
+    for core in range(ARK_CORE_SLOT_COUNT):                                        # 코어 순회
+        for target in range(low, high + 1):                                        # 목표 포인트 순회
+            restore_state(page, snapshot)                                          # 매번 기준 상태에서
+            for gem, point in enumerate(even_core_points(target)):                 # 젬 4개 포인트 설정
+                page.evaluate("([k, v]) => window.__lp.setSelect(k, v)", [f"ark-gem-{core}-{gem}-point", str(point)])
+            writer.row(CORE_POINT_GROUP, f"{CORE_POINT_KEY}{core}", f"코어 {core} 포인트", "현재", f"{target}P",
+                       stable_read(page), "")                                      # 측정 기록
+        snapshot = restore_or_reload(page, name, {"key": f"{CORE_POINT_KEY}{core}"}, snapshot, baseline)   # 기준으로
+    restore_state(page, snapshot)                                                  # 끝나면 기준 상태로
 
 
 def run_combo_grid(page, name, writer, count):
@@ -944,9 +1003,22 @@ def run_combo_groups(page, name, writer, groups, count):
     open_simulator(page, name)
 
 
+def read_api_power(name):
+    """받아 둔 무기고 JSON의 API 전투력 (파일이 없거나 읽을 수 없으면 None)"""
+    path = os.path.join(ARMORY_DIR, f"{name}.json")                      # 캐릭터 무기고 파일
+    if not os.path.exists(path):
+        return None                                                      # 받아 둔 무기고가 없으면 검사 안 함
+    try:
+        with open(path, encoding="utf-8") as handle:
+            text = str(json.load(handle)["ArmoryProfile"]["CombatPower"])   # "10,513.00" 형식
+        return float(text.replace(",", ""))                              # 쉼표 빼고 숫자로
+    except (OSError, ValueError, KeyError, TypeError):
+        return None                                                      # 형식이 다르면 검사 안 함
+
+
 def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_count=COMBO_ACC_COUNT,
                     grid_count=COMBO_GRID_COUNT, combo_groups=(), combo_count=0, skip_single=False,
-                    gem_cycles=GEM_CYCLE_COUNT, gem_cycle_mode=GEM_CYCLE_MODE_STACK, engraving_grid=""):
+                    gem_cycles=GEM_CYCLE_COUNT, gem_cycle_mode=GEM_CYCLE_MODE_STACK, engraving_grid="", core_point_sweep=False):
     """캐릭터 하나 전체 (반환: CSV 경로 또는 None)"""
     print(f"\n===== {name} =====")
     try:
@@ -955,6 +1027,10 @@ def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_cou
         print(f"[건너뜀] {error}")
         return None
     print(f"기준: 로펙 {baseline['lopec']} · 예상 전투력 {baseline['combat']} · 아이템 레벨 {baseline['level']}")
+    api_power = read_api_power(name)                                     # 받아 둔 무기고의 API 전투력 (없으면 None)
+    if api_power and baseline["combat"] and abs(baseline["combat"] / api_power - 1.0) > BASELINE_TOLERANCE:
+        print(f"[건너뜀] lopec 기준 전투력 {baseline['combat']}이 API {api_power}와 다름 (lopec 상태 꼬임, 나중에 다시)")
+        return None
     controls = [c for c in page.evaluate("() => window.__lp.controls()") if not is_skipped(c)]
     if list_only:
         counts = {}
@@ -988,6 +1064,8 @@ def crawl_character(page, name, only, gear_count, deal_count, list_only, acc_cou
         if (not only or "COMBO_GRID" in only) and grid_count:
             run_combo_grid(page, name, writer, grid_count)
         # 보석 사이클 (--gem-cycles 반복 수, 일괄 8→9→10 → 레벨마다 기존 → 1개씩 쌓아 가며)
+        if core_point_sweep:
+            run_core_point_sweep(page, name, writer, baseline)                     # 코어 포인트 단일 변경 (4 ~ 20)
         if engraving_grid:
             run_engraving_grid(page, name, writer, baseline, engraving_grid.upper())  # 각인 격자 (구역 글자)
         if gem_cycles and gem_cycle_mode == GEM_CYCLE_MODE_LAYER:
@@ -1033,6 +1111,7 @@ def run():
                         choices=(GEM_CYCLE_MODE_STACK, GEM_CYCLE_MODE_SINGLE, GEM_CYCLE_MODE_LAYER),
                         help="보석 사이클 방식: stack(1개씩 쌓아 가며) · single(1개만 바꾸고 매번 기준으로)"
                              " · layer(기준 층 7 · 8 · 9마다 일괄 → 1개씩 쌓아 가며 10레벨까지)")
+    parser.add_argument("--core-point-sweep", action="store_true", help="코어 하나씩 포인트만 4 ~ 20으로 바꿔 잼 (ARK_CORE_POINT)")
     parser.add_argument("--engraving-grid", nargs="?", const=ENGRAVING_GRID_SECTIONS, default="",
                         help="각인 격자 구역 (기본 ABCD: 레벨 쌍 · 등급 × 레벨 · 스톤 × 같은 이름 · 이름 × 레벨,"
                              " EFG: 전설 이름 × 레벨 · 전설 칸 수 · 전설 두 칸 레벨 쌍)")
@@ -1070,7 +1149,7 @@ def run():
                                    args.grid_samples,
                                    [g.strip().upper() for g in args.combo.split(",") if g.strip()],
                                    args.combo_samples, args.skip_single, args.gem_cycles,
-                                   args.gem_cycle_mode, args.engraving_grid)
+                                   args.gem_cycle_mode, args.engraving_grid, args.core_point_sweep)
             if path:
                 results.append(path)
         context.close()

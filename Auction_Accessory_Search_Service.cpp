@@ -16,10 +16,17 @@ namespace LostArkMultiTool::Services
         // API 옵션 이름의 띄어쓰기가 달라도("공격력 +" / "공격력+") 같은 옵션으로 보도록 비교할 때 띄어쓰기를 뺌
         constexpr std::size_t DEALER_OPTION_COUNT{ 4 };
         using DealerOptionNames = std::array<std::string_view, DEALER_OPTION_COUNT>;
+        constexpr std::size_t SUPPORTER_OPTION_COUNT{ 2 };   // 서포터 부위별 유효옵션 수
+        using SupporterOptionNames = std::array<std::string_view, SUPPORTER_OPTION_COUNT>;   // 서포터 유효옵션 이름 묶음
 
         constexpr DealerOptionNames NECKLACE_DEALER_OPTIONS{ "추가피해", "적에게주는피해증가", "공격력+", "무기공격력+" };
         constexpr DealerOptionNames EARRING_DEALER_OPTIONS{ "공격력+", "공격력%", "무기공격력+", "무기공격력%" };
         constexpr DealerOptionNames RING_DEALER_OPTIONS{ "공격력+", "무기공격력+", "치명타적중률", "치명타피해" };
+
+        // ===== 부위별 서포터 유효옵션 (lopec 서포터 측정에서 전투력에 들어가는 옵션) =====
+        constexpr SupporterOptionNames NECKLACE_SUPPORTER_OPTIONS{ "낙인력", "세레나데,신앙,조화게이지획득량증가" };   // 목걸이: 낙인력 · 아덴 게이지
+        constexpr SupporterOptionNames EARRING_SUPPORTER_OPTIONS{ "무기공격력%", "무기공격력+" };                // 귀걸이: 무기 공격력
+        constexpr SupporterOptionNames RING_SUPPORTER_OPTIONS{ "아군공격력강화효과", "아군피해량강화효과" };       // 반지: 아공강 · 아피강
 
         constexpr std::string_view IGNORED_CHARACTERS{ " \t" };   // 비교할 때 무시하는 글자
 
@@ -44,7 +51,7 @@ namespace LostArkMultiTool::Services
             std::array<double, POLISH_GRADE_COUNT> m_amounts{};
         };
 
-        constexpr std::size_t POLISH_TIER_COUNT{ 8 };
+        constexpr std::size_t POLISH_TIER_COUNT{ 12 };
         constexpr std::array<PolishTier, POLISH_TIER_COUNT> POLISH_TIERS
         { {
             { "추가피해",           true,  { 2.6, 1.6, 0.7 } },
@@ -55,6 +62,10 @@ namespace LostArkMultiTool::Services
             { "무기공격력%",        true,  { 3.0, 1.8, 0.8 } },
             { "치명타적중률",       true,  { 1.55, 0.95, 0.4 } },
             { "치명타피해",         true,  { 4.0, 2.4, 1.1 } },
+            { "낙인력",             true,  { 8.0, 4.8, 2.15 } },   // 서포터 목걸이
+            { "세레나데,신앙,조화게이지획득량증가", true, { 6.0, 3.6, 1.6 } },   // 서포터 목걸이
+            { "아군공격력강화효과", true,  { 5.0, 3.0, 1.35 } },   // 서포터 반지
+            { "아군피해량강화효과", true,  { 7.5, 4.5, 2.0 } },    // 서포터 반지
         } };
 
         constexpr std::array<Models::PolishGrade, POLISH_GRADE_COUNT> POLISH_GRADES
@@ -121,15 +132,15 @@ namespace LostArkMultiTool::Services
             option.m_values = std::move(values);
         }
 
-        // 부위 카테고리 → 유효옵션 목록 (모르는 부위면 nullptr)
-        [[nodiscard]] const DealerOptionNames* FindDealerOptions(int categoryCode) noexcept
+        // 부위 카테고리 · 역할 → 유효옵션 목록 (모르는 부위면 빈 목록)
+        [[nodiscard]] std::span<const std::string_view> FindValidOptions(int categoryCode, bool isSupporter) noexcept
         {
-            switch (categoryCode)
+            switch (categoryCode)   // 부위별 분기
             {
-                case Core::APPConstants::NECKLACE_CATEGORY_CODE: return &NECKLACE_DEALER_OPTIONS;
-                case Core::APPConstants::EARRING_CATEGORY_CODE:  return &EARRING_DEALER_OPTIONS;
-                case Core::APPConstants::RING_CATEGORY_CODE:     return &RING_DEALER_OPTIONS;
-                default:                                         return nullptr;
+                case Core::APPConstants::NECKLACE_CATEGORY_CODE: return isSupporter ? std::span<const std::string_view>{ NECKLACE_SUPPORTER_OPTIONS } : std::span<const std::string_view>{ NECKLACE_DEALER_OPTIONS };   // 목걸이
+                case Core::APPConstants::EARRING_CATEGORY_CODE:  return isSupporter ? std::span<const std::string_view>{ EARRING_SUPPORTER_OPTIONS } : std::span<const std::string_view>{ EARRING_DEALER_OPTIONS };     // 귀걸이
+                case Core::APPConstants::RING_CATEGORY_CODE:     return isSupporter ? std::span<const std::string_view>{ RING_SUPPORTER_OPTIONS } : std::span<const std::string_view>{ RING_DEALER_OPTIONS };           // 반지
+                default:                                         return {};   // 모르는 부위
             }
         }
     }
@@ -150,14 +161,14 @@ namespace LostArkMultiTool::Services
     }
 
     // 유효옵션 순서대로 이름이 같은 옵션을 찾아 담음 (API 이름이 바뀌어 하나도 못 찾으면 고를 수 있게 전체를 그대로 돌려줌)
-    std::vector<Models::AuctionOption> AuctionAccessorySearchService::FilterOptions(const std::vector<Models::AuctionOption>& options, int categoryCode) const
+    std::vector<Models::AuctionOption> AuctionAccessorySearchService::FilterOptions(const std::vector<Models::AuctionOption>& options, int categoryCode, bool isSupporter) const
     {
-        const DealerOptionNames* dealerOptions{ FindDealerOptions(categoryCode) };
-        if (dealerOptions == nullptr) return options;
+        const std::span<const std::string_view> validOptions{ FindValidOptions(categoryCode, isSupporter) };   // 부위 · 역할별 유효옵션
+        if (validOptions.empty()) return options;   // 모르는 부위면 전체
 
         std::vector<Models::AuctionOption> filtered;
-        filtered.reserve(dealerOptions->size());
-        for (const std::string_view dealerOption : *dealerOptions)
+        filtered.reserve(validOptions.size());
+        for (const std::string_view dealerOption : validOptions)   // 정해 둔 순서대로
         {
             const auto found{ std::ranges::find_if(options, [dealerOption](const Models::AuctionOption& option)
             {

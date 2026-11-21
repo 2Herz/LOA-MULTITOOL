@@ -5,6 +5,7 @@ import LostArkMultiTool.Core.APIFormatMonitor;  // API 형식 변경 신고 가�
 import LostArkMultiTool.Models.CharacterArmory;  // 캐릭터 무기고 모델 가져오기
 import LostArkMultiTool.Models.CombatCoefficientData;  // 계수 데이터 모듈 가져오기
 import LostArkMultiTool.Models.CombatExtraState;  // 추가 장착 상태 모델 가져오기
+import LostArkMultiTool.Models.CombatSupporterData;  // 서포터 계수 (칭호 판별) 가져오기
 import LostArkMultiTool.Services.JSONValue;  // JSON 값 모듈 가져오기
 
 namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
@@ -202,6 +203,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         constexpr std::string_view KEY_SLOTS{ "Slots" };  // 슬롯 목록 키
         constexpr std::string_view KEY_POINT{ "Point" };  // 포인트 키
         constexpr std::string_view KEY_POINTS{ "Points" };  // 포인트 합 키
+        constexpr std::string_view KEY_TITLE{ "Title" };  // 아크 패시브 칭호 키 (서포터 판별)
         constexpr std::string_view KEY_INDEX{ "Index" };  // 번호 키
         constexpr std::string_view KEY_DESCRIPTION{ "Description" };  // 설명 키
         constexpr std::string_view KEY_IS_INNER{ "IsInner" };  // 안쪽 슬롯 여부 키
@@ -553,6 +555,8 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
                 lowestRank = std::min(lowestRank.value_or(rank), rank);  // 가장 낮은 랭크 갱신
             }
             if (lowestRank.has_value()) extra.m_passive.m_rank = *lowestRank;  // 랭크가 있으면 기록
+            const bool isSupporter{ Models::CombatSupporterData::IsSupporterTitle(arkPassive.FindMember(KEY_TITLE).GetString()) };  // 칭호가 서포터 칭호인지
+            extra.m_role = isSupporter ? Models::CombatRole::ROLE_SUPPORTER : Models::CombatRole::ROLE_DEALER;  // 역할 기록
         }
 
         // 아크 그리드: 코어 6개(등급 · 포인트) + 젬 효과 레벨 합

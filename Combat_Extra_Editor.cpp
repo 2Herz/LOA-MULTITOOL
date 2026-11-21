@@ -57,7 +57,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
         constexpr std::array<std::wstring_view, Models::ARK_CORE_COUNT> CORE_NAMES{  // 아크 코어 이름 표
             L"질서의 해 코어", L"질서의 달 코어", L"질서의 별 코어", L"혼돈의 해 코어", L"혼돈의 달 코어", L"혼돈의 별 코어" };
-        constexpr std::array<std::wstring_view, Models::ARK_GEM_EFFECT_COUNT> GEM_EFFECT_NAMES{ L"공격력 레벨 합", L"추가 피해 레벨 합", L"보스 피해 레벨 합" };  // 젬 효과 행 이름 표
+        constexpr std::array<std::wstring_view, Models::ARK_GEM_EFFECT_COUNT> GEM_EFFECT_NAMES{ L"공격력 레벨 합", L"추가 피해 레벨 합", L"보스 피해 레벨 합", L"낙인력 레벨 합 (서폿)", L"아군 공격 강화 레벨 합 (서폿)", L"아군 피해 강화 레벨 합 (서폿)" };  // 젬 효과 행 이름 표
         constexpr std::array<std::wstring_view, Models::PASSIVE_TREE_COUNT> PASSIVE_LEVEL_NAMES{ L"진화 레벨 (효과 없음)", L"깨달음 레벨", L"도약 레벨" };  // 패시브 트리 레벨 행 이름 표
         constexpr std::array<std::wstring_view, Models::AVATAR_SLOT_COUNT> AVATAR_NAMES{ L"무기 아바타", L"머리 아바타", L"상의 아바타", L"하의 아바타" };  // 아바타 부위 행 이름 표
 

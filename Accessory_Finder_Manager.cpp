@@ -218,7 +218,7 @@ namespace LostArkMultiTool::Views
     // 부위가 바뀌면 고른 옵션도 맞지 않으므로 모든 칸을 "선택 안 함"으로 되돌림
     void AccessoryFinderManager::ApplyCategoryOptions()
     {
-        m_options = m_service->FilterOptions(m_allOptions, m_view->GetCategoryCode());
+        m_options = m_service->FilterOptions(m_allOptions, m_view->GetCategoryCode(), m_view->IsSupporter());  // 부위 · 역할에 맞는 유효옵션
         m_view->SetOptionNames(MakeOptionNames(m_options));
     }
 

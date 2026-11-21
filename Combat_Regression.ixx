@@ -27,6 +27,9 @@ export namespace LostArkMultiTool::Core::CombatRegression
         int m_partialRankRowCount{};               // 랭크가 덜 찬 캐릭터 검사 줄 수
         int m_exceptionCount{};                    // lopec 특이점으로 제외한 줄 수
         int m_offsetCharacterCount{};              // lopec 레벨 슬라이더 기준 어긋남을 보정한 캐릭터 수
+        int m_comboOffsetCharacterCount{};         // lopec 조합 기준 어긋남을 보정한 캐릭터 수
+        int m_supporterCount{};                    // 검사한 서포터 수 (서포터 계수로 계산)
+        int m_abnormalCount{};                     // 비정상 캐릭터로 건너뛴 수 (장신구 없음 등)
         double m_worstFullRankPercent{};           // 6랭크 최대 오차 (%)
         double m_worstPartialRankPercent{};        // 덜 찬 랭크 최대 오차 (%)
         std::vector<RegressionFailure> m_failures; // 허용치 초과 줄 (오차 큰 순)

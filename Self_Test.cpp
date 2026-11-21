@@ -218,9 +218,9 @@ namespace LostArkMultiTool::Core::SelfTest
                 return;
             }
             for (const std::string& note : result.m_notes) reporter.Note(note);   // 건너뛴 캐릭터 안내
-            reporter.Check(result.m_failures.empty(), "lopec 회귀 · 아크 패시브", std::format("{}명 · 6랭크 {}줄 최대 {:.3f}% · 덜 찬 랭크 {}줄 최대 {:.3f}% · 슬라이더 기준 보정 {}명 · 제외 {}줄 · 초과 {}줄",
-                result.m_characterCount, result.m_fullRankRowCount, result.m_worstFullRankPercent, result.m_partialRankRowCount, result.m_worstPartialRankPercent,
-                result.m_offsetCharacterCount, result.m_exceptionCount, result.m_failures.size()));   // 요약 한 줄
+            reporter.Check(result.m_failures.empty(), "lopec 회귀 · 아크 패시브", std::format("{}명 (서포터 {}명) · 6랭크 {}줄 최대 {:.3f}% · 덜 찬 랭크 {}줄 최대 {:.3f}% · 슬라이더 기준 보정 {}명 · 조합 기준 보정 {}명 · 비정상 제외 {}명 · 제외 {}줄 · 초과 {}줄",
+                result.m_characterCount, result.m_supporterCount, result.m_fullRankRowCount, result.m_worstFullRankPercent, result.m_partialRankRowCount, result.m_worstPartialRankPercent,
+                result.m_offsetCharacterCount, result.m_comboOffsetCharacterCount, result.m_abnormalCount, result.m_exceptionCount, result.m_failures.size()));   // 요약 한 줄
             for (const CombatRegression::RegressionFailure& failure : result.m_failures | std::views::take(MAX_REPORTED_FAILURES))   // 오차 큰 줄부터
             {
                 reporter.Note(std::format("초과 {} {} ({}) : {:.3f}% (허용 {}%)", failure.m_character, failure.m_control, failure.m_change, failure.m_errorPercent, failure.m_limitPercent));

@@ -18,6 +18,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         constexpr std::string_view KEY_ENHANCEMENT{ "Enhancement" };  // 일반 재련 단계 키
         constexpr std::string_view KEY_ADVANCED{ "Advanced" };  // 상급 재련 단계 키
         constexpr std::string_view KEY_WEAPON_QUALITY{ "WeaponQuality" };  // 무기 품질 목표 키
+        constexpr std::string_view KEY_ARMOR_QUALITY{ "ArmorQuality" };  // 서포터 방어구 품질 목표 키
         constexpr std::string_view KEY_GEM_TARGETS{ "GemTargets" };  // 보석 목표 레벨 배열 키
 
         // ===== 범위 (손으로 고친 파일에서 이상한 값이 와도 안전하게) =====
@@ -264,6 +265,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
                     ReadInt(entry.FindMember(KEY_ADVANCED), MAX_ADVANCED_ENHANCEMENT).value_or(MIN_VALUE) };  // 상급 단계는 없으면 0
             }
             settings.m_weaponQualityTarget = ReadInt(root.FindMember(KEY_WEAPON_QUALITY), MAX_QUALITY);  // 무기 품질 목표 읽기
+            settings.m_armorQualityTarget = ReadInt(root.FindMember(KEY_ARMOR_QUALITY), MAX_QUALITY);  // 서포터 방어구 품질 목표 읽기
             for (const JSONValue& level : root.FindMember(KEY_GEM_TARGETS).GetItems())  // 보석 목표 레벨 순회
             {
                 settings.m_gemTargets.push_back(ReadInt(level, MAX_GEM_LEVEL).value_or(MIN_VALUE));   // 0 ~ 10 (6 미만 = 현재 그대로 둔 보석, 매니저가 거름)
@@ -312,6 +314,11 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         {
             keys.emplace_back(KEY_WEAPON_QUALITY);  // 키 추가
             values.push_back(MakeNumber(*m_settings.m_weaponQualityTarget));  // 값 추가
+        }
+        if (m_settings.m_armorQualityTarget.has_value())  // 서포터 방어구 품질 목표가 있으면 저장
+        {
+            keys.emplace_back(KEY_ARMOR_QUALITY);  // 키 추가
+            values.push_back(MakeNumber(*m_settings.m_armorQualityTarget));  // 값 추가
         }
         if (!m_settings.m_gemTargets.empty())  // 보석 목표가 있으면 저장
         {

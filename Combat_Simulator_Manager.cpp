@@ -63,6 +63,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view QUALITY_FORMAT{ L"무기 품질   현재 {}   →   목표" };  // 무기 품질 안내 서식
         constexpr std::wstring_view QUALITY_ESTHER_TEXT{ L"무기 품질   에스더 무기는 품질이 없어요" };  // 에스더 무기 품질 안내 글자
         constexpr std::wstring_view QUALITY_UNKNOWN_TEXT{ L"무기 품질   정보 없음" };  // 무기 품질 정보 없음 안내 글자
+        constexpr std::wstring_view ARMOR_QUALITY_FORMAT{ L"방어구 품질 (서폿)   현재 평균 {}   →   목표 (5부위 공통)" };  // 서포터 방어구 품질 안내 서식
 
         constexpr std::wstring_view STATUS_FORMAT{ L"{} · {} · 아이템 레벨 {} · API 전투력 {}" };  // 상태 줄 서식
         constexpr std::wstring_view NO_POWER_TEXT{ L"정보 없음" };  // 전투력 정보 없음 글자
@@ -168,6 +169,42 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         {
             if (TrimSpaces(text).empty()) return std::nullopt;  // 비어 있으면 값 없음
             return static_cast<int>(Core::NumberFormat::ParseNumber(text));  // 숫자로 변환해 반환
+        }
+
+        // 서포터 상태인지 (서포터는 품질 칸이 방어구 품질)
+        [[nodiscard]] bool IsSupporterState(const Models::CombatState& state) noexcept
+        {
+            return state.m_extra.m_role == Models::CombatRole::ROLE_SUPPORTER;  // 역할이 서포터이면 참
+        }
+
+        // 품질을 아는 방어구 부위 모두를 같은 품질로
+        void SetArmorQualities(Models::CombatState& state, int quality) noexcept
+        {
+            for (std::optional<int>& armorQuality : state.m_armorQualities)  // 부위 순회
+            {
+                if (armorQuality.has_value()) armorQuality = quality;  // 아는 부위만 바꿈
+            }
+        }
+
+        // 방어구 평균 품질 (반올림, 아는 부위가 없으면 nullopt)
+        [[nodiscard]] std::optional<int> GetArmorQualityAverage(const Models::CombatState& state)
+        {
+            int sum{};  // 품질 합
+            int count{};  // 아는 부위 수
+            for (const std::optional<int>& armorQuality : state.m_armorQualities)  // 부위 순회
+            {
+                if (!armorQuality.has_value()) continue;  // 모르는 부위는 건너뜀
+                sum += *armorQuality;  // 합에 더함
+                ++count;  // 수 증가
+            }
+            if (count == 0) return std::nullopt;  // 아는 부위가 없으면 값 없음
+            return static_cast<int>(std::lround(static_cast<double>(sum) / count));  // 반올림한 평균
+        }
+
+        // 목표 방어구 품질 (모든 부위가 같으면 그 값, 아니면 평균)
+        [[nodiscard]] std::optional<int> GetArmorQualityTarget(const Models::CombatState& state)
+        {
+            return GetArmorQualityAverage(state);  // 공통 목표는 평균과 같음
         }
 
         // 선택지 번호 ↔ 보석 레벨 (1번 = 6레벨 ... 5번 = 10레벨)
@@ -514,6 +551,11 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         const bool isEstherWeapon{ weapon.has_value() && (weapon->m_grade == ESTHER_GRADE_NAME  // 에스더 무기 여부 (등급이나 분류 키로 판별)
             || Models::CombatGear::IsEsther(current.m_gears[Models::ToGearIndex(Models::GearPart::PART_WEAPON)].m_tableKey)) };
         if (weapon.has_value() && !isEstherWeapon) current.m_weaponQuality = weapon->m_quality;  // 에스더가 아닌 무기는 품질 기록
+        for (std::size_t index{}; index < Models::GEAR_PART_COUNT; ++index)  // 방어구 품질 (서포터 전투력용)
+        {
+            const std::optional<Models::GearItem>& item{ armory.m_gears[index] };  // 부위 장비
+            if (Models::ToGearPart(index) != Models::GearPart::PART_WEAPON && item.has_value()) current.m_armorQualities[index] = item->m_quality;  // 무기가 아닌 부위 품질 기록
+        }
 
         current.m_gemLevels = armory.m_gemLevels;  // 보석 레벨 복사
         current.m_gemKinds = armory.m_gemKinds;  // 보석 종류 복사
@@ -540,6 +582,10 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             if (target.m_weaponQuality.has_value() && settings.m_weaponQualityTarget.has_value())  // 무기 품질 목표가 저장되어 있으면
             {
                 target.m_weaponQuality = std::clamp(*settings.m_weaponQualityTarget, MIN_QUALITY, MAX_QUALITY);  // 품질 범위로 보정해 반영
+            }
+            if (IsSupporterState(target) && settings.m_armorQualityTarget.has_value())  // 서포터 방어구 품질 목표가 저장되어 있으면
+            {
+                SetArmorQualities(target, std::clamp(*settings.m_armorQualityTarget, MIN_QUALITY, MAX_QUALITY));  // 5부위 공통 목표 반영
             }
 
             // 보석: 저장된 개수가 지금 장착 개수와 같을 때만 복원 (보석을 바꿔 끼웠으면 현재 유지)
@@ -613,12 +659,22 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     // 무기 품질 목표: 숫자일 때만 반영 (0 ~ 100으로 맞추고, 넘으면 칸도 고침)
     void CombatSimulatorManager::OnQualityChanged(const std::wstring& text)
     {
-        if (!m_target.m_weaponQuality.has_value()) return;  // 무기 품질이 없으면 무시
+        const bool isSupporter{ IsSupporterState(m_target) };  // 서포터는 방어구 품질 칸
+        if (!isSupporter && !m_target.m_weaponQuality.has_value()) return;  // 딜러인데 무기 품질이 없으면 무시
         const std::optional<int> value{ ParseInteger(text) };  // 입력 글자를 정수로 변환
         if (!value.has_value()) return;  // 숫자가 아니면 무시
 
         const int quality{ std::clamp(*value, MIN_QUALITY, MAX_QUALITY) };  // 품질 범위로 보정
         if (quality != *value) m_view->SetQualityTarget(std::to_wstring(quality));  // 범위를 벗어났으면 입력 칸을 보정한 값으로 되돌림
+        if (isSupporter)  // 서포터: 방어구 5부위를 같은 목표로
+        {
+            if (GetArmorQualityTarget(m_target) == quality) return;  // 값이 그대로면 종료
+            SetArmorQualities(m_target, quality);  // 목표 방어구 품질 기록
+            StoreTargets();  // 목표를 저장 설정에 기록
+            SaveData();  // 파일에 저장
+            RefreshResult();  // 결과 갱신
+            return;
+        }
         if (quality == *m_target.m_weaponQuality) return;  // 값이 그대로면 종료
 
         m_target.m_weaponQuality = quality;  // 목표 품질 기록
@@ -800,13 +856,24 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         if (!m_view) return;  // 화면이 없으면 중단
 
         // 품질: 에스더 · 모름 · 조회 전이면 입력 잠금
-        const bool hasQuality{ m_current.m_weaponQuality.has_value() && m_target.m_weaponQuality.has_value() };  // 무기 품질이 현재와 목표 모두 있는지
-        const std::optional<Models::GearItem>* weapon{ m_armory.has_value() ? &m_armory->m_gears[Models::ToGearIndex(Models::GearPart::PART_WEAPON)] : nullptr };  // 무기 장비 (조회 전이면 없음)
-        const bool isEsther{ weapon != nullptr && weapon->has_value() && (*weapon)->m_grade == ESTHER_GRADE_NAME };  // 에스더 무기 여부
-        if (hasQuality) m_view->SetQualityText(std::format(QUALITY_FORMAT, *m_current.m_weaponQuality));  // 품질이 있으면 현재 품질 안내
-        else m_view->SetQualityText(std::wstring{ isEsther ? QUALITY_ESTHER_TEXT : QUALITY_UNKNOWN_TEXT });  // 없으면 에스더 / 정보 없음 안내
-        m_view->SetQualityTarget(hasQuality ? std::to_wstring(*m_target.m_weaponQuality) : std::wstring{});  // 품질 목표 칸 값 설정
-        m_view->SetQualityEnabled(hasQuality);  // 품질 입력 칸 활성 여부 설정
+        if (IsSupporterState(m_current))  // 서포터: 품질 칸 = 방어구 품질 (5부위 공통)
+        {
+            const std::optional<int> average{ GetArmorQualityAverage(m_current) };  // 현재 방어구 평균 품질
+            const std::optional<int> armorTarget{ GetArmorQualityTarget(m_target) };  // 목표 방어구 품질
+            m_view->SetQualityText(average.has_value() ? std::format(ARMOR_QUALITY_FORMAT, *average) : std::wstring{ QUALITY_UNKNOWN_TEXT });  // 안내 글자
+            m_view->SetQualityTarget(armorTarget.has_value() ? std::to_wstring(*armorTarget) : std::wstring{});  // 목표 칸 값
+            m_view->SetQualityEnabled(average.has_value());  // 품질을 알 때만 입력 가능
+        }
+        else
+        {
+            const bool hasQuality{ m_current.m_weaponQuality.has_value() && m_target.m_weaponQuality.has_value() };  // 무기 품질이 현재와 목표 모두 있는지
+            const std::optional<Models::GearItem>* weapon{ m_armory.has_value() ? &m_armory->m_gears[Models::ToGearIndex(Models::GearPart::PART_WEAPON)] : nullptr };  // 무기 장비 (조회 전이면 없음)
+            const bool isEsther{ weapon != nullptr && weapon->has_value() && (*weapon)->m_grade == ESTHER_GRADE_NAME };  // 에스더 무기 여부
+            if (hasQuality) m_view->SetQualityText(std::format(QUALITY_FORMAT, *m_current.m_weaponQuality));  // 품질이 있으면 현재 품질 안내
+            else m_view->SetQualityText(std::wstring{ isEsther ? QUALITY_ESTHER_TEXT : QUALITY_UNKNOWN_TEXT });  // 없으면 에스더 / 정보 없음 안내
+            m_view->SetQualityTarget(hasQuality ? std::to_wstring(*m_target.m_weaponQuality) : std::wstring{});  // 품질 목표 칸 값 설정
+            m_view->SetQualityEnabled(hasQuality);  // 품질 입력 칸 활성 여부 설정
+        }
 
         // 보석: "보석 11개 · 10레벨 5개 · 9레벨 6개" (높은 레벨부터)
         if (!m_armory.has_value()) m_view->SetGemText(std::wstring{ GEM_NOT_LOADED_TEXT });  // 조회 전이면 안내 글자
@@ -930,6 +997,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 ? std::optional<Services::CombatGearTarget>{ Services::CombatGearTarget{ gear.m_enhancement, gear.m_advancedEnhancement } } : std::nullopt;
         }
         settings.m_weaponQualityTarget = m_target.m_weaponQuality;  // 무기 품질 목표 기록
+        settings.m_armorQualityTarget = IsSupporterState(m_target) ? GetArmorQualityTarget(m_target) : std::nullopt;  // 서포터 방어구 품질 목표 기록
         settings.m_gemTargets = m_target.m_gemLevels != m_current.m_gemLevels ? m_target.m_gemLevels : std::vector<int>{};   // 현재와 같으면 저장 안 함
         settings.m_extraTarget = m_target.m_extra != m_current.m_extra ? std::optional<Models::ExtraState>{ m_target.m_extra } : std::nullopt;   // 현재와 같으면 저장 안 함
     }

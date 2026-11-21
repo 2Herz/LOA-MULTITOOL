@@ -5,12 +5,14 @@ import LostArkMultiTool.Core.CombatFactorComponent;  // 배율 요소 기반 모
 import LostArkMultiTool.Models.CombatCoefficientData;  // 계수 데이터 모듈 가져오기
 import LostArkMultiTool.Models.CombatExtraState;  // 추가 장착 상태 모듈 가져오기
 import LostArkMultiTool.Models.CombatState;  // 전투력 상태 모듈 가져오기
+import LostArkMultiTool.Models.CombatSupporterData;  // 서포터 계수 모듈 가져오기
 
 namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
 {
     namespace  // 파일 내부 전용 상수 · 보조 함수 영역 시작
     {
         namespace Data = Models::CombatCoefficientData;  // 계수 데이터 네임스페이스 별칭
+        namespace Supporter = Models::CombatSupporterData;  // 서포터 계수 네임스페이스 별칭
 
         // ===== 문구 · 상수 =====
         constexpr std::string_view WEAPON_ATTACK_PREFIX{ "무기 공격력 +" };   // 악세서리 무기 공격력 옵션 (식으로 계산)
@@ -30,6 +32,13 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         constexpr std::size_t PASSIVE_LEAP_TREE{ 2 };  // 아크 패시브 도약 트리 번호
         constexpr double FULL_PASSIVE_RATIO{ 1.0 };           // 최대 랭크 · 최대 깨달음 구성의 표 배율 (이보다 작으면 최대가 아님)
         constexpr double NO_INTERACTION_LN{ 0.0 };            // 랭크 · 깨달음 상호작용이 없을 때 ln
+        constexpr std::size_t PASSIVE_EVOLUTION_TREE{ 0 };    // 아크 패시브 진화 트리 번호 (서포터만 레벨 효과 있음)
+
+        // 서포터 계수를 써야 하는 상태인지 (역할은 현재 · 목표가 같음)
+        [[nodiscard]] bool IsSupporter(const Models::ExtraState& state) noexcept
+        {
+            return state.m_role == Models::CombatRole::ROLE_SUPPORTER;  // 역할이 서포터이면 참
+        }
 
         // 무기 공격력 기준 W0 (모르면 0 → 무기 공격력 식은 계산하지 않음)
         [[nodiscard]] double GetWeaponBase(const Models::CombatState& state) noexcept  // 무기 공격력 기준값 조회
@@ -58,9 +67,14 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         }
 
         // 악세서리 옵션 한 줄의 ln (표에 없으면 0)
-        [[nodiscard]] double GetAccessoryLn(std::string_view option, double weaponBase, bool isEsther)  // 악세서리 옵션 한 줄의 ln 계산
+        [[nodiscard]] double GetAccessoryLn(std::string_view option, double weaponBase, bool isEsther, bool isSupporter)  // 악세서리 옵션 한 줄의 ln 계산
         {
             if (Models::IsNone(option)) return 0.0;  // 옵션이 비어 있으면 0
+            if (isSupporter)  // 서포터는 측정 표만 사용 (무기 공격력 옵션도 표 값)
+            {
+                const Data::KeyedValue* supporterFound{ Data::FindKeyed(Supporter::GetAccessoryOptions(), option) };  // 서포터 문구 표 조회
+                return supporterFound != nullptr ? supporterFound->m_value : 0.0;  // 표에 없으면 효과 없음
+            }
 
             if (option.starts_with(WEAPON_ATTACK_PREFIX))  // 무기 공격력 옵션이면 식으로 계산
             {
@@ -80,9 +94,14 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         }
 
         // 팔찌 옵션 한 줄의 ln (공백 없는 문구, 표에 없으면 0)
-        [[nodiscard]] double GetBraceletLn(std::string_view option, double weaponBase)  // 팔찌 옵션 한 줄의 ln 계산
+        [[nodiscard]] double GetBraceletLn(std::string_view option, double weaponBase, bool isSupporter)  // 팔찌 옵션 한 줄의 ln 계산
         {
             if (Models::IsNone(option)) return 0.0;  // 옵션이 비어 있으면 0
+            if (isSupporter)  // 서포터는 측정 표만 사용
+            {
+                const Data::KeyedValue* supporterFound{ Data::FindKeyed(Supporter::GetBraceletOptions(), option) };  // 서포터 문구 표 조회
+                return supporterFound != nullptr ? supporterFound->m_value : 0.0;  // 표에 없으면 효과 없음
+            }
 
             for (const Data::BraceletWeaponLine& line : Data::GetBraceletWeaponLines())  // 무기 공격력 포함 줄 순회
             {
@@ -98,9 +117,10 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         [[nodiscard]] double SumEffectiveStats(const Models::ExtraState& state)  // 치명 · 특화 · 신속 수치 합 계산
         {
             double sum{};  // 합계
+            const std::span<const std::string_view> effectiveTypes{ IsSupporter(state) ? Supporter::GetBraceletEffectiveTypes() : Data::GetBraceletEffectiveTypes() };  // 역할별 유효 스탯 (서포터: 특화 · 신속)
             for (const Models::BraceletStat& line : state.m_braceletStats)  // 팔찌 스탯 줄 순회
             {
-                if (std::ranges::find(Data::GetBraceletEffectiveTypes(), line.m_type) != Data::GetBraceletEffectiveTypes().end()) sum += line.m_value;  // 유효 스탯 종류이면 합산
+                if (std::ranges::find(effectiveTypes, line.m_type) != effectiveTypes.end()) sum += line.m_value;  // 유효 스탯 종류이면 합산
             }
             return sum;  // 합계 반환
         }
@@ -154,9 +174,49 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
             return total >= bonus.m_minLevel ? bonus.m_ln : NO_STONE_RATIO;  // 기준 이상이면 보너스 ln, 아니면 0
         }
 
+        // 서포터 각인서 한 권의 기본 ln (유물: 레벨 0 ~ 4 보간, 전설: 전설 레벨 4에서 유물과 같은 폭으로 단계만큼 뺌)
+        [[nodiscard]] double GetSupporterBookLn(const Supporter::SupporterBook& entry, const Models::BookState& book) noexcept  // 서포터 각인서 기본 ln 계산
+        {
+            const int level{ std::clamp(book.m_level, Models::MIN_VALUE, Data::ENGRAVING_BOOK_MAX_LEVEL) };  // 0 ~ 최대로 제한한 레벨
+            const double fraction{ static_cast<double>(level) / Data::ENGRAVING_BOOK_MAX_LEVEL };  // 레벨 비율 (0 ~ 1)
+            const double span{ entry.m_top - entry.m_base };  // 유물 레벨 0 → 최대 ln 폭
+            if (!book.m_isLegendary) return entry.m_base + span * fraction;  // 유물이면 기본값과 최대값 사이를 보간
+            return entry.m_legendTop - span * (1.0 - fraction);  // 전설이면 전설 최대값에서 남은 단계만큼 뺌
+        }
+
+        // 서포터 스톤 레벨 합 보너스
+        [[nodiscard]] double GetSupporterStoneSumLn(const Models::ExtraState& state) noexcept  // 서포터 스톤 레벨 합 보너스 계산
+        {
+            int total{ NO_STONE_LEVEL };  // 두 줄 레벨 합
+            for (const Models::StoneLine& line : state.m_stone) total += GetStoneLevel(line);  // 각 줄 레벨을 합산
+            const Data::StoneSumBonus& bonus{ Supporter::GetStoneSumBonus() };  // 서포터 레벨 합 보너스
+            return total >= bonus.m_minLevel ? bonus.m_ln : NO_STONE_RATIO;  // 기준 이상이면 보너스 ln, 아니면 0
+        }
+
+        // 서포터 각인서 5개 + 스톤 ln 합 (딜러와 같은 구조, 서포터 표 사용)
+        [[nodiscard]] double GetSupporterEngravingLn(const Models::ExtraState& state)  // 서포터 각인서 · 스톤 ln 합 계산
+        {
+            double sum{ GetSupporterStoneSumLn(state) };  // 합계 (스톤 레벨 합 보너스부터 시작)
+            for (std::size_t index{}; index < Models::BOOK_COUNT; ++index)  // 각인서 5개 순회
+            {
+                const Models::BookState& book{ state.m_books[index] };  // 현재 각인서
+                if (Models::IsNone(book.m_name)) continue;  // 이름이 없으면 건너뜀
+                const auto isSameName{ [&book](const Models::BookState& other) { return other.m_name == book.m_name; } };  // 앞 칸과 같은 이름인지 검사하는 람다
+                if (std::any_of(state.m_books.begin(), state.m_books.begin() + static_cast<std::ptrdiff_t>(index), isSameName)) continue;  // 중복 이름은 건너뜀
+                const std::span<const Supporter::SupporterBook> books{ Supporter::GetBooks() };  // 서포터 각인서 표
+                const auto found{ std::ranges::find(books, book.m_name, &Supporter::SupporterBook::m_name) };  // 이름으로 표 항목 찾기
+                if (found == books.end()) continue;  // 표에 없는 각인은 효과 없음
+                const Data::KeyedValue* levelOne{ Data::FindKeyed(Supporter::GetStoneLevelOne(), book.m_name) };  // 같은 이름 스톤의 레벨 1 효과
+                const double stoneRatio{ levelOne != nullptr ? levelOne->m_value * GetStoneScale(GetLinkedStoneLevel(state, book.m_name)) : NO_STONE_RATIO };  // 이어진 스톤 효과 비율
+                sum += std::log(std::exp(GetSupporterBookLn(*found, book)) + stoneRatio);  // 각인서 배율 + 스톤 비율의 ln 합산
+            }
+            return sum;  // 합계 반환
+        }
+
         // 각인서 5개 + 스톤의 ln 합 (각인서 효과 비율에 같은 이름 스톤 효과를 더한 뒤 ln, 없음 · 앞 칸과 같은 이름 · 효과 없는 각인은 0)
         [[nodiscard]] double GetEngravingLn(const Models::ExtraState& state)  // 각인서 · 스톤 ln 합 계산
         {
+            if (IsSupporter(state)) return GetSupporterEngravingLn(state);  // 서포터는 서포터 표로 계산
             double sum{ GetStoneSumLn(state) };  // 합계 (스톤 레벨 합 보너스부터 시작)
             for (std::size_t index{}; index < Models::BOOK_COUNT; ++index)  // 각인서 5개 순회
             {
@@ -237,6 +297,21 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         [[nodiscard]] double GetCoresLn(const Models::ExtraState& state)  // 코어 6개의 ln 합 계산
         {
             double sum{};  // 합계
+            if (IsSupporter(state))  // 서포터는 코어 이름과 무관한 서포터 표
+            {
+                for (std::size_t core{}; core < Models::ARK_CORE_COUNT; ++core)  // 코어 6개 순회
+                {
+                    const Models::ArkCoreState& entry{ state.m_cores[core] };  // 코어 상태
+                    const bool isAncient{ entry.m_grade == Models::ArkCoreGrade::CORE_ANCIENT };  // 고대 등급 여부
+                    for (const Data::ArkCorePoint& row : Supporter::GetArkCorePoints())  // 서포터 포인트 표 순회
+                    {
+                        if (row.m_core != static_cast<int>(core) || row.m_points != entry.m_points) continue;  // 코어 번호 · 포인트가 다르면 건너뜀
+                        sum += isAncient ? row.m_ancientLn : row.m_ln;  // 등급에 맞는 ln 합산
+                        break;  // 한 칸만 해당
+                    }
+                }
+                return sum;  // 서포터 합계 반환
+            }
             for (std::size_t core{}; core < Models::ARK_CORE_COUNT; ++core) sum += GetCoreLn(core, state.m_cores[core]);  // 코어별 ln을 합산
             return sum;  // 합계 반환
         }
@@ -249,10 +324,10 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         }
 
         // 랭크 · 깨달음 포인트가 둘 다 최대가 아닐 때 더하는 ln (lopec 조합 측정: 상수 + 교차항 × 두 감소폭의 곱)
-        [[nodiscard]] double GetPassiveInteractionLn(double rankRatio, double enlightenmentRatio) noexcept  // 랭크 · 깨달음 상호작용 ln 계산
+        [[nodiscard]] double GetPassiveInteractionLn(double rankRatio, double enlightenmentRatio, bool isSupporter) noexcept  // 랭크 · 깨달음 상호작용 ln 계산
         {
             if (rankRatio >= FULL_PASSIVE_RATIO || enlightenmentRatio >= FULL_PASSIVE_RATIO) return NO_INTERACTION_LN;  // 둘 중 하나라도 최대면 상호작용 없음
-            const Data::PassiveInteraction& interaction{ Data::GetPassiveInteraction() };  // 상호작용 계수
+            const Data::PassiveInteraction& interaction{ isSupporter ? Supporter::GetPassiveInteraction() : Data::GetPassiveInteraction() };  // 역할별 상호작용 계수
             return interaction.m_constantLn + interaction.m_crossLn * (FULL_PASSIVE_RATIO - rankRatio) * (FULL_PASSIVE_RATIO - enlightenmentRatio);  // 상수 + 교차항 × 랭크 감소폭 × 깨달음 감소폭
         }
     }
@@ -260,6 +335,7 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
     // 처음 보는 혼돈 코어 이름이 있어 평균값으로 계산했는지 (질서 코어 · 표에 있는 이름 · 이름 없음은 해당 없음)
     bool HasUnknownChaosCore(const Models::ExtraState& state)  // 모르는 혼돈 코어 이름 사용 여부 검사
     {
+        if (IsSupporter(state)) return false;  // 서포터 표는 코어 이름과 무관하므로 대체 없음
         for (std::size_t core{}; core < Models::ARK_CORE_COUNT; ++core)  // 코어 6개 순회
         {
             const Models::ArkCoreState& entry{ state.m_cores[core] };  // 현재 코어 상태
@@ -281,14 +357,15 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
     {
         const double weaponBase{ GetWeaponBase(current) };  // 무기 공격력 기준값
         const bool isEsther{ current.m_extra.m_isEstherWeapon };  // 에스더 무기 여부
+        const bool isSupporter{ IsSupporter(current.m_extra) };  // 서포터 표를 쓸지
 
         double lnChange{};  // ln 변화량 합계
         for (std::size_t slot{}; slot < Models::ACCESSORY_SLOT_COUNT; ++slot)  // 악세서리 슬롯 순회
         {
             for (std::size_t option{}; option < Models::ACCESSORY_OPTION_COUNT; ++option)  // 연마 옵션 줄 순회
             {
-                lnChange += GetAccessoryLn(target.m_extra.m_accessories[slot].m_options[option], weaponBase, isEsther)  // 목표 옵션 ln에서
-                    - GetAccessoryLn(current.m_extra.m_accessories[slot].m_options[option], weaponBase, isEsther);  // 현재 옵션 ln을 뺀 값을 누적
+                lnChange += GetAccessoryLn(target.m_extra.m_accessories[slot].m_options[option], weaponBase, isEsther, isSupporter)  // 목표 옵션 ln에서
+                    - GetAccessoryLn(current.m_extra.m_accessories[slot].m_options[option], weaponBase, isEsther, isSupporter);  // 현재 옵션 ln을 뺀 값을 누적
             }
         }
         return std::exp(lnChange);  // ln 변화량을 지수로 되돌려 배율로 반환
@@ -303,6 +380,15 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
 
     double VambraceFactorComponent::GetFactor(const Models::CombatState& current, const Models::CombatState& target) const  // 완갑 배율 계산
     {
+        if (IsSupporter(current.m_extra))  // 서포터는 단계별 측정 표 (등급 변화 포함)
+        {
+            const std::span<const double> levels{ Supporter::GetVambraceLevelLn() };  // 단계 → ln 표
+            const std::optional<int>& from{ current.m_extra.m_vambraceLevel };  // 현재 단계
+            const std::optional<int>& to{ target.m_extra.m_vambraceLevel };  // 목표 단계
+            if (!from.has_value() || !to.has_value() || levels.empty()) return NO_CHANGE_FACTOR;  // 완갑이 없으면 영향 없음
+            const auto toIndex{ [&levels](int level) { return static_cast<std::size_t>(std::clamp(level, Models::MIN_VALUE, static_cast<int>(levels.size()) - 1)); } };  // 단계를 표 범위로
+            return std::exp(levels[toIndex(*to)] - levels[toIndex(*from)]);  // ln 차이를 배율로
+        }
         const Models::CombatExtra::VambraceGain gain{ Models::CombatExtra::GetVambraceGain(current.m_extra, target.m_extra) };  // 완갑 재련 변화량
 
         // 기본 공격력 % 합 = 보석 기본 공격력 % + 완갑 한계 해방 추가 효과 % (같은 칸에서 더해짐)
@@ -331,13 +417,15 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
     double BraceletFactorComponent::GetFactor(const Models::CombatState& current, const Models::CombatState& target) const  // 팔찌 배율 계산
     {
         // 치명 · 특화 · 신속: 포인트 1당 같은 비율로 증가
-        const double statFactor{ std::max(1.0 + Data::GetBraceletStatRatio() * (SumEffectiveStats(target.m_extra) - SumEffectiveStats(current.m_extra)), MIN_RATIO) };  // 치명 · 특화 · 신속 포인트 차이에 따른 선형 배율
+        const bool isSupporter{ IsSupporter(current.m_extra) };  // 서포터 표를 쓸지
+        const double statRatio{ isSupporter ? Supporter::GetBraceletStatRatio() : Data::GetBraceletStatRatio() };  // 역할별 스탯 1포인트당 배율
+        const double statFactor{ std::max(1.0 + statRatio * (SumEffectiveStats(target.m_extra) - SumEffectiveStats(current.m_extra)), MIN_RATIO) };  // 치명 · 특화 · 신속 포인트 차이에 따른 선형 배율
 
         const double weaponBase{ GetWeaponBase(current) };  // 무기 공격력 기준값
         double lnChange{};  // ln 변화량 합계
         for (std::size_t option{}; option < Models::BRACELET_OPTION_COUNT; ++option)  // 팔찌 옵션 줄 순회
         {
-            lnChange += GetBraceletLn(target.m_extra.m_braceletOptions[option], weaponBase) - GetBraceletLn(current.m_extra.m_braceletOptions[option], weaponBase);  // 목표 옵션 ln에서 현재 옵션 ln을 뺀 값을 누적
+            lnChange += GetBraceletLn(target.m_extra.m_braceletOptions[option], weaponBase, isSupporter) - GetBraceletLn(current.m_extra.m_braceletOptions[option], weaponBase, isSupporter);  // 목표 옵션 ln에서 현재 옵션 ln을 뺀 값을 누적
         }
         return statFactor * std::exp(lnChange);  // 스탯 배율 × 옵션 배율 반환
     }
@@ -377,7 +465,7 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
             currentPercent += getPercent(current.m_extra.m_avatars[slot]);  // 현재 등급의 주스탯 % 누적
             targetPercent += getPercent(target.m_extra.m_avatars[slot]);    // 목표 등급의 주스탯 % 누적
         }
-        const double scale{ Data::GetAvatarMainStatScale() };  // 주스탯 % 합 배율 계수
+        const double scale{ IsSupporter(current.m_extra) ? Supporter::GetAvatarMainStatScale() : Data::GetAvatarMainStatScale() };  // 역할별 주스탯 % 합 배율 계수
         return std::sqrt((1.0 + scale * targetPercent) / (1.0 + scale * currentPercent));  // 주스탯 변화가 sqrt(S) 경로로 들어간 배율 반환
     }
 
@@ -403,9 +491,10 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
     double ArkGemFactorComponent::GetFactor(const Models::CombatState& current, const Models::CombatState& target) const  // 아크 젬 배율 계산
     {
         double lnChange{};  // ln 변화량 합계
+        const std::span<const Data::KeyedValue> perLevelTable{ IsSupporter(current.m_extra) ? Supporter::GetArkGemPerLevel() : Data::GetArkGemPerLevel() };  // 역할별 레벨당 ln 표
         for (std::size_t effect{}; effect < Models::ARK_GEM_EFFECT_COUNT; ++effect)  // 젬 효과 종류 순회
         {
-            const Data::KeyedValue* perLevel{ Data::FindKeyed(Data::GetArkGemPerLevel(), Models::ARK_GEM_EFFECT_NAMES[effect]) };  // 효과별 레벨 1당 ln 조회
+            const Data::KeyedValue* perLevel{ Data::FindKeyed(perLevelTable, Models::ARK_GEM_EFFECT_NAMES[effect]) };  // 효과별 레벨 1당 ln 조회
             if (perLevel == nullptr) continue;  // 표에 없으면 건너뜀
             lnChange += perLevel->m_value * static_cast<double>(target.m_extra.m_arkGemLevels[effect] - current.m_extra.m_arkGemLevels[effect]);  // 레벨 합 차이 × 레벨당 ln 누적
         }
@@ -426,7 +515,8 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
 
         // 랭크 (0 ~ 6 표, 트리별 랭크의 ln을 몫으로 가중합 · lopec 랭크 조절은 세 트리를 같은 값으로)
         double factor{ NO_CHANGE_FACTOR };  // 배율 초기값 (변화 없음)
-        const std::span<const double> ranks{ Data::GetPassiveRankRatios() };  // 랭크 배율 표
+        const bool isSupporter{ IsSupporter(current.m_extra) };  // 서포터 표를 쓸지
+        const std::span<const double> ranks{ isSupporter ? Supporter::GetPassiveRankRatios() : Data::GetPassiveRankRatios() };  // 역할별 랭크 배율 표
         const std::span<const double> shares{ Data::GetPassiveRankTreeShares() };  // 트리별 몫 (진화 · 깨달음 · 도약)
         const auto rankRatio{ [&ranks](int rank) { return ranks.empty() ? FULL_PASSIVE_RATIO : ranks[static_cast<std::size_t>(std::clamp(rank, Models::MIN_VALUE, static_cast<int>(ranks.size()) - 1))]; } };  // 랭크를 표 범위 안으로 제한해 배율 조회 (표가 없으면 최대 취급)
         const auto treeRankRatio{ [&rankRatio, &shares](const Models::ArkPassiveState& state)  // 트리별 랭크 → 효과 랭크 배율
@@ -446,13 +536,23 @@ namespace LostArkMultiTool::Core  // 코어 네임스페이스 시작
         const double toEnlightenmentRank{ rankRatio(to.m_treeRanks[PASSIVE_ENLIGHTENMENT_TREE]) };  // 목표 깨달음 트리 랭크 배율 (상호작용용)
 
         // 깨달음 포인트 구성 (+ 랭크와 둘 다 최대가 아닐 때 상호작용)
-        const std::span<const Data::KeyedValue> enlightenments{ Data::GetEnlightenmentRatios() };  // 깨달음 구성 배율 표
+        const std::span<const Data::KeyedValue> enlightenments{ isSupporter ? Supporter::GetEnlightenmentRatios() : Data::GetEnlightenmentRatios() };  // 역할별 깨달음 구성 배율 표
         const Data::KeyedValue* fromEnlightenment{ Data::FindKeyed(enlightenments, from.m_enlightenment) };  // 현재 구성 표 값
         const Data::KeyedValue* toEnlightenment{ Data::FindKeyed(enlightenments, to.m_enlightenment) };  // 목표 구성 표 값
         if (fromEnlightenment != nullptr && toEnlightenment != nullptr && fromEnlightenment->m_value > 0.0 && fromRank > 0.0)  // 두 구성이 모두 표에 있고 값이 양수일 때만
         {
             factor *= toEnlightenment->m_value / fromEnlightenment->m_value;  // 깨달음 구성 비율 반영
-            factor *= std::exp(GetPassiveInteractionLn(toEnlightenmentRank, toEnlightenment->m_value) - GetPassiveInteractionLn(fromEnlightenmentRank, fromEnlightenment->m_value));  // 상호작용 ln 차이 반영 (깨달음 트리 랭크 기준, lopec 측정)
+            factor *= std::exp(GetPassiveInteractionLn(toEnlightenmentRank, toEnlightenment->m_value, isSupporter) - GetPassiveInteractionLn(fromEnlightenmentRank, fromEnlightenment->m_value, isSupporter));  // 상호작용 ln 차이 반영 (역할별, 깨달음 트리 랭크 기준, lopec 측정)
+        }
+
+        // 서포터: 진화 · 깨달음 레벨 (도약 레벨은 효과 없음)
+        if (isSupporter)
+        {
+            const Supporter::SupporterPassiveSlopes& supporterSlopes{ Supporter::GetPassiveSlopes() };  // 서포터 트리 레벨 기울기
+            factor *= GetLevelRatio(supporterSlopes.m_evolution, to.m_levels[PASSIVE_EVOLUTION_TREE]) / GetLevelRatio(supporterSlopes.m_evolution, from.m_levels[PASSIVE_EVOLUTION_TREE]);  // 진화 트리 레벨 비율
+            factor *= GetLevelRatio(supporterSlopes.m_enlightenment, to.m_levels[PASSIVE_ENLIGHTENMENT_TREE]) / GetLevelRatio(supporterSlopes.m_enlightenment, from.m_levels[PASSIVE_ENLIGHTENMENT_TREE]);  // 깨달음 트리 레벨 비율
+            factor *= GetLevelRatio(supporterSlopes.m_leap, to.m_levels[PASSIVE_LEAP_TREE]) / GetLevelRatio(supporterSlopes.m_leap, from.m_levels[PASSIVE_LEAP_TREE]);  // 도약 트리 레벨 비율 (기울기 0 = 1)
+            return factor;  // 서포터 배율 반환
         }
 
         // 깨달음 · 도약 레벨 (진화 레벨은 효과 없음)

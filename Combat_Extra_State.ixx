@@ -13,7 +13,7 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
     inline constexpr std::size_t BOOK_COUNT{ 5 };                 // 각인서(유물 각인) 수
     inline constexpr std::size_t AVATAR_SLOT_COUNT{ 4 };          // 무기 · 머리 · 상의 · 하의
     inline constexpr std::size_t ARK_CORE_COUNT{ 6 };             // 질서 해 · 달 · 별, 혼돈 해 · 달 · 별
-    inline constexpr std::size_t ARK_GEM_EFFECT_COUNT{ 3 };       // 공격력 · 추가 피해 · 보스 피해
+    inline constexpr std::size_t ARK_GEM_EFFECT_COUNT{ 6 };       // 공격력 · 추가 피해 · 보스 피해 (딜러) + 낙인력 · 아군 공격 강화 · 아군 피해 강화 (서포터)
     inline constexpr std::size_t PASSIVE_TREE_COUNT{ 3 };         // 진화 · 깨달음 · 도약
 
     // ===== 범위 =====
@@ -29,7 +29,14 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
     // ===== 문구 =====
     inline constexpr std::string_view NONE_TEXT{ "없음" };        // 옵션이 비어 있음
     inline constexpr std::string_view FULL_ENLIGHTENMENT{ "상급 + 일반3" };   // 깨달음 포인트 최대 구성 (= 배율 1)
-    inline constexpr std::array<std::string_view, ARK_GEM_EFFECT_COUNT> ARK_GEM_EFFECT_NAMES{ "공격력", "추가 피해", "보스 피해" };  // 아크 젬 효과 이름 표 (배열 번호 = 효과 번호)
+    inline constexpr std::array<std::string_view, ARK_GEM_EFFECT_COUNT> ARK_GEM_EFFECT_NAMES{ "공격력", "추가 피해", "보스 피해", "낙인력", "아군 공격 강화", "아군 피해 강화" };  // 아크 젬 효과 이름 표 (배열 번호 = 효과 번호)
+
+    // 전투력 계산 역할 (서포터는 계수 묶음이 따로 있음)
+    enum class CombatRole
+    {
+        ROLE_DEALER,         // 딜러 (기본)
+        ROLE_SUPPORTER       // 서포터 (아크 패시브 칭호로 판별)
+    };
 
     // 아바타 등급
     enum class AvatarGrade
@@ -129,6 +136,7 @@ export namespace LostArkMultiTool::Models  // 모델 네임스페이스 내보�
         std::optional<double> m_vambraceGradeRate;                           // 완갑 한계 해방 추가 효과 기본 공격력 (0.02 = 2%, API에서 읽음, 모르면 등급 표로 추정)
         std::optional<VambraceGrade> m_vambraceGrade;                        // 완갑 등급 (현재 = API 등급, 목표 = 사용자가 고름, 모르면 단계로 추정)
         bool m_isEstherWeapon{};                                             // 에스더 무기 (완갑 · 무기 공격력 옵션 계수 선택용)
+        CombatRole m_role{ CombatRole::ROLE_DEALER };                        // 딜러 · 서포터 (아크 패시브 칭호로 판별, 현재 · 목표 같음)
         [[nodiscard]] bool operator==(const ExtraState& other) const = default;  // 모든 멤버가 같으면 같은 상태 (기본 비교 연산)
     };
 

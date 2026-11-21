@@ -20,6 +20,7 @@ export namespace LostArkMultiTool::Services  // 서비스 네임스페이스 내
         std::string m_characterName;                                                    // UTF-8
         std::array<std::optional<CombatGearTarget>, Models::GEAR_PART_COUNT> m_gearTargets;   // 부위별 목표 (없으면 현재 유지)
         std::optional<int> m_weaponQualityTarget;                                       // 무기 품질 목표
+        std::optional<int> m_armorQualityTarget;                                        // 서포터 방어구 품질 목표 (5부위 공통)
         std::vector<int> m_gemTargets;                                                  // 보석별 목표 레벨 (장착 순서, 비어 있으면 현재 유지)
         std::optional<Models::ExtraState> m_extraTarget;                                // 악세서리 · 팔찌 · 스톤 · 각인서 · 아바타 · 아크 그리드 · 아크 패시브 · 완갑 목표 (없으면 현재 유지)
     };

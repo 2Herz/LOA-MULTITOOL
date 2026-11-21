@@ -1015,6 +1015,12 @@
     <ClCompile Include="Combat_Coefficient_Data.cpp">
       <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
     </ClCompile>
+    <ClCompile Include="Combat_Supporter_Data.ixx">
+      <Filter>2. 모델. 데이터	. 전투력</Filter>
+    </ClCompile>
+    <ClCompile Include="Combat_Supporter_Data.cpp">
+      <Filter>2. 모델. 데이터	. 전투력</Filter>
+    </ClCompile>
     <ClCompile Include="Combat_State.ixx">
       <Filter>2. 모델\1. 데이터\11. 전투력</Filter>
     </ClCompile>

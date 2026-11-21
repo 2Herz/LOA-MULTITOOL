@@ -34,6 +34,7 @@ export namespace LostArkMultiTool::Views
 
         // ===== 검색 조건 =====
         [[nodiscard]] int GetCategoryCode() const noexcept;
+        [[nodiscard]] bool IsSupporter() const noexcept;                 // 역할 칸이 서포터인지 (유효옵션 목록이 달라짐)
         [[nodiscard]] std::optional<int> GetMinQuality() const noexcept;   // nullopt = 품질 전체
         [[nodiscard]] std::optional<int> GetMinMainStat() const;           // 주스탯(힘 · 민첩 · 지능) 최소 수치 (비었거나 0이면 nullopt)
 
@@ -81,6 +82,8 @@ export namespace LostArkMultiTool::Views
         UI::ControlHost m_host;
 
         // 부품은 m_host가 소유 (참조는 배치 · 값 설정용, 추가 순서 = Tab 이동 순서)
+        UI::Label& m_roleLabel;          // "역할"
+        UI::ComboBox& m_roleBox;         // 딜러 · 서포터
         UI::Label& m_categoryLabel;
         UI::ComboBox& m_categoryBox;
         UI::Label& m_qualityLabel;

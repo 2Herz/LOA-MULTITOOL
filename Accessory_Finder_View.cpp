@@ -80,6 +80,10 @@ namespace LostArkMultiTool::Views
 
         // ===== 글자 =====
         constexpr std::wstring_view CATEGORY_LABEL_TEXT{ L"분류" };
+        constexpr std::wstring_view ROLE_LABEL_TEXT{ L"역할" };   // 역할 칸 이름
+        constexpr std::size_t ROLE_COUNT{ 2 };   // 역할 선택지 수
+        constexpr std::array<std::wstring_view, ROLE_COUNT> ROLE_ITEMS{ L"딜러", L"서포터" };   // 역할 선택지 (첫 항목 = 기본)
+        constexpr std::size_t SUPPORTER_ROLE_INDEX{ 1 };   // 서포터 선택지 번호
         constexpr std::wstring_view QUALITY_LABEL_TEXT{ L"품질" };
         constexpr std::wstring_view SEARCH_TEXT{ L"검색" };
         constexpr std::wstring_view SEARCHING_BUTTON_TEXT{ L"검색 중…" };   // 조회 중 버튼 글자
@@ -123,6 +127,7 @@ namespace LostArkMultiTool::Views
         constexpr float LABEL_GAP{ 4.0f };
         constexpr float SHORT_LABEL_WIDTH{ 30.0f };    // "부위" · "품질"
         constexpr float CATEGORY_BOX_WIDTH{ 90.0f };
+        constexpr float ROLE_BOX_WIDTH{ 80.0f };       // 역할 칸 너비
         constexpr float QUALITY_BOX_WIDTH{ 100.0f };
         constexpr float SEARCH_BUTTON_WIDTH{ 90.0f };
         constexpr float MAIN_STAT_LABEL_WIDTH{ 42.0f };   // "주스탯"
@@ -250,7 +255,9 @@ namespace LostArkMultiTool::Views
     }
 
     AccessoryFinderView::AccessoryFinderView(Core::Platform& platform)
-        : m_categoryLabel{ m_host.Emplace<UI::Label>(std::wstring{ CATEGORY_LABEL_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
+        : m_roleLabel{ m_host.Emplace<UI::Label>(std::wstring{ ROLE_LABEL_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }   // 역할 이름
+        , m_roleBox{ m_host.Emplace<UI::ComboBox>() }   // 역할 선택 칸
+        , m_categoryLabel{ m_host.Emplace<UI::Label>(std::wstring{ CATEGORY_LABEL_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
         , m_categoryBox{ m_host.Emplace<UI::ComboBox>() }
         , m_qualityLabel{ m_host.Emplace<UI::Label>(std::wstring{ QUALITY_LABEL_TEXT }, BAR_TEXT_STYLE, Theme::TEXT_COLOR) }
         , m_qualityBox{ m_host.Emplace<UI::ComboBox>() }
@@ -271,6 +278,12 @@ namespace LostArkMultiTool::Views
         m_categoryBox.SetOnSelectionChanged([this]
         {
             if (const auto onCategoryChanged{ m_onCategoryChanged }) onCategoryChanged();
+        });
+        m_roleBox.SetItems(ToItems(ROLE_ITEMS));   // 딜러 · 서포터
+        m_roleBox.SetSelectedIndex(0);   // 기본 딜러
+        m_roleBox.SetOnSelectionChanged([this]   // 역할이 바뀌면 부위가 바뀐 것처럼 유효옵션을 다시 고름
+        {
+            if (const auto onCategoryChanged{ m_onCategoryChanged }) onCategoryChanged();   // 유효옵션 목록 갱신 알림
         });
         m_qualityBox.SetItems(MakeQualityItems());
         m_qualityBox.SetSelectedIndex(0);
@@ -342,6 +355,12 @@ namespace LostArkMultiTool::Views
     void AccessoryFinderView::SetOnCategoryChanged(std::function<void()> onCategoryChanged)
     {
         m_onCategoryChanged = std::move(onCategoryChanged);
+    }
+
+    // 역할 칸이 서포터인지
+    bool AccessoryFinderView::IsSupporter() const noexcept
+    {
+        return m_roleBox.GetSelectedIndex().value_or(0) == SUPPORTER_ROLE_INDEX;   // 서포터 선택지이면 참
     }
 
     int AccessoryFinderView::GetCategoryCode() const noexcept
@@ -565,7 +584,9 @@ namespace LostArkMultiTool::Views
             x += width + gapAfter;
         } };
 
-        // 첫 줄: 분류 [목걸이] 품질 [전체] 주스탯 [최소 수치] [검색] 상태
+        // 첫 줄: 역할 [딜러] 분류 [목걸이] 품질 [전체] 주스탯 [최소 수치] [검색] 상태
+        place(m_roleLabel, SHORT_LABEL_WIDTH, LABEL_GAP);   // 역할
+        place(m_roleBox, ROLE_BOX_WIDTH, GROUP_GAP);        // [딜러]
         place(m_categoryLabel, SHORT_LABEL_WIDTH, LABEL_GAP);
         place(m_categoryBox, CATEGORY_BOX_WIDTH, GROUP_GAP);
         place(m_qualityLabel, SHORT_LABEL_WIDTH, LABEL_GAP);
