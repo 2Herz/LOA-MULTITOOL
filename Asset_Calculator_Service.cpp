@@ -21,7 +21,7 @@ namespace LostArkMultiTool::Services
         {
             std::string_view m_name;
             std::size_t m_col;      // 표의 열 번호 = Core::APPConstants::MAT_KEYS 인덱스
-            bool m_isShard;         // 파편 주머니 (3000개 단위 시세)
+            bool m_isShard;         // 파편 주머니 (소 · 중 · 대 중 파편 1개가 가장 싼 값)
             bool m_isBundle;        // 묶음 판매 (묶음 개수로 나눈 시세)
         };
 
@@ -36,9 +36,13 @@ namespace LostArkMultiTool::Services
 
         constexpr double ZERO_PRICE{ 0.0 };
 
+        // 재료 1개 조회에 드는 최대 요청 수 (처음 한 번은 검색 + 상세, 이후엔 기억한 번호로 상세만)
+        constexpr int REQUESTS_PER_MATERIAL{ 2 };    // 검색 1 + 오늘 통계 1
+        constexpr int REQUESTS_PER_SHARD{ 4 };       // 검색 1 + 주머니 소 · 중 · 대 통계 3
+
         // 상위 재료 (1730 이상)
         constexpr std::array TOP_MATERIALS{
-            MaterialQuery{ .m_name = "운명의 파편 주머니(대)", .m_col = COL_SHARD, .m_isShard = true, .m_isBundle = false },
+            MaterialQuery{ .m_name = "운명의 파편 주머니", .m_col = COL_SHARD, .m_isShard = true, .m_isBundle = false },
             MaterialQuery{ .m_name = "운명의 파괴석 결정", .m_col = COL_DEST, .m_isShard = false, .m_isBundle = true },
             MaterialQuery{ .m_name = "운명의 수호석 결정", .m_col = COL_GUARD, .m_isShard = false, .m_isBundle = true },
             MaterialQuery{ .m_name = "위대한 운명의 돌파석", .m_col = COL_LEAP, .m_isShard = false, .m_isBundle = false },
@@ -119,10 +123,13 @@ namespace LostArkMultiTool::Services
         return !m_topPrices.empty() && !m_botPrices.empty();
     }
 
-    // 재료마다 거래소 요청 한 번 (상위 · 하위 재료 목록 크기의 합)
+    // 갱신 한 번에 드는 최대 거래소 요청 수 (파편은 주머니 3종, 나머지는 검색 + 통계)
     int AssetCalculationService::GetRequestCount() const noexcept
     {
-        return static_cast<int>(TOP_MATERIALS.size() + BOT_MATERIALS.size());
+        int count{};   // 요청 수 합계
+        for (const MaterialQuery& material : TOP_MATERIALS) count += material.m_isShard ? REQUESTS_PER_SHARD : REQUESTS_PER_MATERIAL;
+        for (const MaterialQuery& material : BOT_MATERIALS) count += material.m_isShard ? REQUESTS_PER_SHARD : REQUESTS_PER_MATERIAL;
+        return count;
     }
 
     void AssetCalculationService::FetchMarketPrices(Core::MarketAPI& api)

@@ -275,7 +275,7 @@ namespace LostArkMultiTool::Services
         m_holdings.at(Models::RefineData::ToIndex(material)) = std::clamp(amount, 0.0, MAX_HOLDING_AMOUNT);   // 음수 · 너무 큰 값은 범위 안으로 (경계 검사)
     }
 
-    // 재료마다 거래소 시세 (최근 거래가 → 없으면 현재 최저가, 묶음은 1개 단가, 파편은 주머니 ÷ 3000)
+    // 재료마다 거래소 시세 (오늘 평균 거래가, 묶음은 1개 단가, 파편은 주머니 소 · 중 · 대 중 파편 1개가 가장 싼 값)
     std::vector<Core::RefinePriceQuote> MarketRefineSimulationService::FetchPrices(Core::MarketAPI& api) const
     {
         std::vector<Core::RefinePriceQuote> quotes;

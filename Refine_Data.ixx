@@ -70,7 +70,7 @@ export namespace LostArkMultiTool::Models::RefineData
     {
         std::string_view m_name;        // 화면 · 저장 이름 (UTF-8)
         std::string_view m_marketName;  // 거래소 검색 이름 (빈 문자열 = 조회하지 않음, 골드)
-        bool m_isShard{};               // 파편 주머니 시세 (주머니 하나 = 파편 3000개)
+        bool m_isShard{};               // 파편 주머니 시세 (소 1000 · 중 2000 · 대 3000개 중 파편 1개가 가장 싼 값)
     };
 
     // ===== 강화 단계 · 상급 재련 범위 =====

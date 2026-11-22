@@ -73,8 +73,20 @@ namespace LostArkMultiTool::Services
         constexpr int API_TIMEOUT_MS{ Core::APPConstants::API_TIMEOUT_SECONDS * Core::APPConstants::MS_PER_SECOND };
         constexpr std::size_t MARKET_CATEGORY_CODE{ 50000 };   // 거래소 재료 카테고리
         constexpr int FIRST_PAGE{ 1 };                         // 검색 첫 페이지 (거래소 · 경매장 공통)
-        constexpr double SHARD_POUCH_COUNT{ 3000.0 };          // 파편 주머니 1개당 파편 수
         constexpr double PRICE_SCALE{ 100.0 };                 // 소수 둘째 자리까지 (10^2)
+        constexpr wchar_t PATH_SEPARATOR{ L'/' };              // 상세 조회 경로 구분자 ("/markets/items/{Id}")
+
+        // 운명의 파편 주머니 3종 (이름 · 주머니 1개당 파편 수) → 파편 1개 단가가 가장 싼 주머니 기준
+        struct ShardPouch
+        {
+            std::string_view m_name;       // 거래소 아이템 이름
+            double m_shardCount;           // 주머니 1개에 든 파편 수
+        };
+        constexpr std::array SHARD_POUCHES{
+            ShardPouch{ .m_name = "운명의 파편 주머니(소)", .m_shardCount = 1000.0 },   // 소 = 1000개
+            ShardPouch{ .m_name = "운명의 파편 주머니(중)", .m_shardCount = 2000.0 },   // 중 = 2000개
+            ShardPouch{ .m_name = "운명의 파편 주머니(대)", .m_shardCount = 3000.0 }    // 대 = 3000개
+        };
 
         // ===== 응답 JSON 키 =====
         constexpr std::string_view KEY_ITEMS{ "Items" };
@@ -82,6 +94,9 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view KEY_RECENT_PRICE{ "RecentPrice" };
         constexpr std::string_view KEY_CURRENT_MIN_PRICE{ "CurrentMinPrice" };
         constexpr std::string_view KEY_BUNDLE_COUNT{ "BundleCount" };
+        constexpr std::string_view KEY_ID{ "Id" };                     // 거래소 아이템 번호 (상세 조회용)
+        constexpr std::string_view KEY_STATS{ "Stats" };               // 상세 응답의 날짜별 통계 배열
+        constexpr std::string_view KEY_AVG_PRICE{ "AvgPrice" };        // 그날 평균 거래가
         constexpr std::string_view KEY_SERVER_NAME{ "ServerName" };
         constexpr std::string_view KEY_CHARACTER_NAME{ "CharacterName" };
         constexpr std::string_view KEY_CHARACTER_CLASS_NAME{ "CharacterClassName" };
@@ -340,15 +355,15 @@ namespace LostArkMultiTool::Services
             Core::APIFormatMonitor::Report(context, "Items 배열 없음");                            // 신고 (실행 중 한 번)
         }
 
-        // 거래소 응답에서 이름이 정확히 같은 아이템 찾기 (C# FirstOrDefault와 같음)
-        const JSONValue* FindExactItem(const JSONValue& root, std::string_view itemName)
+        // 상세 응답 한 항목의 오늘 평균 거래가 (오늘 거래가 아직 없으면 가장 최근에 거래된 날의 평균가, 통계 기간 내내 없으면 nullopt)
+        std::optional<double> ComputeAveragePrice(const JSONValue& entry)
         {
-            CheckItemsArray(root, "거래소 · 경매장 검색");                                        // 형식 확인
-            for (const JSONValue& item : root.FindMember(KEY_ITEMS).GetItems())
+            for (const JSONValue& day : entry.FindMember(KEY_STATS).GetItems())   // 오늘부터 최신 날짜 순서
             {
-                if (std::string_view{ item.FindMember(KEY_NAME).GetString() } == itemName) return &item;
+                const double avgPrice{ day.FindMember(KEY_AVG_PRICE).GetNumber() };   // 그날 평균 거래가
+                if (avgPrice > 0.0) return avgPrice;                                 // 거래가 있는 가장 최근 날
             }
-            return nullptr;
+            return std::nullopt;   // 통계 기간 동안 거래 없음
         }
 
         // 문자열 또는 숫자로 온 값을 텍스트로 바꿈 (C# object → ToString과 같음, 없으면 nullopt)
@@ -395,30 +410,94 @@ namespace LostArkMultiTool::Services
         return headers;
     }
 
+    // 단가 = 오늘 평균 거래가 (파편은 주머니 3종 중 파편 1개가 가장 싼 값, 묶음은 1개 단가)
     double WinHTTPMarketAPI::GetPrice(std::string_view itemName, bool isShard, bool isBundle)
     {
-        const HTTPResponse response{ SendRequest(VERB_POST, MARKET_PATH, BuildMarketPayload(itemName)) };
-        EnsureSuccess(response, "거래소");
+        if (isShard) return GetShardPrice(itemName);   // itemName = 주머니 공통 검색어 ("운명의 파편 주머니")
 
-        const JSONValue root{ ParseJSONText(response.m_body) };
-        const JSONValue* item{ FindExactItem(root, itemName) };
-        if (item == nullptr)
+        const std::optional<std::int64_t> itemId{ FindItemId(itemName, itemName) };   // 이름 → 아이템 번호
+        if (!itemId.has_value())
         {
             throw std::runtime_error{ std::format("거래소에서 '{}' 시세를 찾을 수 없습니다.", itemName) };
         }
 
-        // 최근 거래가가 있으면 우선, 없으면 현재 최저가 (C# 원본 순서와 같음)
-        const double recentPrice{ item->FindMember(KEY_RECENT_PRICE).GetNumber() };
-        const double price{ recentPrice > 0.0 ? recentPrice : item->FindMember(KEY_CURRENT_MIN_PRICE).GetNumber() };
-        if (price <= 0.0) throw std::runtime_error{ std::format("'{}'의 유효한 시세가 없습니다.", itemName) };
-
-        if (isShard) return RoundPrice(price / SHARD_POUCH_COUNT);
-        if (!isBundle) return price;
+        const std::optional<MarketAverage> average{ GetAveragePrice(*itemId) };       // 오늘 평균 거래가
+        if (!average.has_value()) throw std::runtime_error{ std::format("'{}'의 유효한 시세가 없습니다.", itemName) };
+        if (!isBundle) return RoundPrice(average->m_price);                           // 낱개 판매 재료
 
         // 하드코딩 묶음 수량 대신 응답의 실제 BundleCount 사용
-        const int bundleCount{ static_cast<int>(item->FindMember(KEY_BUNDLE_COUNT).GetNumber()) };
-        if (bundleCount <= 0) throw std::runtime_error{ std::format("'{}'의 묶음 수량 정보가 없습니다.", itemName) };
-        return RoundPrice(price / static_cast<double>(bundleCount));
+        if (average->m_bundleCount <= 0) throw std::runtime_error{ std::format("'{}'의 묶음 수량 정보가 없습니다.", itemName) };
+        return RoundPrice(average->m_price / static_cast<double>(average->m_bundleCount));
+    }
+
+    // 파편 1개 단가 = 주머니 3종(소 · 중 · 대)의 오늘 평균 ÷ 파편 수 중 가장 싼 값 (한 종류가 없어도 나머지로 계산)
+    double WinHTTPMarketAPI::GetShardPrice(std::string_view keyword)
+    {
+        std::optional<double> cheapest;   // 지금까지 가장 싼 파편 1개 단가
+        for (const ShardPouch& pouch : SHARD_POUCHES)
+        {
+            const std::optional<std::int64_t> itemId{ FindItemId(keyword, pouch.m_name) };   // 검색어 한 번으로 3종 번호를 함께 기억
+            if (!itemId.has_value()) continue;                                              // 거래소에 없는 주머니는 건너뜀
+
+            const std::optional<MarketAverage> average{ GetAveragePrice(*itemId) };         // 주머니 오늘 평균 거래가
+            if (!average.has_value()) continue;                                             // 거래 기록이 없는 주머니도 건너뜀
+
+            const double perShard{ average->m_price / pouch.m_shardCount };                // 파편 1개 단가
+            if (!cheapest.has_value() || perShard < *cheapest) cheapest = perShard;
+        }
+
+        if (!cheapest.has_value())
+        {
+            throw std::runtime_error{ std::format("거래소에서 '{}' 시세를 찾을 수 없습니다.", keyword) };
+        }
+        return RoundPrice(*cheapest);
+    }
+
+    // 이름 → 거래소 아이템 번호 (한 번 찾은 번호는 기억해서 다음부터는 검색 요청을 생략)
+    std::optional<std::int64_t> WinHTTPMarketAPI::FindItemId(std::string_view keyword, std::string_view itemName)
+    {
+        {
+            std::scoped_lock lock{ m_itemIdMutex };
+            if (const auto found{ m_itemIds.find(std::string{ itemName }) }; found != m_itemIds.end()) return found->second;   // 기억한 번호
+        }
+
+        // 네트워크 요청은 잠금 밖에서 (다른 스레드의 조회를 오래 막지 않도록)
+        const HTTPResponse response{ SendRequest(VERB_POST, MARKET_PATH, BuildMarketPayload(keyword)) };
+        EnsureSuccess(response, "거래소");
+        const JSONValue root{ ParseJSONText(response.m_body) };
+        CheckItemsArray(root, "거래소 검색");   // 형식 확인
+
+        std::scoped_lock lock{ m_itemIdMutex };
+        for (const JSONValue& item : root.FindMember(KEY_ITEMS).GetItems())   // 검색 결과 전부 기억 (주머니 3종처럼 한 번에)
+        {
+            const double id{ item.FindMember(KEY_ID).GetNumber() };   // 아이템 번호
+            if (id <= 0.0) continue;                                  // 번호 없는 항목은 무시
+            m_itemIds.insert_or_assign(item.FindMember(KEY_NAME).GetString(), static_cast<std::int64_t>(id));
+        }
+
+        if (const auto found{ m_itemIds.find(std::string{ itemName }) }; found != m_itemIds.end()) return found->second;
+        return std::nullopt;   // 이름이 정확히 같은 아이템이 없음
+    }
+
+    // 거래소 상세 (GET /markets/items/{Id}) → 오늘 평균 거래가 + 묶음 수량
+    std::optional<WinHTTPMarketAPI::MarketAverage> WinHTTPMarketAPI::GetAveragePrice(std::int64_t itemId)
+    {
+        const std::wstring path{ std::format(L"{}{}{}", MARKET_PATH, PATH_SEPARATOR, itemId) };   // "/markets/items/66102006"
+        const HTTPResponse response{ SendRequest(VERB_GET, path, std::string{}) };
+        EnsureSuccess(response, "거래소 상세");
+        const JSONValue root{ ParseJSONText(response.m_body) };
+
+        // 응답은 배열 (거래 가능 횟수별로 항목이 나뉠 수 있음) → 평균가를 낼 수 있는 첫 항목 사용
+        const std::vector<JSONValue> single{ root };                                                     // 객체 하나로 온 경우 대비
+        const std::vector<JSONValue>& entries{ root.GetType() == JSONType::ARRAY_VALUE ? root.GetItems() : single };
+        for (const JSONValue& entry : entries)
+        {
+            const std::optional<double> price{ ComputeAveragePrice(entry) };   // 오늘 평균 거래가
+            if (!price.has_value()) continue;
+            return MarketAverage{ .m_price = *price, .m_bundleCount = static_cast<int>(entry.FindMember(KEY_BUNDLE_COUNT).GetNumber()) };
+        }
+        Core::APIFormatMonitor::Report("거래소 상세", "Stats 통계 없음");   // 형식이 바뀌었을 가능성 신고 (실행 중 한 번)
+        return std::nullopt;
     }
 
     std::vector<Models::CharacterInfo> WinHTTPMarketAPI::GetRoster(std::string_view charName)

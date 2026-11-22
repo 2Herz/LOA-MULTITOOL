@@ -50,11 +50,30 @@ export namespace LostArkMultiTool::Services
         [[nodiscard]] JSONValue SearchAuctionWithRetry(std::string_view itemName, int itemTier, int page, std::stop_token stopToken);
         [[nodiscard]] JSONValue SearchAuction(std::string_view itemName, int itemTier, int page);
 
+        // 거래소 상세 통계로 낸 오늘 평균 거래가 + 묶음 수량
+        struct MarketAverage
+        {
+            double m_price{};       // 오늘 평균 거래가 (묶음 1개 가격)
+            int m_bundleCount{};    // 묶음 1개에 든 수량
+        };
+
+        // 파편 1개 단가 (주머니 소 · 중 · 대 중 가장 싼 값)
+        [[nodiscard]] double GetShardPrice(std::string_view keyword);
+
+        // keyword로 검색해 itemName의 거래소 아이템 번호 찾기 (기억한 번호가 있으면 요청 없이 반환)
+        [[nodiscard]] std::optional<std::int64_t> FindItemId(std::string_view keyword, std::string_view itemName);
+
+        // 아이템 번호로 상세 통계 조회 → 오늘 평균 거래가 (거래 기록이 없으면 nullopt)
+        [[nodiscard]] std::optional<MarketAverage> GetAveragePrice(std::int64_t itemId);
+
         WinHTTPClient m_client;                 // WinHTTP 세션·연결 (Windows 타입은 WinHTTPClient 안에 숨겨져 있음)
         std::mutex m_headerMutex;               // SetAPIKey(UI 스레드) ↔ 요청(백그라운드 스레드) 보호
         std::wstring m_authorizationHeader;     // "authorization: Bearer <키>\r\n"
 
         mutable std::mutex m_rateMutex;         // 동시 요청의 응답 ↔ 화면 읽기 보호
         Models::RateLimitState m_rateLimit;     // 마지막으로 알아낸 호출 한도 상태 (세 툴 공용)
+
+        std::mutex m_itemIdMutex;                                   // 아이템 번호 기억표 보호 (여러 툴이 동시에 시세 조회)
+        std::unordered_map<std::string, std::int64_t> m_itemIds;    // 거래소 아이템 이름 → 번호 (검색 요청 절약)
     };
 }

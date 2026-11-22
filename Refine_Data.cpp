@@ -11,7 +11,7 @@ namespace LostArkMultiTool::Models::RefineData
             MaterialInfo{ "골드", "", false },
             MaterialInfo{ "아비도스 융화 재료", "아비도스 융화 재료", false },
             MaterialInfo{ "상급 아비도스 융화 재료", "상급 아비도스 융화 재료", false },
-            MaterialInfo{ "운명의 파편", "운명의 파편 주머니(대)", true },
+            MaterialInfo{ "운명의 파편", "운명의 파편 주머니", true },
             MaterialInfo{ "운명의 돌파석", "운명의 돌파석", false },
             MaterialInfo{ "위대한 운명의 돌파석", "위대한 운명의 돌파석", false },
             MaterialInfo{ "운명의 수호석", "운명의 수호석", false },

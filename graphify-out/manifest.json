@@ -30,15 +30,15 @@
     "semantic_hash": "fa5bddcf9818507942a8248dd456a533"
   },
   "Accessory_Finder_Manager.cpp": {
-    "mtime": 1794566325.310985,
-    "seen": 1794566354.3538291,
-    "ast_hash": "7ef95e73518740d8aa54d3dcb7cbdc6b",
+    "mtime": 1795242085.6033297,
+    "seen": 1795242288.9873047,
+    "ast_hash": "b4e8fded34a659942ed558b977d4bcd4",
     "semantic_hash": ""
   },
   "Accessory_Finder_View.cpp": {
-    "mtime": 1794800023.7779863,
-    "seen": 1794800264.7920456,
-    "ast_hash": "9bbc17614b65327246acb6ba48aeb38a",
+    "mtime": 1795242106.8321607,
+    "seen": 1795242288.987315,
+    "ast_hash": "da6f3bc389975bb09206b8baaef98021",
     "semantic_hash": ""
   },
   "Accessory_Search_Service.cpp": {
@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "Application.cpp": {
-    "mtime": 1794566049.4717748,
-    "seen": 1794566354.3538744,
-    "ast_hash": "18dc0ba003d331563b961a0224a0390e",
+    "mtime": 1795292614.1424015,
+    "seen": 1795292891.9778643,
+    "ast_hash": "dc558570aafee07d096a9774a4159db4",
     "semantic_hash": ""
   },
   "Ark_Gem_Finder_Manager.cpp": {
@@ -78,15 +78,15 @@
     "semantic_hash": "196a5515daa24b15a4b34bde691e5439"
   },
   "Asset_Calculator_Service.cpp": {
-    "mtime": 1793916534.5001295,
-    "seen": 1794002445.6220963,
-    "ast_hash": "64e74d9c5f2186cbcf167c5ed7fc29e7",
-    "semantic_hash": "64e74d9c5f2186cbcf167c5ed7fc29e7"
+    "mtime": 1795360503.4179056,
+    "seen": 1795360831.3142085,
+    "ast_hash": "f275c3b36f51cfe9a9a8f2cae7b92e26",
+    "semantic_hash": ""
   },
   "Auction_Accessory_Search_Service.cpp": {
-    "mtime": 1794144620.3935955,
-    "seen": 1794146512.2735016,
-    "ast_hash": "fe6b9b7aa2828bcf0471e2cb85e2a79b",
+    "mtime": 1795242816.6289816,
+    "seen": 1795242888.31058,
+    "ast_hash": "f624fb52951f2935c949fb87f54e76c7",
     "semantic_hash": ""
   },
   "Auction_Gem_Price_Service.cpp": {
@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "Calculator_Manager.cpp": {
-    "mtime": 1794566551.0246527,
-    "seen": 1794566561.4717789,
-    "ast_hash": "3f306e38b627f0c1e477d7dac1a6d149",
+    "mtime": 1795086877.8633943,
+    "seen": 1795087200.829687,
+    "ast_hash": "42bb5cdb787df727e17a4a5253ba4e32",
     "semantic_hash": ""
   },
   "Calculator_View.cpp": {
@@ -198,15 +198,15 @@
     "semantic_hash": "d64e2f8318ea29428fd7a99d78ca2844"
   },
   "Engraving_Finder_Manager.cpp": {
-    "mtime": 1794566416.1383078,
-    "seen": 1794566439.3276284,
-    "ast_hash": "81763d3022a479817951c774d6adb81f",
+    "mtime": 1794800583.0011053,
+    "seen": 1795086747.9283895,
+    "ast_hash": "2257943ed09a3be2d58da0b1149be7dc",
     "semantic_hash": ""
   },
   "Engraving_Finder_View.cpp": {
-    "mtime": 1794566422.0698798,
-    "seen": 1794566439.3276362,
-    "ast_hash": "f7f24f04c3ea48f321c34687c9f1cec9",
+    "mtime": 1794800560.4634278,
+    "seen": 1795086747.9284515,
+    "ast_hash": "b59e6a83af720f6e0544018f9442b19a",
     "semantic_hash": ""
   },
   "Engraving_Price_Service.cpp": {
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "Market_Refine_Simulation_Service.cpp": {
-    "mtime": 1794146710.4043038,
-    "seen": 1794146971.019,
-    "ast_hash": "e50597a3f2eaae6b43e890e80157a175",
+    "mtime": 1795360503.4164,
+    "seen": 1795360831.315411,
+    "ast_hash": "7ae110189f137864bf865168dc91fb9d",
     "semantic_hash": ""
   },
   "Message_Dialog.cpp": {
@@ -480,16 +480,16 @@
     "semantic_hash": ""
   },
   "Refine_Calculator.cpp": {
-    "mtime": 1793973933.4064894,
-    "seen": 1794002445.622172,
-    "ast_hash": "41ef1654d16863c13b8b4d6db63c7ed0",
-    "semantic_hash": "41ef1654d16863c13b8b4d6db63c7ed0"
+    "mtime": 1795088856.7841349,
+    "seen": 1795089212.7527246,
+    "ast_hash": "b41ea77882b6006d3e740dce8ef73c2c",
+    "semantic_hash": ""
   },
   "Refine_Data.cpp": {
-    "mtime": 1793972898.5858078,
-    "seen": 1794002445.622173,
-    "ast_hash": "9498c4d0204d06c8533c86430d3eb369",
-    "semantic_hash": "9498c4d0204d06c8533c86430d3eb369"
+    "mtime": 1795360372.1706243,
+    "seen": 1795360831.3157117,
+    "ast_hash": "e6c6179a03ad23c927c16bb9839ea22c",
+    "semantic_hash": ""
   },
   "Refine_Simulation_Service.cpp": {
     "mtime": 1793973687.638229,
@@ -498,15 +498,15 @@
     "semantic_hash": "975ea209b70d62be53ef6e860d57970a"
   },
   "Refine_Simulator_Manager.cpp": {
-    "mtime": 1794566338.8697767,
-    "seen": 1794566354.3546548,
-    "ast_hash": "dc6e79f0cdbf1bd63917bc03510ecd6e",
+    "mtime": 1795088890.774083,
+    "seen": 1795089212.7527542,
+    "ast_hash": "87eec16670309b0e26e5a45b475c1aad",
     "semantic_hash": ""
   },
   "Refine_Simulator_View.cpp": {
-    "mtime": 1794566315.504665,
-    "seen": 1794566354.3546627,
-    "ast_hash": "a2a8621faaff52b3b0bbf26b8238931d",
+    "mtime": 1795086930.1839209,
+    "seen": 1795087200.83046,
+    "ast_hash": "7695ce5f285759a81222010b5310661a",
     "semantic_hash": ""
   },
   "Refresh_Scheduler.cpp": {
@@ -618,9 +618,9 @@
     "semantic_hash": "3f61dc7752024d48a6d12f6e3bedd4f4"
   },
   "WinHTTP_Market_API.cpp": {
-    "mtime": 1794564549.5635042,
-    "seen": 1794565647.0602276,
-    "ast_hash": "9b3880b8351cabe1a195e1cf9dc97919",
+    "mtime": 1795360503.4118779,
+    "seen": 1795360831.3169339,
+    "ast_hash": "6bd64dc5c442822d1d337e5a5100d48d",
     "semantic_hash": ""
   },
   "main.cpp": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "tools/Crawl-LopecSimulator.py": {
-    "mtime": 1794568228.5270207,
-    "seen": 1794615926.8379526,
-    "ast_hash": "b3c2bfe45075a55d8be1861a854351b6",
+    "mtime": 1795244878.3023036,
+    "seen": 1795245457.999857,
+    "ast_hash": "e5acd82eec394abf1cb829fc243430c5",
     "semantic_hash": ""
   },
   "tools/Export-CombatData.py": {
@@ -654,21 +654,21 @@
     "semantic_hash": "3f0ef05426f8012213355e7bc02dfe98"
   },
   "README.md": {
-    "mtime": 1794800255.4246151,
-    "seen": 1794800264.7944255,
-    "ast_hash": "e4fe32ea0aa5a056d666c0353352442b",
+    "mtime": 1795360812.8626935,
+    "seen": 1795360831.3172483,
+    "ast_hash": "fd0c47a1117819dd8332fb8ec7158253",
     "semantic_hash": ""
   },
   "Visual.html": {
-    "mtime": 1794800255.8794825,
-    "seen": 1794800264.7944324,
-    "ast_hash": "dd87b5df005c4bfb728f3bde7f1ef3ff",
+    "mtime": 1795360813.552989,
+    "seen": 1795360831.3172572,
+    "ast_hash": "70e4adbdc060d666f08a7e94f076188b",
     "semantic_hash": ""
   },
   "\ud328\uce58\ub178\ud2b8.md": {
-    "mtime": 1794800255.4235544,
-    "seen": 1794800264.7944393,
-    "ast_hash": "3d833cf7f9809e374cf7c92b723071ea",
+    "mtime": 1795360812.880023,
+    "seen": 1795360831.317268,
+    "ast_hash": "2e992a5b6a83ad389c7f934b0541a68a",
     "semantic_hash": ""
   },
   "API_Key_Dialog.ixx": {
@@ -686,9 +686,9 @@
     "language": "language=.cpp"
   },
   "APP_Constants.ixx": {
-    "mtime": 1794800031.8373914,
-    "seen": 1794800264.7919714,
-    "ast_hash": "6ab9c3df1de60b575774f0dd05a09255",
+    "mtime": 1795360388.5567021,
+    "seen": 1795360831.3140154,
+    "ast_hash": "1fb178b3139fba33497716578932634d",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -707,9 +707,9 @@
     "language": "language=.cpp"
   },
   "Accessory_Finder_View.ixx": {
-    "mtime": 1794566325.2171798,
-    "seen": 1794566354.3538437,
-    "ast_hash": "89220d54453e7e76742e2899e3bf9b56",
+    "mtime": 1795242106.830152,
+    "seen": 1795242288.9873197,
+    "ast_hash": "1686fb61ce5e5c7b9c4be2721169d025",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -728,16 +728,16 @@
     "language": "language=.cpp"
   },
   "Accessory_Search_Service.ixx": {
-    "mtime": 1794144620.3592854,
-    "seen": 1794146512.273365,
-    "ast_hash": "1c6a85e15f7faa7e7d2823ebfb191bee",
+    "mtime": 1795242085.6006508,
+    "seen": 1795242288.9873395,
+    "ast_hash": "e5cf04acce93872b2e43afd9e527d210",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Application.ixx": {
-    "mtime": 1794565968.3731384,
-    "seen": 1794566354.3538783,
-    "ast_hash": "03ede14417628491786b00686ee34175",
+    "mtime": 1795292614.1424015,
+    "seen": 1795292891.9778724,
+    "ast_hash": "cc22484c7197b1c1b843e31a894d93c2",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -784,9 +784,9 @@
     "language": "language=.cpp"
   },
   "Auction_Accessory_Search_Service.ixx": {
-    "mtime": 1794144620.3991163,
-    "seen": 1794146512.2735076,
-    "ast_hash": "a41752f03b9d81ad8c660498b17a4504",
+    "mtime": 1795242085.601826,
+    "seen": 1795242288.9874303,
+    "ast_hash": "e6750d9d399aba682c60501d33391d40",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -840,9 +840,9 @@
     "language": "language=.cpp"
   },
   "Calculator_Manager.ixx": {
-    "mtime": 1794566550.6214619,
-    "seen": 1794566561.471783,
-    "ast_hash": "9cec5ff0113757481d3c5b6b53a5f638",
+    "mtime": 1795086873.52978,
+    "seen": 1795087200.829694,
+    "ast_hash": "366d05f84abe50b1a71d1a680b23e3cc",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -931,16 +931,16 @@
     "language": "language=.cpp"
   },
   "Engraving_Finder_Manager.ixx": {
-    "mtime": 1794566416.1393178,
-    "seen": 1794566439.3276324,
-    "ast_hash": "4a5628c2dacd504adb55b602aecf9de8",
+    "mtime": 1794800582.2479992,
+    "seen": 1795086747.928437,
+    "ast_hash": "f696deb701a71c85010e75b4953c6596",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Engraving_Finder_View.ixx": {
-    "mtime": 1794566273.470472,
-    "seen": 1794566354.3542087,
-    "ast_hash": "0126ccfd32ced63bc85215118e7ba4ee",
+    "mtime": 1794800536.9378085,
+    "seen": 1795086747.9284613,
+    "ast_hash": "ba0d98b9f9890a4e391e6aac74a77725",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1176,9 +1176,9 @@
     "language": "language=.cpp"
   },
   "Market_Refine_Simulation_Service.ixx": {
-    "mtime": 1794146697.5393884,
-    "seen": 1794146971.0190058,
-    "ast_hash": "dbfafc0d411c0e7506a51bceefcd4410",
+    "mtime": 1795086893.2365432,
+    "seen": 1795087200.8302515,
+    "ast_hash": "4471be2cec52896ae8d96f90c91dc9da",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1281,44 +1281,44 @@
     "language": "language=.cpp"
   },
   "Refine_Calculator.ixx": {
-    "mtime": 1793973687.638229,
-    "seen": 1794003452.2930424,
-    "ast_hash": "13fb9d83667b0c27602a04828fa803d1",
-    "semantic_hash": "13fb9d83667b0c27602a04828fa803d1",
+    "mtime": 1795088856.559386,
+    "seen": 1795089212.7527285,
+    "ast_hash": "448c08d6e3f316bb0e0474601e371fc9",
+    "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Refine_Data.ixx": {
-    "mtime": 1793973687.633509,
-    "seen": 1794003452.2931888,
-    "ast_hash": "249c0c6383c9b01c140af77e76e4a4d3",
-    "semantic_hash": "249c0c6383c9b01c140af77e76e4a4d3",
+    "mtime": 1795360379.7220454,
+    "seen": 1795360831.3157191,
+    "ast_hash": "9fee9f3575e88be6cce0e3620e1409d6",
+    "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Refine_Plan.ixx": {
-    "mtime": 1793976574.6826859,
-    "seen": 1794003452.2931929,
-    "ast_hash": "e873e56186d5b2ca38940574c9eee8a5",
-    "semantic_hash": "e873e56186d5b2ca38940574c9eee8a5",
+    "mtime": 1795088856.2722712,
+    "seen": 1795089212.7527409,
+    "ast_hash": "1908bac673f319fd13973e40ad9d960c",
+    "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Refine_Simulation_Service.ixx": {
-    "mtime": 1794146697.538102,
-    "seen": 1794146971.0191672,
-    "ast_hash": "3776d2c6f2600ff00ccf958bdda00c38",
+    "mtime": 1795086892.6279721,
+    "seen": 1795087200.8304484,
+    "ast_hash": "6c760e665d7029bad5bf09942d1fc477",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Refine_Simulator_Manager.ixx": {
-    "mtime": 1794566338.868773,
-    "seen": 1794566354.3546588,
-    "ast_hash": "38d46802f34b6f01b8535d8d1caf2b17",
+    "mtime": 1795086986.7939193,
+    "seen": 1795087200.8304563,
+    "ast_hash": "a43d6baf6b50332e70d42cd9035a9fd9",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
   "Refine_Simulator_View.ixx": {
-    "mtime": 1794566226.0427847,
-    "seen": 1794566354.3546665,
-    "ast_hash": "1e7cc8c66777357742db1a31586d2e64",
+    "mtime": 1795086929.5037646,
+    "seen": 1795087200.8304653,
+    "ast_hash": "37dc2cf2782c96a30b352066a7541da2",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1470,10 +1470,10 @@
     "language": "language=.cpp"
   },
   "WinHTTP_Market_API.ixx": {
-    "mtime": 1794065133.9083903,
-    "seen": 1794065944.1316886,
-    "ast_hash": "b0262a8fdea4501a90575828e48456af",
-    "semantic_hash": "b0262a8fdea4501a90575828e48456af",
+    "mtime": 1795360503.4143999,
+    "seen": 1795360831.316943,
+    "ast_hash": "5fc1303a9554ae136247715d547e8318",
+    "semantic_hash": "",
     "language": "language=.cpp"
   },
   "tools/Graphify-ModuleEdges.py": {
@@ -1483,9 +1483,9 @@
     "semantic_hash": "fe6b008775e0ca1e8efb1c4e4d76097a"
   },
   "Armory_Parser.cpp": {
-    "mtime": 1794564557.5277233,
-    "seen": 1794565647.058335,
-    "ast_hash": "520f5bab7f9688693bc2b5e18dc92971",
+    "mtime": 1795290621.83263,
+    "seen": 1795292013.990439,
+    "ast_hash": "3db75469ea1df4f45039ece5b3f1bb34",
     "semantic_hash": ""
   },
   "Armory_Parser.ixx": {
@@ -1502,9 +1502,9 @@
     "semantic_hash": ""
   },
   "Character_Armory.ixx": {
-    "mtime": 1794144585.416754,
-    "seen": 1794146512.2747145,
-    "ast_hash": "bf64269c75f50a5bd59fa5a01392a4a4",
+    "mtime": 1795290607.034037,
+    "seen": 1795292013.9906504,
+    "ast_hash": "90ecea71aaf23a3f699512d2eb27ce19",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1522,9 +1522,9 @@
     "language": "language=.cpp"
   },
   "Combat_Factor_Component.cpp": {
-    "mtime": 1794144585.3521643,
-    "seen": 1794146512.2748125,
-    "ast_hash": "c7f3bdfbcd06bed9216c2e3295eac318",
+    "mtime": 1795243085.1091242,
+    "seen": 1795243113.3140602,
+    "ast_hash": "71feae88c611af2c7a28d82dbfc72683",
     "semantic_hash": ""
   },
   "Combat_Factor_Component.ixx": {
@@ -1548,9 +1548,9 @@
     "language": "language=.cpp"
   },
   "Combat_Simulator_Manager.cpp": {
-    "mtime": 1794566424.6934397,
-    "seen": 1794566439.3275192,
-    "ast_hash": "c74c2a9b13aeb2585bd8cbea1feb5f04",
+    "mtime": 1795249832.9960048,
+    "seen": 1795249852.0179281,
+    "ast_hash": "667d737a0de324a64d1b871ccdbe7625",
     "semantic_hash": ""
   },
   "Combat_Simulator_Manager.ixx": {
@@ -1561,15 +1561,15 @@
     "language": "language=.cpp"
   },
   "Combat_Simulator_Store.cpp": {
-    "mtime": 1794553568.16116,
-    "seen": 1794561169.8901694,
-    "ast_hash": "a80b9f75e3c24b67b2cf24fa9923a2b3",
+    "mtime": 1795243085.1216133,
+    "seen": 1795243113.314241,
+    "ast_hash": "464ff81311f264731456fe6520258d30",
     "semantic_hash": ""
   },
   "Combat_Simulator_Store.ixx": {
-    "mtime": 1794144585.4273217,
-    "seen": 1794146512.2748597,
-    "ast_hash": "e5045ce0251fd63603e575e52caea7f2",
+    "mtime": 1795243085.1176276,
+    "seen": 1795243113.3142517,
+    "ast_hash": "1cfca70684bc0d4726489bb13443e517",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1593,9 +1593,9 @@
     "semantic_hash": ""
   },
   "Combat_State.ixx": {
-    "mtime": 1794144585.432616,
-    "seen": 1794146512.2748868,
-    "ast_hash": "fbbc208ddede6069e850436a16fdca4c",
+    "mtime": 1795249832.9930153,
+    "seen": 1795249852.0179753,
+    "ast_hash": "94a16963cb5bd0268806ae9c6cc54ce4",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1606,9 +1606,9 @@
     "semantic_hash": ""
   },
   "Combat_Extra_Component.cpp": {
-    "mtime": 1794563011.7579842,
-    "seen": 1794563138.8620534,
-    "ast_hash": "59261411aa32311de91cabeefbecfb73",
+    "mtime": 1795249833.0057766,
+    "seen": 1795249852.0177433,
+    "ast_hash": "f265bbda2c1bb0ef442a78d186c62c11",
     "semantic_hash": ""
   },
   "Combat_Extra_Component.ixx": {
@@ -1619,9 +1619,9 @@
     "language": "language=.cpp"
   },
   "Combat_Extra_Editor.cpp": {
-    "mtime": 1794553568.134205,
-    "seen": 1794561169.8901007,
-    "ast_hash": "1dbfc8f5d60b69ed91823f8c8e2a15ef",
+    "mtime": 1795241873.1866844,
+    "seen": 1795242288.9875543,
+    "ast_hash": "46da5146c8dd7b45d7de16b19584a1ad",
     "semantic_hash": ""
   },
   "Combat_Extra_Editor.ixx": {
@@ -1638,16 +1638,16 @@
     "semantic_hash": ""
   },
   "Combat_Extra_State.ixx": {
-    "mtime": 1794553568.130186,
-    "seen": 1794561169.890122,
-    "ast_hash": "462aec4b3a539f6a6e25e00ab1af309b",
+    "mtime": 1795241857.5835788,
+    "seen": 1795242288.9875672,
+    "ast_hash": "488e78dec1726d1948200b83340496e2",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
   "\uc694\uc57d.pdf": {
-    "mtime": 1794621782.3420963,
-    "seen": 1794621914.386732,
-    "ast_hash": "0ba97ba371f86d3708725214b49c4ece",
+    "mtime": 1795292881.6577265,
+    "seen": 1795292891.9798572,
+    "ast_hash": "6ecb88348e0f5eff4ed46698d66e1fe3",
     "semantic_hash": ""
   },
   "App_Logger.cpp": {
@@ -1677,9 +1677,9 @@
     "language": "language=.cpp"
   },
   "JSON_Price_History_Repository.cpp": {
-    "mtime": 1794563267.1692798,
-    "seen": 1794563292.414843,
-    "ast_hash": "d90b477fa68d83d79314f54d8556d92f",
+    "mtime": 1794800522.1699247,
+    "seen": 1795086747.930087,
+    "ast_hash": "16158bc1957a590c95768860ed6c119b",
     "semantic_hash": ""
   },
   "JSON_Price_History_Repository.ixx": {
@@ -1690,15 +1690,15 @@
     "language": "language=.cpp"
   },
   "Price_History.cpp": {
-    "mtime": 1794563267.157232,
-    "seen": 1794563292.4151754,
-    "ast_hash": "705d826c5b399818881270ed6226480b",
+    "mtime": 1794800521.5053456,
+    "seen": 1795086747.9326353,
+    "ast_hash": "7c22e8d6cb1c8701c853a771667ab7d4",
     "semantic_hash": ""
   },
   "Price_History.ixx": {
-    "mtime": 1794563267.154707,
-    "seen": 1794563292.4151835,
-    "ast_hash": "736b44fadcec16ee62a116667b8e43d0",
+    "mtime": 1794800506.1725366,
+    "seen": 1795086747.932834,
+    "ast_hash": "bc6883ee02e18a59ba237c9b7f1a5a10",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
@@ -1742,9 +1742,9 @@
     "language": "language=.cpp"
   },
   "Self_Test.cpp": {
-    "mtime": 1794755729.7627487,
-    "seen": 1794755868.8893702,
-    "ast_hash": "c8179dcc02e3c722ac091ab9b154846b",
+    "mtime": 1795291665.3466916,
+    "seen": 1795292013.9936576,
+    "ast_hash": "d5c3b8f36c892f4d41c1df4b8261085e",
     "semantic_hash": ""
   },
   "Self_Test.ixx": {
@@ -1793,28 +1793,165 @@
     "semantic_hash": ""
   },
   "Combat_Regression.cpp": {
-    "mtime": 1794617559.8408911,
-    "seen": 1794617672.8285327,
-    "ast_hash": "b8ab263e8fea3ad4557373a3d6dd7483",
+    "mtime": 1795250340.9164164,
+    "seen": 1795250390.9239945,
+    "ast_hash": "d6871ad6a74368eadc65d9bd644445ba",
     "semantic_hash": ""
   },
   "Combat_Regression.ixx": {
-    "mtime": 1794617420.4777217,
-    "seen": 1794617672.8285398,
-    "ast_hash": "f4e68df31ea9b0f70c5122e4c6bc4b5f",
+    "mtime": 1795242253.5424843,
+    "seen": 1795242288.9875932,
+    "ast_hash": "d298988a42622a97d81aa4b554721613",
     "semantic_hash": "",
     "language": "language=.cpp"
   },
   "tools/Fetch-RegressionArmory.py": {
-    "mtime": 1794616672.3944592,
-    "seen": 1794617672.8298717,
-    "ast_hash": "7b94221f30b8caba1f24560457c6d8f0",
+    "mtime": 1795094732.9708793,
+    "seen": 1795095001.9945154,
+    "ast_hash": "9c080b1c54aab2bd3ccfd76ef4e96c8d",
     "semantic_hash": ""
   },
   "resource.h": {
     "mtime": 1794755977.689385,
     "seen": 1794799949.6533685,
     "ast_hash": "332418538fe7723621cde88880df981b",
+    "semantic_hash": ""
+  },
+  "tools/Pick-LopecSamples.py": {
+    "mtime": 1795094403.8416896,
+    "seen": 1795094484.6932077,
+    "ast_hash": "ad5521de5c0015dcc371a460370d3b06",
+    "semantic_hash": ""
+  },
+  "tools/Merge-LopecResults.py": {
+    "mtime": 1795094602.0440755,
+    "seen": 1795095001.994535,
+    "ast_hash": "547deb76d3927db99edce26a0faadda0",
+    "semantic_hash": ""
+  },
+  "docs/images/01_bound_material.png": {
+    "mtime": 1795188034.9880633,
+    "seen": 1795204776.2485483,
+    "ast_hash": "6a0f06e5c1faa33cfdd425440d160f5c",
+    "semantic_hash": ""
+  },
+  "docs/images/02_jewel_market.png": {
+    "mtime": 1795188035.2622044,
+    "seen": 1795204776.2485528,
+    "ast_hash": "40d1658ef17b537819e45c293f842e9e",
+    "semantic_hash": ""
+  },
+  "docs/images/03_paradise_tracker.png": {
+    "mtime": 1795188035.5327885,
+    "seen": 1795204776.2485573,
+    "ast_hash": "440bc7c2180596475f0b96159f7920b4",
+    "semantic_hash": ""
+  },
+  "docs/images/04_engraving_market.png": {
+    "mtime": 1795188035.8311238,
+    "seen": 1795204776.2485611,
+    "ast_hash": "d6d43790d3d84bba03a874fe209625ec",
+    "semantic_hash": ""
+  },
+  "docs/images/05_accessory_finder.png": {
+    "mtime": 1795188036.0787554,
+    "seen": 1795204776.2485647,
+    "ast_hash": "7171b610fd62ccd1af6a692f9adc5f2b",
+    "semantic_hash": ""
+  },
+  "docs/images/06_honing_book.png": {
+    "mtime": 1795188036.3067062,
+    "seen": 1795204776.2485685,
+    "ast_hash": "2dd3527646ee93a814022b2a78b208c0",
+    "semantic_hash": ""
+  },
+  "docs/images/07_gem_market.png": {
+    "mtime": 1795188036.5602815,
+    "seen": 1795204776.2485723,
+    "ast_hash": "9375d138fa7abd183b2868c15183e30c",
+    "semantic_hash": ""
+  },
+  "docs/images/08_combat_simulator.png": {
+    "mtime": 1795188036.8289628,
+    "seen": 1795204776.2485762,
+    "ast_hash": "d03dee89fed13992d3dd6caf304911be",
+    "semantic_hash": ""
+  },
+  "docs/images/09_honing_simulator.png": {
+    "mtime": 1795188037.0859473,
+    "seen": 1795204776.24858,
+    "ast_hash": "f52f7047c61fbe2b31ca92e6732548b2",
+    "semantic_hash": ""
+  },
+  "Combat_Supporter_Data.cpp": {
+    "mtime": 1795249833.0037832,
+    "seen": 1795249852.0179818,
+    "ast_hash": "8d2e1c0e70d304758588f63ec60bb723",
+    "semantic_hash": ""
+  },
+  "Combat_Supporter_Data.ixx": {
+    "mtime": 1795249833.0017872,
+    "seen": 1795249852.0179877,
+    "ast_hash": "a57f81ae5f73fe5523cc3bad70a57b71",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Transfer_Calculator.cpp": {
+    "mtime": 1795291231.0249007,
+    "seen": 1795292013.993925,
+    "ast_hash": "97231cb632b4a6b7362d9d3ad4686141",
+    "semantic_hash": ""
+  },
+  "Transfer_Calculator.ixx": {
+    "mtime": 1795291231.0060754,
+    "seen": 1795292013.993933,
+    "ast_hash": "5284bea31a86476c766e1a50019c40f4",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Transfer_Data.cpp": {
+    "mtime": 1795291879.0227084,
+    "seen": 1795292013.9939406,
+    "ast_hash": "d502f4720c6e4e7123a4780cc64fe649",
+    "semantic_hash": ""
+  },
+  "Transfer_Data.ixx": {
+    "mtime": 1795291879.0237048,
+    "seen": 1795292013.9939466,
+    "ast_hash": "a8cc218e5087a766219cec0c4e57a86c",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Transfer_Manager.cpp": {
+    "mtime": 1795338535.1152258,
+    "seen": 1795338853.371768,
+    "ast_hash": "83842d159ce4492704c8d4f95b56fb15",
+    "semantic_hash": ""
+  },
+  "Transfer_Manager.ixx": {
+    "mtime": 1795291231.0112586,
+    "seen": 1795292013.993959,
+    "ast_hash": "bc7938f5945f83ae118505647f07f881",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "Transfer_View.cpp": {
+    "mtime": 1795292614.1414044,
+    "seen": 1795292891.979651,
+    "ast_hash": "db4a9a3bb79f0e8ddfb0b7b3099b5bbd",
+    "semantic_hash": ""
+  },
+  "Transfer_View.ixx": {
+    "mtime": 1795291231.0149274,
+    "seen": 1795292013.99421,
+    "ast_hash": "836628949e2b5cabb0d0ab142b088502",
+    "semantic_hash": "",
+    "language": "language=.cpp"
+  },
+  "docs/images/10_season2_transfer.png": {
+    "mtime": 1795292864.1899009,
+    "seen": 1795292891.9799323,
+    "ast_hash": "d2ce6b15a69e8dd952018a5912037f7e",
     "semantic_hash": ""
   }
 }
