@@ -47,6 +47,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view DEALER_TEXT{ L"딜러" };       // 딜러
         constexpr std::wstring_view SUPPORTER_TEXT{ L"서포터" };  // 서포터
         constexpr std::wstring_view LEVEL_FORMAT{ L"{:.2f}" };    // 평균 레벨
+        constexpr std::wstring_view LEVEL_DELTA_FORMAT{ L"{:.2f} ({:+.2f})" };   // 이관 뒤 평균 + 지금 대비 상승/하락 ("1785.00 (+105.00)")
         constexpr std::wstring_view SCROLL_SUMMARY_FORMAT{ L"{}등급" };   // 최고 주문서
         constexpr std::wstring_view NO_SCROLL_TEXT{ L"대상 없음" };       // 주문서 대상 없음
         constexpr std::wstring_view GEM_SUMMARY_FORMAT{ L"성휘 2Lv {} · 1Lv {}" };   // 성휘 요약
@@ -373,7 +374,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         if (m_result.has_value())   // 결과가 있으면
         {
             summary.m_currentLevel = std::format(LEVEL_FORMAT, m_result->m_currentAverageLevel);     // 지금 평균
-            summary.m_transferLevel = std::format(LEVEL_FORMAT, m_result->m_transferAverageLevel);   // 이관 뒤 평균
+            const double levelDelta{ m_result->m_transferAverageLevel - m_result->m_currentAverageLevel };   // 지금 대비 증감 (양수 상승 · 음수 하락)
+            summary.m_transferLevel = std::format(LEVEL_DELTA_FORMAT, m_result->m_transferAverageLevel, levelDelta);   // 이관 뒤 평균 (증감)
             summary.m_scroll = m_result->m_bestScrollGrade.has_value() ? std::format(SCROLL_SUMMARY_FORMAT, *m_result->m_bestScrollGrade) : std::wstring{ NO_SCROLL_TEXT };   // 최고 주문서
             summary.m_gem = std::format(GEM_SUMMARY_FORMAT, m_result->m_gems.m_starTwoCount, m_result->m_gems.m_starOneCount);   // 성휘
         }
