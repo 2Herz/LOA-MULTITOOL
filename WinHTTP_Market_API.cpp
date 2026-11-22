@@ -74,6 +74,7 @@ namespace LostArkMultiTool::Services
         constexpr std::size_t MARKET_CATEGORY_CODE{ 50000 };   // 거래소 재료 카테고리
         constexpr int FIRST_PAGE{ 1 };                         // 검색 첫 페이지 (거래소 · 경매장 공통)
         constexpr double PRICE_SCALE{ 100.0 };                 // 소수 둘째 자리까지 (10^2)
+        constexpr double SHARD_PRICE_SCALE{ 10000.0 };         // 파편 1개 단가는 소수 넷째 자리까지 (10^4, 0.0571처럼 작은 값의 오차 줄이기)
         constexpr wchar_t PATH_SEPARATOR{ L'/' };              // 상세 조회 경로 구분자 ("/markets/items/{Id}")
 
         // 운명의 파편 주머니 3종 (이름 · 주머니 1개당 파편 수) → 파편 1개 단가가 가장 싼 주머니 기준
@@ -234,10 +235,10 @@ namespace LostArkMultiTool::Services
             return value.GetType() == JSONType::NUMBER_VALUE ? value.GetNumber() : 0.0;
         }
 
-        // C# Math.Round(value, 2)와 같이 짝수 반올림 (std::nearbyint의 기본 반올림 모드)
-        double RoundPrice(double value) noexcept
+        // C# Math.Round(value, 자리수)와 같이 짝수 반올림 (std::nearbyint의 기본 반올림 모드, 기본은 소수 둘째 자리)
+        double RoundPrice(double value, double scale = PRICE_SCALE) noexcept
         {
-            return std::nearbyint(value * PRICE_SCALE) / PRICE_SCALE;
+            return std::nearbyint(value * scale) / scale;
         }
 
         // UTF-8 글자 중간에서 자르지 않도록 maxLength 이하의 글자 경계 위치를 찾음
@@ -450,7 +451,7 @@ namespace LostArkMultiTool::Services
         {
             throw std::runtime_error{ std::format("거래소에서 '{}' 시세를 찾을 수 없습니다.", keyword) };
         }
-        return RoundPrice(*cheapest);
+        return RoundPrice(*cheapest, SHARD_PRICE_SCALE);   // 파편 1개 단가는 소수 넷째 자리까지
     }
 
     // 이름 → 거래소 아이템 번호 (한 번 찾은 번호는 기억해서 다음부터는 검색 요청을 생략)

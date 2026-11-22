@@ -40,6 +40,8 @@ namespace LostArkMultiTool::Views
         constexpr float MATERIAL_COLUMN_WEIGHT{ 1.0f };
 
         constexpr int PRICE_DECIMALS{ 2 };               // 원본 단가 "N2"
+        constexpr int SHARD_PRICE_DECIMALS{ 4 };         // 운명의 파편 단가는 소수 넷째 자리까지 (0.0571처럼 작은 값)
+        constexpr std::size_t SHARD_MATERIAL_INDEX{ 1 }; // MAT_KEYS의 "Shard" 열 번호
         constexpr int AMOUNT_DECIMALS{ 0 };              // 원본 수량 · 가치 "N0"
 
         // ===== 글자 =====
@@ -246,16 +248,17 @@ namespace LostArkMultiTool::Views
     {
         CheckMaterialIndex(materialIndex);
 
-        std::wstring text{ Core::NumberFormat::FormatNumber(current, PRICE_DECIMALS) };
+        const int decimals{ materialIndex == SHARD_MATERIAL_INDEX ? SHARD_PRICE_DECIMALS : PRICE_DECIMALS };   // 파편만 넷째 자리
+        std::wstring text{ Core::NumberFormat::FormatNumber(current, decimals) };
         Core::Color textColor{ Theme::TEXT_COLOR };
         if (diff > 0.0)
         {
-            text += std::format(L" ({}{})", UP_MARK, Core::NumberFormat::FormatNumber(diff, PRICE_DECIMALS));
+            text += std::format(L" ({}{})", UP_MARK, Core::NumberFormat::FormatNumber(diff, decimals));
             textColor = Theme::UP_TEXT_COLOR;
         }
         else if (diff < 0.0)
         {
-            text += std::format(L" ({}{})", DOWN_MARK, Core::NumberFormat::FormatNumber(std::abs(diff), PRICE_DECIMALS));
+            text += std::format(L" ({}{})", DOWN_MARK, Core::NumberFormat::FormatNumber(std::abs(diff), decimals));
             textColor = Theme::DOWN_TEXT_COLOR;
         }
 
