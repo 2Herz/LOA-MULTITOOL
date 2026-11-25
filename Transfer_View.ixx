@@ -31,7 +31,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         TONE_LABEL,        // 왼쪽 이름 칸 (굵게)
         TONE_GRADE,        // 등급 색 (m_gradeName)
         TONE_HIGHLIGHT,    // 강조 (이관 결과 · 좋은 등급)
-        TONE_MUTED,        // 흐린 글자 (대상 아님 · 공지 대기)
+        TONE_MUTED,        // 흐린 글자 (대상 아님 · 안내 문구)
         TONE_HEADER        // 구분 제목 행
     };
 

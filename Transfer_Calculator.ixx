@@ -18,7 +18,7 @@ export namespace LostArkMultiTool::Services  // 서비스 네임스페이스 내
         std::optional<Models::TransferData::GearTransferRow> m_target;            // 이관 장비 (표 밖이면 nullopt)
         std::optional<Models::TransferData::EstherTransferRow> m_esther;          // 에스더 무기 슬롯이면 엘라 단계 이관
         std::optional<int> m_slotRefine;              // 슬롯 재련 단계 (장비 쪽만, 모르면 nullopt)
-        int m_advancedRefine{};                       // 지금 상급 재련 단계 (처리 방식은 공지 대기)
+        int m_advancedRefine{};                       // 지금 상급 재련 단계 (2부에서 시스템 삭제, 표시용)
         [[nodiscard]] int GetTargetLevel() const noexcept;   // 이관 아이템 레벨 (에스더 우선, 표 밖이면 0)
     };
 

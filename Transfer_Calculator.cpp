@@ -275,7 +275,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             else if (own != nullptr)   // 무기 · 방어구: 지금 재련 단계가 같은 슬롯으로
             {
                 slot.m_slotRefine = own->m_enhancement;           // 슬롯 재련
-                slot.m_advancedRefine = own->m_advancedEnhancement;   // 상급 재련 (처리 방식 공지 대기)
+                slot.m_advancedRefine = own->m_advancedEnhancement;   // 상급 재련 (2부에서 시스템 삭제, 지금 단계 표시용)
             }
             else if (pair.m_target == VAMBRACE_SLOT) slot.m_slotRefine = armory.m_extra.m_vambraceLevel;   // 완갑 재련 단계
             else if (pair.m_isNewSlot) slot.m_slotRefine = Data::NEW_SLOT_REFINE;   // 허리띠는 0부터

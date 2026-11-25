@@ -46,7 +46,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             { L"EQUIPMENT", L"장비 이관 · 슬롯 재련", L"부위별 아이템 레벨 기준", ARMOR_HEADERS, ARMOR_WEIGHTS },
             { L"ACCESSORY SLOT", L"장신구 슬롯 장비", L"짝 장비 레벨 기준", ACCESSORY_HEADERS, ACCESSORY_WEIGHTS },
             { L"POLISH SCROLL", L"장신구 → 장신구 주문서", L"4티어 · 품질 67↑ · ×=옵션 없음", SCROLL_HEADERS, SCROLL_WEIGHTS },
-            { L"SEAL SCROLL", L"팔찌 → 인장 주문서", L"등급은 11/25 공지 후", BRACELET_HEADERS, BRACELET_WEIGHTS },
+            { L"SEAL SCROLL", L"팔찌 → 인장 주문서", L"옵션 티어 · 11/25 공지 기준", BRACELET_HEADERS, BRACELET_WEIGHTS },
             { L"GEM · STONE", L"보석 · 어빌리티 스톤", L"광휘 · 성휘 · 각인 업그레이드", GEM_HEADERS, GEM_WEIGHTS },
             { L"OTHERS", L"에스더 무기 · 그 밖", L"삭제 · 환산 항목", OTHER_HEADERS, OTHER_WEIGHTS },
         } };
