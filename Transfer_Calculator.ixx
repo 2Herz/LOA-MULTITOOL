@@ -48,8 +48,12 @@ export namespace LostArkMultiTool::Services  // 서비스 네임스페이스 내
     // 보석 → 광휘 · 성휘
     struct GemResult
     {
-        std::array<int, Models::TransferData::MAX_GEM_LEVEL + 1> m_levelCounts{};   // 레벨별 보석 개수 (번호 = 레벨)
-        int m_totalCount{};                           // 전체 보석 수 (모두 광휘로 바뀜)
+        std::array<int, Models::TransferData::MAX_GEM_LEVEL + 1> m_levelCounts{};           // 지금 레벨별 보석 개수 (번호 = 레벨)
+        std::array<int, Models::TransferData::MAX_GEM_LEVEL + 1> m_transferLevelCounts{};   // 이관 뒤 광휘 레벨별 개수 (티어 3은 2레벨 낮게)
+        int m_totalCount{};                           // 지금 보석 수
+        int m_luminousCount{};                        // 이관 뒤 광휘 수 (티어 3 1 · 2레벨은 제거돼서 빠짐)
+        int m_loweredCount{};                         // 2레벨 낮아지는 티어 3 보석 수 (멸화 · 홍염 3레벨 이상)
+        int m_removedCount{};                         // 제거되는 티어 3 보석 수 (멸화 · 홍염 1 · 2레벨)
         int m_starTwoCount{};                         // 10레벨로 만들 수 있는 성휘 2레벨 수 (10레벨 6개당 1개)
         int m_starOneCount{};                         // 남은 10레벨로 만들 수 있는 성휘 1레벨 수 (3개당 1개)
         int m_leftTenCount{};                         // 성휘로 못 바꾸고 남는 10레벨 광휘 수
@@ -59,7 +63,7 @@ export namespace LostArkMultiTool::Services  // 서비스 네임스페이스 내
     struct StoneResult
     {
         std::array<Models::StoneLine, Models::STONE_LINE_COUNT> m_lines{};   // 스톤 각인 두 줄
-        std::array<bool, Models::STONE_LINE_COUNT> m_isValid{};              // 장착한 각인서(유효 각인)와 같은 이름인지
+        std::array<bool, Models::STONE_LINE_COUNT> m_isValid{};              // 유효 각인 조합인지 (두 줄 모두 딜러 목록, 서포터는 두 줄 모두 서포터 목록도 인정)
         int m_high{};                                 // 높은 쪽 유효 활성화 포인트
         int m_low{};                                  // 낮은 쪽 유효 활성화 포인트
         std::string_view m_result;                    // 이관 결과 (표 밖이면 빈 글자)
@@ -93,7 +97,8 @@ export namespace LostArkMultiTool::Services  // 서비스 네임스페이스 내
 
         // ===== 낱개 규칙 (검사 · 다른 화면에서도 씀) =====
         [[nodiscard]] static std::optional<Models::TransferData::GearTransferRow> FindGearRow(int level) noexcept;      // 장비 레벨 → 이관 장비
-        [[nodiscard]] static std::optional<Models::TransferData::EstherTransferRow> FindEstherRow(int level) noexcept; // 에스더 레벨 → 엘라 단계
+        [[nodiscard]] static std::optional<Models::TransferData::EstherTransferRow> FindEstherRow(int level) noexcept; // 에스더 레벨 → 이관 (같은 레벨 행, 없으면 바로 아래 레벨 행)
+        [[nodiscard]] static std::optional<Models::TransferData::EstherTransferRow> FindEstherRow(int evolution, int ela, int level) noexcept;   // 진화 · 엘라 단계로 먼저 찾고, 없으면 레벨로
         [[nodiscard]] static Models::TransferData::PolishRank RankPolishLine(std::string_view line, std::string& key);  // 연마 효과 한 줄 → 상 · 중 · 하 (key = 표 키)
         [[nodiscard]] static std::string_view FindStoneResult(int high, int low) noexcept;    // 활성화 포인트 → 각인 업그레이드
     };

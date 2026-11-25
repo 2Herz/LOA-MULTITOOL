@@ -31,6 +31,7 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         constexpr std::string_view REASON_QUALITY{ "품질 67 미만" };                // 품질 부족
         constexpr std::string_view REASON_GRADE{ "고대 (서포터는 유물 상상도) 만 대상" };   // 등급 부족
         constexpr std::string_view REASON_POLISH{ "유물은 서포터 상상만 대상" };    // 유물인데 서포터 상상이 아님
+        constexpr std::string_view REASON_SUPPORT_ONLY_BRACELET{ "딜러 직업은 서포터 옵션만 있는 팔찌 제외" };   // 11/25 공지 팔찌 예외
 
         // 띄어쓰기를 뺀 글자에서 수치 읽기 ("1,234" · "2.60%" → 수치, 못 읽으면 nullopt)
         [[nodiscard]] std::optional<double> ParseAmount(std::string_view text)
@@ -167,13 +168,29 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
         return found == table.end() ? table.back() : *found;   // 표보다 높으면 마지막 행
     }
 
-    // 에스더 무기 레벨 → 엘라 단계 이관
+    // 에스더 무기 레벨 → 이관 (같은 레벨 행, 없으면 레벨이 바로 아래인 행, 그것도 없으면 가장 낮은 행)
     std::optional<Data::EstherTransferRow> TransferCalculator::FindEstherRow(int level) noexcept
     {
         if (level <= 0) return std::nullopt;   // 레벨을 모름
         const std::span<const Data::EstherTransferRow> table{ Data::GetEstherTable() };   // 에스더 이관 표
-        const auto found{ std::ranges::find_if(table, [level](const Data::EstherTransferRow& row) { return level <= row.m_maxLevel; }) };   // 상한 이하인 첫 행
-        return found == table.end() ? table.back() : *found;   // 마지막 행은 상한이 최대값
+        const Data::EstherTransferRow* best{};    // 레벨 이하 중 가장 높은 행
+        const Data::EstherTransferRow* lowest{};  // 표에서 가장 낮은 행
+        for (const Data::EstherTransferRow& row : table)   // 행마다 (표는 레벨 순서가 아님)
+        {
+            if (lowest == nullptr || row.m_sourceLevel < lowest->m_sourceLevel) lowest = &row;   // 가장 낮은 행 갱신
+            if (row.m_sourceLevel <= level && (best == nullptr || row.m_sourceLevel > best->m_sourceLevel)) best = &row;   // 레벨 이하 최고 행 갱신
+        }
+        if (best != nullptr) return *best;   // 찾음
+        return lowest != nullptr ? std::optional{ *lowest } : std::nullopt;   // 표보다 낮으면 가장 낮은 행
+    }
+
+    // 진화 · 엘라 단계로 이관 행 찾기 (같은 조합이 없으면 레벨로)
+    std::optional<Data::EstherTransferRow> TransferCalculator::FindEstherRow(int evolution, int ela, int level) noexcept
+    {
+        const std::span<const Data::EstherTransferRow> table{ Data::GetEstherTable() };   // 에스더 이관 표
+        const auto found{ std::ranges::find_if(table, [evolution, ela](const Data::EstherTransferRow& row) { return row.m_evolution == evolution && row.m_ela == ela; }) };   // 같은 조합
+        if (found != table.end()) return *found;   // 조합으로 찾음
+        return FindEstherRow(level);               // 레벨로 대신 찾기
     }
 
     // 연마 효과 한 줄 ("적에게 주는 피해 +1.20%") → 상 · 중 · 하, key = 표 키
@@ -251,9 +268,9 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
             if (pair.m_target == WEAPON_PART && result.m_isEsther)   // 에스더 무기 슬롯
             {
                 slot.m_sourceLevel = weaponLevel;          // 실제 무기 레벨 표시
-                slot.m_esther = FindEstherRow(weaponLevel); // 엘라 단계 이관
+                slot.m_esther = FindEstherRow(weapon->m_enhancement, weapon->m_elaStage, weaponLevel);   // 진화 · 엘라 단계 → 이관 (이름 앞 +N = 진화 단계)
                 slot.m_target.reset();                     // 일반 장비 표는 쓰지 않음
-                if (weaponLevel >= Data::ESTHER_FULL_LEVEL) slot.m_slotRefine = Data::ESTHER_FULL_SLOT_REFINE;   // 9 · 10단계 엘라3 → 25단계
+                if (slot.m_esther.has_value()) slot.m_slotRefine = slot.m_esther->m_slotRefine;   // 공지 표의 무기 슬롯 재련 단계
             }
             else if (own != nullptr)   // 무기 · 방어구: 지금 재련 단계가 같은 슬롯으로
             {
@@ -351,6 +368,8 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
                 if (stat.m_type.empty()) continue;   // 빈 줄
                 addStat(stat.m_type, std::format("{} +{}", stat.m_type, stat.m_value));   // "특화 +93"
             }
+            bool hasDealerEffect{};      // 딜러 티어가 있는 효과 줄이 있는지
+            bool hasSupporterEffect{};   // 서포터 티어만 있는 효과 줄이 있는지
             for (const std::string& option : armory.m_extra.m_braceletOptions)   // 옵션 줄
             {
                 if (Models::IsNone(option)) continue;   // 빈 줄
@@ -373,35 +392,58 @@ namespace LostArkMultiTool::Services  // 서비스 네임스페이스 시작
                     line.m_supporterTier = rule.m_supporterTier; // 서포터 티어
                     break;   // 처음 맞는 규칙만
                 }
+                if (!line.m_dealerTier.empty()) hasDealerEffect = true;                                   // 딜러 옵션
+                else if (!line.m_supporterTier.empty()) hasSupporterEffect = true;                        // 서포터 옵션만
                 result.m_braceletLines.push_back(std::move(line));   // 결과에 추가
             }
+
+            // 딜러 직업(바드 · 도화가 · 홀리나이트 · 발키리 제외)은 서포터 옵션으로만 구성된 팔찌를 이관하지 않음 (11/25 공지)
+            if (result.m_braceletReason.empty() && !Data::IsSupporterClass(armory.m_className) && hasSupporterEffect && !hasDealerEffect)
+                result.m_braceletReason = REASON_SUPPORT_ONLY_BRACELET;   // 대상 제외
         }
 
         // ===== 보석 → 광휘 · 성휘 =====
-        for (const int level : armory.m_gemLevels)   // 보석마다
+        for (std::size_t index{}; index < armory.m_gemLevels.size(); ++index)   // 보석마다
         {
-            const int clamped{ std::clamp(level, MIN_GEM_LEVEL, Data::MAX_GEM_LEVEL) };   // 1 ~ 10
-            ++result.m_gems.m_levelCounts[static_cast<std::size_t>(clamped)];   // 레벨별 개수
+            const int clamped{ std::clamp(armory.m_gemLevels[index], MIN_GEM_LEVEL, Data::MAX_GEM_LEVEL) };   // 1 ~ 10
+            ++result.m_gems.m_levelCounts[static_cast<std::size_t>(clamped)];   // 지금 레벨별 개수
             ++result.m_gems.m_totalCount;   // 전체 개수
+
+            // 티어 3 멸화 · 홍염은 2레벨 낮은 광휘 (1 · 2레벨은 제거), 티어 4는 같은 레벨 광휘
+            const std::string_view kind{ index < armory.m_gemKinds.size() ? std::string_view{ armory.m_gemKinds[index] } : std::string_view{} };   // 보석 종류 (모르면 빈 글자 = 티어 4로 봄)
+            int transferLevel{ clamped };   // 이관 뒤 레벨
+            if (std::ranges::any_of(Data::OLD_GEM_KINDS, [kind](std::string_view oldKind) { return kind.contains(oldKind); }))   // 티어 3 보석
+            {
+                transferLevel -= Data::OLD_GEM_LEVEL_DROP;   // 2레벨 낮게
+                if (transferLevel < MIN_GEM_LEVEL) { ++result.m_gems.m_removedCount; continue; }   // 1 · 2레벨은 제거
+                ++result.m_gems.m_loweredCount;   // 낮아지는 보석 수
+            }
+            ++result.m_gems.m_transferLevelCounts[static_cast<std::size_t>(transferLevel)];   // 이관 뒤 레벨별 개수
+            ++result.m_gems.m_luminousCount;   // 광휘 수
         }
-        const int tenCount{ result.m_gems.m_levelCounts[static_cast<std::size_t>(Data::MAX_GEM_LEVEL)] };   // 10레벨 개수
+        const int tenCount{ result.m_gems.m_transferLevelCounts[static_cast<std::size_t>(Data::MAX_GEM_LEVEL)] };   // 이관 뒤 10레벨 개수
         const int starTwoCost{ Data::STAR_FIRST_COST * Data::STAR_NEXT_COST };   // 성휘 2레벨 하나에 드는 10레벨 수 (3 × 2 = 6)
         result.m_gems.m_starTwoCount = tenCount / starTwoCost;   // 성휘 2레벨 수
         const int remainTen{ tenCount % starTwoCost };            // 남은 10레벨
         result.m_gems.m_starOneCount = remainTen / Data::STAR_FIRST_COST;   // 성휘 1레벨 수
         result.m_gems.m_leftTenCount = remainTen % Data::STAR_FIRST_COST;   // 남는 10레벨 광휘
 
-        // ===== 스톤 → 각인 업그레이드 (장착한 각인서와 같은 이름만 유효) =====
+        // ===== 스톤 → 각인 업그레이드 (11/25 공지: 두 줄 모두 유효 각인이어야 함) =====
+        // 딜러 = 딜러 각인 2개 / 서포터 = 서포터 각인 2개 또는 딜러 각인 2개 (각성은 양쪽 목록에 모두 있음)
         result.m_stone.m_hasStone = armory.m_stoneItem.has_value();   // 스톤 장착 여부
         result.m_stone.m_lines = armory.m_extra.m_stone;              // 스톤 두 줄
+        const auto allLinesIn{ [&armory](auto isEngraving)            // 두 줄이 모두 한 목록에 있는지
+        {
+            return std::ranges::all_of(armory.m_extra.m_stone, [&isEngraving](const Models::StoneLine& line) { return line.m_level > 0 && isEngraving(line.m_name); });   // 빈 줄 · 0포인트는 무효
+        } };
+        const bool isDealerPair{ allLinesIn([](std::string_view name) { return Data::IsDealerEngraving(name); }) };         // 딜러 각인 2개
+        const bool isSupporterPair{ allLinesIn([](std::string_view name) { return Data::IsSupporterEngraving(name); }) };   // 서포터 각인 2개
+        const bool isValidPair{ isDealerPair || (result.m_isSupporter && isSupporterPair) };   // 역할에 맞는 유효 조합
         std::array<int, Models::STONE_LINE_COUNT> points{};           // 유효 활성화 포인트
         for (std::size_t index{}; index < Models::STONE_LINE_COUNT; ++index)   // 줄마다
         {
-            const Models::StoneLine& line{ armory.m_extra.m_stone[index] };   // 스톤 줄
-            const bool isValid{ !line.m_name.empty() && line.m_level > 0 &&
-                std::ranges::any_of(armory.m_extra.m_books, [&line](const Models::BookState& book) { return book.m_name == line.m_name; }) };   // 장착 각인과 같은 이름
-            result.m_stone.m_isValid[index] = isValid;   // 유효 여부
-            points[index] = isValid ? line.m_level : 0;  // 유효하면 포인트
+            result.m_stone.m_isValid[index] = isValidPair;                                    // 조합 단위로 유효 여부
+            points[index] = isValidPair ? armory.m_extra.m_stone[index].m_level : 0;          // 유효하면 포인트
         }
         result.m_stone.m_high = std::ranges::max(points);   // 높은 쪽
         result.m_stone.m_low = std::ranges::min(points);    // 낮은 쪽

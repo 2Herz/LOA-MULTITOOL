@@ -6,7 +6,7 @@ namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네임스�
 {
     namespace  // 파일 내부 전용 표 영역 시작
     {
-        // ===== 장비 이관 표 (기존 장비 Lv "초과 ~ 이하" → 이관 장비, 방송 슬라이드 그대로) =====
+        // ===== 장비 이관 표 (기존 장비 Lv "초과 ~ 이하" → 이관 장비, 11/25 공지 표 티어 4 구간과 같음) =====
         constexpr std::array<GearTransferRow, 26> GEAR_TABLE{ {
             { 1675, "고급", 0, 1675 },   // 1600 초과 ~ 1675 이하
             { 1680, "고급", 1, 1680 },   // 1675 초과 ~ 1680 이하
@@ -36,14 +36,41 @@ namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네임스�
             { 1800, "고대", 3, 1815 },   // 1795 초과 ~ 1800 이하 (25강 무기 기준)
         } };
 
-        // ===== 에스더 무기 이관 표 =====
-        constexpr std::array<EstherTransferRow, 5> ESTHER_TABLE{ {
-            { 1600, "0~5 진화", 1, 0, 1100, "재료 차등 환급" },                       // 1100 ~ 1600
-            { 1675, "6·7 진화 · 6/1 · 7/1 · 6/2 · 8진화", 2, 0, 1625, "재료 차등 환급" },   // 1625 ~ 1675
-            { 1785, "7/2 ~ 9/2", 3, 0, 1735, "재료 차등 환급" },                      // 1680 ~ 1785
-            { 1800, "9단계 엘라3", 4, 0, 1840, "재료 일부 환급" },                   // 1800
-            { std::numeric_limits<int>::max(), "10단계 엘라3", 4, 5, 1865, "" },      // 1830 (그 위 전부)
+        // ===== 에스더 무기 이관 표 (11/25 공지: 진화 · 엘라 → 엘라 단계 · 레벨 · 무기 슬롯 재련 · 환급 기운 · 환급 키트) =====
+        constexpr std::array<EstherTransferRow, 20> ESTHER_TABLE{ {
+            { 0, 0, 1100, 1, 0, 1100, 0, 0, 0 },           // 0진화
+            { 1, 0, 1200, 1, 0, 1100, 0, 1, 10 },          // 1진화
+            { 2, 0, 1300, 1, 0, 1100, 0, 3, 310 },         // 2진화
+            { 3, 0, 1400, 1, 0, 1100, 0, 8, 810 },         // 3진화
+            { 4, 0, 1500, 1, 0, 1100, 0, 18, 1810 },       // 4진화
+            { 5, 0, 1600, 1, 0, 1100, 0, 28, 3310 },       // 5진화
+            { 6, 0, 1625, 2, 0, 1625, 0, 20, 3000 },       // 6진화
+            { 7, 0, 1635, 2, 0, 1625, 0, 40, 7000 },       // 7진화
+            { 6, 1, 1650, 2, 0, 1625, 9, 40, 11500 },      // 6진화 엘라1
+            { 7, 1, 1665, 2, 0, 1625, 9, 60, 15500 },      // 7진화 엘라1
+            { 6, 2, 1675, 2, 0, 1625, 9, 60, 20000 },      // 6진화 엘라2
+            { 8, 0, 1645, 2, 0, 1625, 11, 70, 12000 },     // 8진화
+            { 7, 2, 1695, 3, 0, 1735, 12, 20, 12000 },     // 7진화 엘라2
+            { 7, 3, 1785, 3, 0, 1735, 14, 20, 14500 },     // 7진화 엘라3
+            { 8, 1, 1680, 3, 0, 1735, 14, 30, 8500 },      // 8진화 엘라1
+            { 8, 2, 1715, 3, 0, 1735, 18, 50, 17000 },     // 8진화 엘라2
+            { 8, 3, 1775, 3, 0, 1735, 20, 50, 19500 },     // 8진화 엘라3
+            { 9, 2, 1745, 3, 0, 1735, 22, 80, 24000 },     // 9진화 엘라2
+            { 9, 3, 1800, 4, 0, 1840, 25, 20, 10500 },     // 9진화 엘라3
+            { 10, 3, 1830, 4, 5, 1865, 25, 0, 0 },         // 10진화 엘라3 (4단계 + 연마 5, 환급 없음)
         } };
+
+        // ===== 서포터 직업 (이 밖의 직업은 딜러, 팔찌 이관에서 서포터 옵션만 있는 팔찌 제외 판정에 씀) =====
+        constexpr std::array<std::string_view, 4> SUPPORTER_CLASSES{ "바드", "도화가", "홀리나이트", "발키리" };
+
+        // ===== 유효 각인 (11/25 공지 "유효 각인 및 어빌리티 스톤 이관 기준") =====
+        constexpr std::array<std::string_view, 22> DEALER_ENGRAVINGS{
+            "각성", "결투의 대가", "기습의 대가", "달인의 저력", "돌격대장", "마나 효율 증가", "바리케이드", "부러진 뼈",
+            "속전속결", "슈퍼 차지", "시선 집중", "아드레날린", "안정된 상태", "약자 무시", "에테르 포식자", "예리한 둔기",
+            "원한", "저주받은 인형", "정밀 단도", "질량 증가", "추진력", "타격의 대가" };   // 딜러 22종
+        constexpr std::array<std::string_view, 11> SUPPORTER_ENGRAVINGS{
+            "각성", "구슬동자", "급소 타격", "마나의 흐름", "분쇄의 주먹", "위기 모면", "전문의", "정기 흡수",
+            "중갑 착용", "최대 마나 증가", "폭발물 전문가" };   // 서포터 11종
 
         // ===== 2부 슬롯 ↔ 기준 부위 =====
         constexpr std::array<SlotPair, SLOT_COUNT_PER_SIDE> ARMOR_SIDE_PAIRS{ {
@@ -90,9 +117,10 @@ namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네임스�
         } };
         constexpr std::array<std::string_view, POLISH_RANK_COUNT + 1> POLISH_RANK_NAMES{ "상", "중", "하", "×" };   // 등급 이름 (번호 = PolishRank, × = 옵션 없음)
 
-        // 세 번째 칸으로 인정하는 옵션
-        constexpr std::array<std::string_view, 2> ATTACK_FILLERS{ "공격력+", "무기공격력+" };   // 딜러 · 서포터 목걸이 · 반지 (추정, 공지 대기)
-        constexpr std::array<std::string_view, 3> SUPPORT_EARRING_FILLERS{ "최대생명력", "파티원보호막효과", "파티원회복효과" };   // 서포터 귀걸이 (방송 표)
+        // 세 번째 칸으로 인정하는 옵션 (11/25 공지 "딜러/서포터별 옵션 정보")
+        constexpr std::array<std::string_view, 2> ATTACK_FILLERS{ "공격력+", "무기공격력+" };   // 딜러 목걸이 · 귀걸이 · 반지
+        constexpr std::array<std::string_view, 2> SUPPORT_NECK_RING_FILLERS{ "무기공격력+", "최대생명력" };   // 서포터 목걸이 · 반지
+        constexpr std::array<std::string_view, 3> SUPPORT_EARRING_FILLERS{ "최대생명력", "파티원보호막효과", "파티원회복효과" };   // 서포터 귀걸이
 
         constexpr std::array<AccessoryRule, 3> DEALER_RULES{ {
             { "목걸이", { "추가피해", "적에게주는피해" }, ATTACK_FILLERS },   // 딜러 목걸이
@@ -100,12 +128,12 @@ namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네임스�
             { "반지", { "치명타적중률", "치명타피해" }, ATTACK_FILLERS },       // 딜러 반지
         } };
         constexpr std::array<AccessoryRule, 3> SUPPORTER_RULES{ {
-            { "목걸이", { "낙인력", "세레나데,신앙,조화게이지획득량" }, ATTACK_FILLERS },   // 서포터 목걸이
-            { "귀걸이", { "무기공격력%", "무기공격력+" }, SUPPORT_EARRING_FILLERS },         // 서포터 귀걸이
-            { "반지", { "아군공격력강화효과", "아군피해량강화효과" }, ATTACK_FILLERS },      // 서포터 반지
+            { "목걸이", { "낙인력", "세레나데,신앙,조화게이지획득량" }, SUPPORT_NECK_RING_FILLERS },   // 서포터 목걸이
+            { "귀걸이", { "무기공격력%", "무기공격력+" }, SUPPORT_EARRING_FILLERS },                   // 서포터 귀걸이
+            { "반지", { "아군공격력강화효과", "아군피해량강화효과" }, SUPPORT_NECK_RING_FILLERS },      // 서포터 반지
         } };
 
-        // ===== 팔찌 옵션 티어 (방송 슬라이드, 위에서부터 처음 맞는 규칙) =====
+        // ===== 팔찌 옵션 티어 (11/25 공지 표와 같음, 위에서부터 처음 맞는 규칙) =====
         constexpr std::array<BraceletRule, 23> BRACELET_RULES{ {
             { { "치명타피해저항", "" }, "치피저감 & 아공강", "4티어", "1티어" },              // 서포터 1티어 (치명타 피해보다 먼저 검사)
             { { "치명타저항", "" }, "치저감 & 아공강", "4티어", "1티어" },                    // 서포터 1티어
@@ -152,7 +180,7 @@ namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네임스�
             { 2, 2, "슬롯 1개 3단계" },      // 4 (2+2)
         } };
 
-        constexpr std::string_view SOURCE_TEXT{ "2026-11-20 로스트아크 On Air 슬라이드 기준 · 이관 상세 공지 11/25 예정" };   // 표 출처
+        constexpr std::string_view SOURCE_TEXT{ "2026-11-25 공식 공지 「2부 업데이트에 따른 주요 개편 사항 사전 안내」 기준" };   // 표 출처
     }
 
     std::span<const GearTransferRow> GetGearTable() noexcept { return GEAR_TABLE; }                 // 장비 이관 표
@@ -166,6 +194,9 @@ namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네임스�
     std::span<const BraceletStatRule> GetBraceletStatRules() noexcept { return BRACELET_STAT_RULES; }   // 팔찌 스탯 티어
     std::span<const StoneTransferRow> GetStoneTable() noexcept { return STONE_TABLE; }              // 스톤 표
     std::string_view GetSourceText() noexcept { return SOURCE_TEXT; }                               // 표 출처
+    bool IsSupporterClass(std::string_view className) noexcept { return std::ranges::contains(SUPPORTER_CLASSES, className); }   // 서포터 직업인지
+    bool IsDealerEngraving(std::string_view name) noexcept { return std::ranges::contains(DEALER_ENGRAVINGS, name); }            // 딜러 유효 각인인지
+    bool IsSupporterEngraving(std::string_view name) noexcept { return std::ranges::contains(SUPPORTER_ENGRAVINGS, name); }      // 서포터 유효 각인인지
 
     // 상 · 중 · 하 · - 이름
     std::string_view GetPolishRankName(PolishRank rank) noexcept

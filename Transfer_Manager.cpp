@@ -59,7 +59,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view GEAR_FORMAT{ L"{} {}연마" };          // "고대 3연마"
         constexpr std::wstring_view ESTHER_FORMAT{ L"엘라 {}단계" };      // 에스더 이관
         constexpr std::wstring_view ESTHER_POLISH_FORMAT{ L"엘라 {}단계 {}연마" };   // 에스더 이관 (연마)
-        constexpr std::wstring_view OUT_OF_TABLE_TEXT{ L"1600 이하 (공지 대기)" };   // 표 밖
+        constexpr std::wstring_view OUT_OF_TABLE_TEXT{ L"1600 이하 (티어 3 이하 장비)" };   // 표 밖
         constexpr std::wstring_view REFINE_FORMAT{ L"+{}" };              // 슬롯 재련
         constexpr std::wstring_view REFINE_ADVANCED_FORMAT{ L"+{} · 상급 {}" };   // 슬롯 재련 + 상급
         constexpr std::wstring_view QUALITY_FORMAT{ L"{}" };              // 품질
@@ -68,12 +68,14 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view BRACELET_HEADER_FORMAT{ L"팔찌 ({})" };   // 팔찌 구분 행
         constexpr std::wstring_view BRACELET_REASON_FORMAT{ L"팔찌 — {}" };   // 팔찌 대상 아님
         constexpr std::wstring_view BRACELET_TIER_COUNT_FORMAT{ L"1티어 옵션  딜러 {}개 · 서폿 {}개" };   // 1티어 개수
-        constexpr std::wstring_view BRACELET_PENDING_TEXT{ L"인장 1 ~ 21등급 계산식은 11/25 공지 후" };   // 등급 대기
+        constexpr std::wstring_view BRACELET_PENDING_TEXT{ L"가장 좋은 팔찌 1개만 인장 주문서 1 ~ 21등급 (조합표는 공지에 없음)" };   // 등급 안내
         constexpr std::wstring_view FIRST_TIER_TEXT{ L"1티어" };   // 1티어 글자 (강조 · 개수 셈)
         constexpr std::wstring_view GEM_HEADER_TEXT{ L"보석 → 광휘 · 성휘" };   // 보석 구분 행
         constexpr std::wstring_view GEM_COUNT_LABEL{ L"보석 수" };   // 보석 수
         constexpr std::wstring_view GEM_COUNT_FORMAT{ L"{}개" };     // 개수
         constexpr std::wstring_view GEM_LUMINOUS_FORMAT{ L"광휘 {}개 (거래소 거래)" };   // 광휘
+        constexpr std::wstring_view GEM_LUMINOUS_REMOVED_FORMAT{ L"광휘 {}개 (티어 3 1 · 2레벨 {}개 제거)" };   // 광휘 + 제거 수
+        constexpr std::wstring_view GEM_LOWERED_FORMAT{ L"{} (멸화 · 홍염 {}개 2레벨 ↓)" };   // 이관 뒤 레벨 구성 + 낮아진 수
         constexpr std::wstring_view GEM_LEVELS_LABEL{ L"레벨 구성" };   // 레벨 구성
         constexpr std::wstring_view GEM_LEVEL_ITEM_FORMAT{ L"{}Lv×{}" };   // "10Lv×5"
         constexpr std::wstring_view GEM_LEVEL_SEPARATOR{ L" · " };   // 구분
@@ -84,14 +86,14 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view STONE_LINE_FORMAT{ L"각인 {}" };       // 스톤 줄 이름
         constexpr std::wstring_view STONE_ENGRAVING_FORMAT{ L"{} Lv.{}" }; // 스톤 각인
         constexpr std::wstring_view STONE_VALID_TEXT{ L"유효 각인" };      // 유효
-        constexpr std::wstring_view STONE_INVALID_TEXT{ L"유효 각인 아님 (계산 제외)" };   // 무효
+        constexpr std::wstring_view STONE_INVALID_TEXT{ L"유효 조합 아님 (계산 제외)" };   // 무효
         constexpr std::wstring_view STONE_POINT_LABEL{ L"활성화 포인트" }; // 포인트 행
         constexpr std::wstring_view STONE_POINT_FORMAT{ L"{}+{}" };        // "4+3"
         constexpr std::wstring_view STONE_NONE_TEXT{ L"스톤 없음" };       // 스톤 없음
-        constexpr std::wstring_view STONE_OUT_TEXT{ L"표 밖 (공지 대기)" }; // 표 밖
+        constexpr std::wstring_view STONE_OUT_TEXT{ L"각인 반영 없음 → 초월의 가루" }; // 표 밖 (유효 조합 아님 · 합계 4 미만)
         constexpr std::wstring_view ESTHER_LABEL{ L"에스더 무기" };        // 에스더 행
         constexpr std::wstring_view ESTHER_CURRENT_FORMAT{ L"+{} 엘라 {} ({})" };   // 에스더 지금
-        constexpr std::wstring_view ESTHER_TARGET_FORMAT{ L"{} ({}) · {}" };       // 에스더 이관 + 환급
+        constexpr std::wstring_view ESTHER_TARGET_FORMAT{ L"{} ({}) · 환급 기운 {} · 키트 {}" };   // 에스더 이관 + 환급 (에스더의 기운 · 로맨틱 재료 키트)
         constexpr std::wstring_view ESTHER_TARGET_NO_REFUND_FORMAT{ L"{} ({})" };  // 에스더 이관 (환급 없음)
         constexpr std::wstring_view ESTHER_NONE_TEXT{ L"없음" };           // 에스더 없음
         constexpr std::wstring_view WEAPON_BASIS_LABEL{ L"무기 기준 레벨" };   // 무기 기준 행
@@ -105,15 +107,15 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             std::wstring_view m_target;    // 2부
         };
         constexpr std::array<FixedRow, 6> OTHER_FIXED_ROWS{ {
-            { L"품질 · 카르마", L"시스템 삭제", L"마력 주입 재료로 환산 (양은 공지 대기)" },
-            { L"상급 재련", L"-", L"처리 방식 공지 대기" },
+            { L"품질 · 카르마", L"시스템 삭제", L"2부 성장 재료 교환용 토큰 (품질은 부위별 최고 품질 기준)" },
+            { L"상급 재련", L"-", L"시스템 삭제 (특수 재련도 삭제)" },
             { L"아크 패시브", L"진화 · 깨달음 · 도약", L"깨달음 중심 (진화 · 도약 삭제)" },
             { L"특성", L"6종", L"치명 · 특화 · 신속 · 기량 4종" },
             { L"룬", L"장착 중", L"전부 삭제 (일부는 보석 추가 효과)" },
-            { L"파편 · 돌파석 · 특수 재료", L"보유", L"2부 재료 토큰 (귀속 그대로)" },
+            { L"파편 · 돌파석 · 특수 재료", L"보유", L"2부 성장 재료 교환용 토큰 (융화 · 파괴석 · 수호석 · 숨결은 2부 재료로)" },
         } };
 
-        constexpr std::wstring_view NOTE_TEXT{ L"※ {}. 16부위 평균은 1600 이하 부위를 0으로 계산해요. 장신구 세 번째 칸은 공격력+ · 무기 공격력+ 만 인정(추정)하고, 팔찌 인장 등급 · 품질/카르마 환산 · 상급 재련은 공지 후 반영해요." };   // 맨 아래 안내
+        constexpr std::wstring_view NOTE_TEXT{ L"※ {}. 16부위 평균은 1600 이하 부위를 0으로 계산해요. 팔찌 인장 1 ~ 21등급 조합표와 품질 · 카르마 토큰 양은 공지에 없어서 표시하지 않아요." };   // 맨 아래 안내
 
         // API 부위 이름 → 화면 이름 ("어깨" → "견갑")
         constexpr std::string_view API_SHOULDER{ "어깨" };   // API 견갑 이름
@@ -476,20 +478,28 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             const Services::GemResult& gems{ m_result->m_gems };   // 보석 결과
             rows.push_back(HeaderRow(std::wstring{ GEM_HEADER_TEXT }, THREE_COLUMNS));   // 보석 구분 행
             rows.push_back(TransferRow{ Cell(std::wstring{ GEM_COUNT_LABEL }, TransferTone::TONE_LABEL), Cell(std::format(GEM_COUNT_FORMAT, gems.m_totalCount)),
-                Cell(std::format(GEM_LUMINOUS_FORMAT, gems.m_totalCount), TransferTone::TONE_HIGHLIGHT) });   // 보석 수 → 광휘
+                Cell(gems.m_removedCount > 0 ? std::format(GEM_LUMINOUS_REMOVED_FORMAT, gems.m_luminousCount, gems.m_removedCount)
+                                             : std::format(GEM_LUMINOUS_FORMAT, gems.m_luminousCount), TransferTone::TONE_HIGHLIGHT) });   // 보석 수 → 광휘
 
-            std::wstring levels;   // 레벨 구성 ("10Lv×5 · 9Lv×6")
-            for (int level{ Data::MAX_GEM_LEVEL }; level >= 1; --level)   // 높은 레벨부터
+            // 레벨 구성 글자 ("10Lv×5 · 9Lv×6")
+            const auto levelText{ [](const auto& counts)
             {
-                const int count{ gems.m_levelCounts[static_cast<std::size_t>(level)] };   // 그 레벨 개수
-                if (count <= 0) continue;   // 없으면 건너뜀
-                if (!levels.empty()) levels += GEM_LEVEL_SEPARATOR;   // 구분
-                levels += std::format(GEM_LEVEL_ITEM_FORMAT, level, count);   // "10Lv×5"
-            }
-            rows.push_back(TransferRow{ Cell(std::wstring{ GEM_LEVELS_LABEL }, TransferTone::TONE_LABEL), Cell(levels.empty() ? std::wstring{ EMPTY_TEXT } : levels),
-                Cell(std::wstring{ GEM_SAME_LEVEL_TEXT }) });   // 레벨 구성
+                std::wstring levels;   // 결과 글자
+                for (int level{ Data::MAX_GEM_LEVEL }; level >= 1; --level)   // 높은 레벨부터
+                {
+                    const int count{ counts[static_cast<std::size_t>(level)] };   // 그 레벨 개수
+                    if (count <= 0) continue;   // 없으면 건너뜀
+                    if (!levels.empty()) levels += GEM_LEVEL_SEPARATOR;   // 구분
+                    levels += std::format(GEM_LEVEL_ITEM_FORMAT, level, count);   // "10Lv×5"
+                }
+                return levels.empty() ? std::wstring{ EMPTY_TEXT } : levels;   // 없으면 "-"
+            } };
+            const std::wstring currentLevels{ levelText(gems.m_levelCounts) };   // 지금 구성
+            const std::wstring targetLevels{ gems.m_loweredCount > 0 || gems.m_removedCount > 0
+                ? std::format(GEM_LOWERED_FORMAT, levelText(gems.m_transferLevelCounts), gems.m_loweredCount) : std::wstring{ GEM_SAME_LEVEL_TEXT } };   // 이관 뒤 구성 (티어 4만이면 같은 레벨)
+            rows.push_back(TransferRow{ Cell(std::wstring{ GEM_LEVELS_LABEL }, TransferTone::TONE_LABEL), Cell(currentLevels), Cell(targetLevels) });   // 레벨 구성
             rows.push_back(TransferRow{ Cell(std::wstring{ GEM_TEN_LABEL }, TransferTone::TONE_LABEL),
-                Cell(std::format(GEM_COUNT_FORMAT, gems.m_levelCounts[static_cast<std::size_t>(Data::MAX_GEM_LEVEL)])),
+                Cell(std::format(GEM_COUNT_FORMAT, gems.m_transferLevelCounts[static_cast<std::size_t>(Data::MAX_GEM_LEVEL)])),
                 Cell(std::format(GEM_STAR_FORMAT, gems.m_starTwoCount, gems.m_starOneCount, gems.m_leftTenCount), TransferTone::TONE_HIGHLIGHT) });   // 10레벨 → 성휘
 
             const Services::StoneResult& stone{ m_result->m_stone };   // 스톤 결과
@@ -531,8 +541,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 const std::wstring target{ TargetGearCell(*weaponSlot).m_text };         // "엘라 4단계 5연마"
                 rows.push_back(TransferRow{ Cell(std::wstring{ ESTHER_LABEL }, TransferTone::TONE_LABEL),
                     Cell(std::format(ESTHER_CURRENT_FORMAT, evolution, ela, weaponSlot->m_sourceLevel), TransferTone::TONE_GRADE, std::string{ Data::ESTHER_GRADE }),
-                    Cell(esther.m_refund.empty() ? std::format(ESTHER_TARGET_NO_REFUND_FORMAT, target, esther.m_level) : std::format(ESTHER_TARGET_FORMAT, target, esther.m_level, ToWide(esther.m_refund)),
-                        TransferTone::TONE_HIGHLIGHT) });   // 에스더 → 엘라 단계
+                    Cell(esther.m_refundEnergy <= 0 && esther.m_refundKit <= 0 ? std::format(ESTHER_TARGET_NO_REFUND_FORMAT, target, esther.m_level)
+                                                                               : std::format(ESTHER_TARGET_FORMAT, target, esther.m_level, esther.m_refundEnergy, esther.m_refundKit),
+                        TransferTone::TONE_HIGHLIGHT) });   // 에스더 → 엘라 단계 + 환급 수량
             }
             else
             {

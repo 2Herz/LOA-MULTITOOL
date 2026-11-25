@@ -1,17 +1,17 @@
-# Graph Report - 로스트아크 멀티툴  (2026-11-23)
+# Graph Report - 로스트아크 멀티툴  (2026-11-25)
 
 ## Corpus Check
-- 290 files · ~240,867 words
+- 290 files · ~242,332 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 9 file(s) not represented in the graph (top: (none) 3, .bat 2, .rc 1)
 
 ## Summary
-- 4522 nodes · 8591 edges · 477 communities (156 shown, 321 thin omitted)
+- 4525 nodes · 8596 edges · 470 communities (156 shown, 314 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 74 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a308bc1f`
+- Built from commit: `8d1f895f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -58,7 +58,7 @@
 - README
 - Graphify ModuleEdges
 - LostArkMultiTool.Models.MarketItem
-- RouteRun
+- RowResult
 - MaterialQuery
 - DX11 Renderer (3)
 - DX11 Renderer (4)
@@ -74,12 +74,12 @@
 - Main Window (4)
 - SlotOption
 - Gem_Finder_View.ixx
-- CardSpec
+- vector
 - Grid.cpp
 - Local_Time.cpp
 - Season
 - DPAPI_Key_Store.cpp
-- LostArkMultiTool.Services.JSONFileStore
+- LostArkMultiTool.Models.RefineData
 - Transfer_Data.cpp
 - Server_Config_Checker.cpp
 - Transfer_Manager.cpp
@@ -113,7 +113,7 @@
 - HWND
 - Interval Timer
 - json
-- wstring_view
+- CombatExtraEditor::Apply
 - Renderer
 - ToTrimmedText
 - Combat_Factor_Component.cpp
@@ -123,30 +123,31 @@
 - Page_Layout.cpp
 - ToColumn
 - BuildPriceChartPoints
-- windows
-- CheckCharacter
+- Text_Encoding.cpp
+- MainWindow::Impl::Impl
 - Application::FindTabAt
 - Gem_Finder_Manager.cpp
+- LostArkMultiTool.Models.Character
 - array
 - Text Box (2)
 - Text Box (3)
 - Weekly Record
 - Character Info
-- Auction_Accessory_Search_Service.cpp
+- RosterMaterialLink
 - Update_Installer.cpp
 - KeyedValue
 - App_Logger.cpp
 - Tool Manager
 - Application::RouteMouseButton
 - Application::Run
-- LostArkMultiTool.Core.APPConstants
+- LostArkMultiTool.Views.Application
 - Number Format
 - windows
 - FindKind
 - Transfer_Calculator.cpp
 - LostArkMultiTool::Core
 - Text Box (4)
-- OverlayNotifier::AskDateRange
+- LostArkMultiTool.Core.Notifier
 - Engraving_Quote.cpp
 - Main Window (10)
 - Text Box (5)
@@ -156,25 +157,24 @@
 - CardCell
 - StepCandidate
 - MarketRefineBookPriceService::ApplyQuotes
-- OverlayNotifier::OpenDialog
-- int64_t
+- Gem_Catalog.ixx
+- MouseMoveEvent
 - Bound_Gem_Roster_Data.cpp
 - MessageDialog::MessageDialog
 - Toast_Host.cpp
-- Bound_Gem_Data.cpp
+- MainWindow::GetClientPixelSize
 - CursorShape
 - GetArkCorePoints
-- API_Key_Store.ixx
-- ScrollJudge
+- APP_Exceptions.ixx
 - string_view
 - JSON_Value.cpp
 - Progress_Bar.cpp
 - LostArkMultiTool::Models
-- AuctionGemPriceService::FetchPrices
+- Combat_Extra_Editor.ixx
 - LostArkMultiTool::Views::PageLayout
 - wstring
 - PriceHistory::RecordLowest
-- PolishTier
+- wWinMain
 - Application::OpenAPIKeyDialog
 - wstring
 - optional
@@ -183,26 +183,26 @@
 - TakePendingNotice
 - ToWideMessage
 - Number_Format.ixx
-- TransferView::ShowCard
+- Interval_Timer.ixx
 - LostArkMultiTool::Core::CrashReporter
 - LostArkMultiTool::Services
 - CsvColumns
 - BuildTrend
 - SlotLane
-- APIKeyDialog::APIKeyDialog
+- API_Key_Dialog.cpp
 - Server_Config.cpp
 - Application::OnTrayCommand
-- ToolContext
+- Singleton.ixx
 - LostArkMultiTool::Core
 - InputEvent
 - SupportAction
-- export
+- Application.ixx
 - LostArkMultiTool.Models.WeeklyRecord
 - LostArkMultiTool::Core::APIFormatMonitor
-- LoadStatus
+- LostArkMultiTool::Views
 - ArkGemFinderManager::RefreshBoundGems
 - wchar_t
-- Add
+- LostArkMultiTool::Views
 - BreathRule
 - Background_Task.ixx
 - LostArkMultiTool::Services
@@ -221,50 +221,45 @@
 - Text Box (6)
 - Text Box (7)
 - Text Box (8)
-- Combat_Coefficient_Data.ixx
-- CombatPowerCalculator::AddComponent
-- Notifier.ixx
+- LostArkMultiTool::Views::UI
+- LostArkMultiTool::Views
+- LostArkMultiTool::Views::UI
 - GetBraceletWeaponLines
-- CombatPowerCalculator::Calculate
+- LostArkMultiTool::Views
 - LostArkMultiTool::Services
 - Application::StartAutoUpdate
-- MouseButtonEvent
+- Grid.cpp
 - misc (20)
 - misc (21)
 - misc (22)
 - misc (23)
 - 로스트아크 멀티툴
-- JSON_Value.ixx
+- LostArkMultiTool::Views::UI
 - LostArkMultiTool::Views
-- Local_Time.ixx
-- Rate_Limit_State.ixx
+- LostArkMultiTool::Views::UI
+- LostArkMultiTool.Models.RateLimitState
 - Text_Encoding.ixx
 - LostArkMultiTool::Views
 - LostArkMultiTool::Core::CombatRegression
-- ToastHost::Render
+- LostArkMultiTool::Views::UI
 - Renderer.ixx
 - ShardPouch
 - Application::HandleShortcut
-- OverlayNotifier::Render
+- LostArkMultiTool::Views::UI
 - Placeholder_View.ixx
-- APIKeyDialog::LayoutContent
+- LostArkMultiTool::Views::UI
 - ArkGemFinderManager::GetSelectedCharacter
 - ArkGemFinderManager::Render
 - GetEngravingBooks
 - GetVambraceGradeBonuses
 - Grid::OnMouseWheel
 - Grid::SetSelectionMode
-- WinHTTPMarketAPI::GetRateLimit
-- GemFinderManager::Render
+- LostArkMultiTool::Views::UI
 - MarketEngravingPriceService::FetchQuotes
-- WinHTTPMarketAPI::BuildHeaders
-- LostArkMultiTool::Views::UI
-- MessageDialog::MeasureContentHeight
-- LostArkMultiTool::Views::UI
-- LostArkMultiTool::Views::UI
-- DateRangeDialog::MeasureContentHeight
-- IsDateCharacter
-- ServerCheckDialog::MeasureContentHeight
+- LostArkMultiTool::Core
+- LostArkMultiTool::Core::APPConstants
+- LostArkMultiTool::Views
+- Date_Range_Dialog.cpp
 - LostArkMultiTool::Views::UI
 
 ## God Nodes (most connected - your core abstractions)
@@ -286,10 +281,10 @@
   패치노트.md → README.md
 - `젬 시세 검색기 + 귀속 젬 계산기` --semantically_similar_to--> `젬 시세 검색기 + 귀속 젬 계산기`  [INFERRED] [semantically similar]
   패치노트.md → README.md
-- `ReadIntegerHeader()` --calls--> `FindHeader()`  [INFERRED]
-  WinHTTP_Market_API.cpp → WinHTTP_Client.cpp
-- `WinHTTPMarketAPI::GetAveragePrice()` --calls--> `ParseJSONText()`  [INFERRED]
-  WinHTTP_Market_API.cpp → JSON_Value.cpp
+- `TransferCalculator::RankPolishLine()` --references--> `PolishTier`  [INFERRED]
+  Transfer_Calculator.cpp → Auction_Accessory_Search_Service.cpp
+- `CombatSimulatorStore::Save()` --calls--> `WriteJSONText()`  [INFERRED]
+  Combat_Simulator_Store.cpp → JSON_Value.cpp
 
 ## Import Cycles
 - None detected.
@@ -297,39 +292,39 @@
 ## Hyperedges (group relationships)
 - **멀티툴 시세/기록 탭 묶음** — readme_bound_calc, readme_gem_finder, readme_paradise_tracker, readme_relic_book, readme_accessory_finder, readme_enhance_book, readme_gem_price [EXTRACTED 1.00]
 
-## Communities (477 total, 321 thin omitted)
+## Communities (470 total, 314 thin omitted)
 
 ### Community 0 - "Calculator_Manager.cpp"
-Cohesion: 0.04
-Nodes (36): LostArkMultiTool::Core(), LostArkMultiTool::Services(), CalculatorManager::FinishRefresh(), CalculatorManager::FinishRosterSync(), CalculatorManager::GetBackgroundStatus(), CalculatorManager::GetCursor(), CalculatorManager::GetSelectedCharacterName(), CalculatorManager::GetTabTitle() (+28 more)
+Cohesion: 0.07
+Nodes (20): CalculatorManager::ApplyQuantityLock(), CalculatorManager::FinishRefresh(), CalculatorManager::FinishRosterSync(), CalculatorManager::GetBackgroundStatus(), CalculatorManager::GetCursor(), CalculatorManager::GetDisplayedCharacters(), CalculatorManager::GetSelectedCharacterName(), CalculatorManager::GetTabTitle() (+12 more)
 
 ### Community 1 - "Combat_Supporter_Data.cpp"
 Cohesion: 0.09
 Nodes (10): GetBooks(), GetBraceletEffectiveTypes(), GetGemFactors(), GetPassiveRankRatios(), GetSupporterTitles(), GetVambraceLevelLn(), IsSupporterTitle(), PowerScale (+2 more)
 
 ### Community 2 - "Combat_Simulator_Manager.cpp"
-Cohesion: 0.10
-Nodes (28): CombatSimulatorManager::ApplyArmory(), CombatSimulatorManager::FinishSearch(), CombatSimulatorManager::GetGemTargetIndex(), CombatSimulatorManager::HandleAPIKeyError(), CombatSimulatorManager::OnGemTargetSelected(), CombatSimulatorManager::OnQualityChanged(), CombatSimulatorManager::RefreshGears(), CombatSimulatorManager::RefreshGems() (+20 more)
+Cohesion: 0.08
+Nodes (34): CombatPowerCalculator::Calculate(), CombatSimulatorManager::ApplyArmory(), CombatSimulatorManager::FinishSearch(), CombatSimulatorManager::GetGemTargetIndex(), CombatSimulatorManager::HandleAPIKeyError(), CombatSimulatorManager::OnCardEdited(), CombatSimulatorManager::OnGemCellEdited(), CombatSimulatorManager::OnGemTargetSelected() (+26 more)
 
 ### Community 3 - "Refine_Simulator_View.cpp"
 Cohesion: 0.04
-Nodes (45): ArkGemFinderView::SetOnAutoRefreshChanged(), ArkGemFinderView::SetOnCharacterSelected(), ArkGemFinderView::SetOnQuantityEdited(), ArkGemFinderView::SetOnRefresh(), GemFinderView::SetOnAddAlarm(), GemFinderView::SetOnAlarmSelected(), GemFinderView::SetOnFilterChanged(), GemFinderView::SetOnIntervalChanged() (+37 more)
+Nodes (43): ArkGemFinderView::SetOnAutoRefreshChanged(), ArkGemFinderView::SetOnPriceRowSelected(), GemFinderView::SetOnAddAlarm(), GemFinderView::SetOnAlarmSelected(), GemFinderView::SetOnChartGemChanged(), GemFinderView::SetOnFilterChanged(), GemFinderView::SetOnIntervalChanged(), GemFinderView::SetOnPriceCellClicked() (+35 more)
 
 ### Community 4 - "Ark_Gem_Finder_View.cpp"
 Cohesion: 0.06
-Nodes (30): MakeColumns(), ArkGemFinderView::DrawStatCards(), ArkGemFinderView::FillGrid(), ArkGemFinderView::GetCursor(), ArkGemFinderView::GetSelectedCharacterIndex(), ArkGemFinderView::HandleInput(), ArkGemFinderView::InitializeBoundGemGrid(), ArkGemFinderView::Layout() (+22 more)
+Nodes (30): ArkGemFinderView::DrawStatCards(), ArkGemFinderView::FillGrid(), ArkGemFinderView::GetCursor(), ArkGemFinderView::GetSelectedCharacterIndex(), ArkGemFinderView::HandleInput(), ArkGemFinderView::InitializeBoundGemGrid(), ArkGemFinderView::Layout(), ArkGemFinderView::Render() (+22 more)
 
 ### Community 5 - "Accessory_Finder_View.cpp"
 Cohesion: 0.07
 Nodes (29): AccessoryFinderView::AccessoryFinderView(), AccessoryFinderView::GetCursor(), AccessoryFinderView::GetMinMainStat(), AccessoryFinderView::GetMinQuality(), AccessoryFinderView::GetSelectedOption(), AccessoryFinderView::GetSelectedValue(), AccessoryFinderView::HandleInput(), AccessoryFinderView::Layout() (+21 more)
 
 ### Community 6 - "Gem_Finder_Manager.cpp"
-Cohesion: 0.07
-Nodes (25): CompareChange(), ComparePrice(), FormatAmount(), GemFinderManager::AddAlarm(), GemFinderManager::BuildStats(), GemFinderManager::FinishRefresh(), GemFinderManager::GetBackgroundStatus(), GemFinderManager::GetTabTitle() (+17 more)
+Cohesion: 0.05
+Nodes (30): CompareChange(), ComparePrice(), FormatAmount(), GemFinderManager::AddAlarm(), GemFinderManager::BuildStats(), GemFinderManager::FinishRefresh(), GemFinderManager::GetBackgroundStatus(), GemFinderManager::GetCursor() (+22 more)
 
 ### Community 7 - "Renderer"
-Cohesion: 0.13
-Nodes (16): CalculatorView::Layout(), CalculatorView::Render(), CombatSimulatorManager::Render(), Grid::GetCellRect(), Grid::GetHeaderRect(), Grid::GetRowsArea(), Grid::MakeDefaultCell(), Grid::Render() (+8 more)
+Cohesion: 0.15
+Nodes (14): CalculatorView::Layout(), CalculatorView::Render(), CombatSimulatorManager::Render(), Grid::GetCellRect(), Grid::GetHeaderRect(), Grid::GetRowsArea(), Grid::MakeDefaultCell(), Grid::Render() (+6 more)
 
 ### Community 8 - "Tracker_View.cpp"
 Cohesion: 0.06
@@ -349,7 +344,7 @@ Nodes (10): FindVambraceStep(), GetAdvancedBonuses(), GetArkCoreAncientGains(), 
 
 ### Community 12 - "Ark_Gem_Finder_Manager.cpp"
 Cohesion: 0.12
-Nodes (4): ArkGemFinderManager::GetCursor(), ArkGemFinderManager::HandleInput(), ArkGemFinderManager::SyncRoster(), TrimSpaces()
+Nodes (4): ArkGemFinderManager::GetCursor(), ArkGemFinderManager::HandleInput(), ArkGemFinderManager::UpdateChart(), ToChartDateLabel()
 
 ### Community 13 - "Crawl LopecSimulator"
 Cohesion: 0.07
@@ -357,7 +352,7 @@ Nodes (33): apply(), crawl_character(), even_core_points(), group_of(), is_skipp
 
 ### Community 14 - "Accessory_Finder_Manager.cpp"
 Cohesion: 0.05
-Nodes (15): AccessoryFinderManager::ApplyCategoryOptions(), AccessoryFinderManager::BuildQuery(), AccessoryFinderManager::ChangeOption(), AccessoryFinderManager::GetCursor(), AccessoryFinderManager::GetTabTitle(), AccessoryFinderManager::HandleAPIKeyError(), AccessoryFinderManager::HandleInput(), AccessoryFinderManager::Render() (+7 more)
+Nodes (17): AccessoryFinderManager::ApplyCategoryOptions(), AccessoryFinderManager::BuildQuery(), AccessoryFinderManager::ChangeOption(), AccessoryFinderManager::GetCursor(), AccessoryFinderManager::GetTabTitle(), AccessoryFinderManager::HandleAPIKeyError(), AccessoryFinderManager::HandleInput(), AccessoryFinderManager::Render() (+9 more)
 
 ### Community 15 - "Reporter"
 Cohesion: 0.23
@@ -372,24 +367,24 @@ Cohesion: 0.06
 Nodes (21): ComboBox::EnsureVisible(), ComboBox::FindItemAt(), ComboBox::GetCursor(), ComboBox::GetItemColor(), ComboBox::GetItemCount(), ComboBox::GetMaxScrollIndex(), ComboBox::GetPopupBounds(), ComboBox::GetSelectedIndex() (+13 more)
 
 ### Community 18 - "Armory Parser"
-Cohesion: 0.08
-Nodes (47): CleanLine(), CollectTooltip(), EqualsIgnoreCase(), ExtractIntegers(), FindBasicEffect(), FindLevelTags(), FindPartBody(), ParseAccessoryOptions() (+39 more)
+Cohesion: 0.07
+Nodes (48): CleanLine(), CollectTooltip(), EqualsIgnoreCase(), ExtractIntegers(), FindBasicEffect(), FindLevelTags(), FindPartBody(), ParseAccessoryOptions() (+40 more)
 
 ### Community 19 - "Main Window"
 Cohesion: 0.05
-Nodes (25): MainWindow::CancelComposition(), MainWindow::GetClientPixelSize(), MainWindow::GetExitCode(), MainWindow::GetNativeHandle(), MainWindow::Impl::GetClientPixelSize(), MainWindow::Impl::GetDPI(), MainWindow::Impl::GetExitCode(), MainWindow::Impl::HideToTray() (+17 more)
+Nodes (25): MainWindow::CancelComposition(), MainWindow::GetExitCode(), MainWindow::GetNativeHandle(), MainWindow::Impl::Emit(), MainWindow::Impl::GetDPI(), MainWindow::Impl::GetExitCode(), MainWindow::Impl::HideToTray(), MainWindow::Impl::IsMinimized() (+17 more)
 
 ### Community 20 - "Main Window (2)"
-Cohesion: 0.05
-Nodes (27): MainWindow::GetDPI(), MainWindow::Impl, MainWindow::Impl::Emit(), MainWindow::Impl::HandleTrayMessage(), m_comApartment, m_cursor, m_cursors, m_dpi (+19 more)
+Cohesion: 0.06
+Nodes (25): MainWindow::GetDPI(), MainWindow::Impl, MainWindow::Impl::HandleTrayMessage(), m_comApartment, m_cursor, m_cursors, m_dpi, m_exitCode (+17 more)
 
 ### Community 21 - "Visual"
 Cohesion: 0.06
 Nodes (39): AccessoryFinderManager, POST /auctions/items, GET /auctions/options, POST /markets/items, GET /characters/{name}/siblings, ArkGemFinderManager, AssetCalculator / AssetCalculationService, BackgroundTask (+31 more)
 
 ### Community 22 - "Refine Data"
-Cohesion: 0.10
-Nodes (23): ArkGemFinderView::ShowRosterTotal(), AdvancedBlockRow, m_amounts, m_book, m_breathAmount, m_hasEnhancedBonus, BookRange, m_book (+15 more)
+Cohesion: 0.11
+Nodes (22): AdvancedBlockRow, m_amounts, m_book, m_breathAmount, m_hasEnhancedBonus, BookRange, m_book, m_maxLevel (+14 more)
 
 ### Community 23 - "DX11 Renderer"
 Cohesion: 0.06
@@ -432,16 +427,16 @@ Cohesion: 0.12
 Nodes (17): FindGearPart(), GetGearPartType(), GetGearTableSuffix(), ToGearIndex(), ToGearPart(), CanAdvance(), Clamp(), DetectTableKey() (+9 more)
 
 ### Community 33 - "Line Chart"
-Cohesion: 0.09
-Nodes (17): Grid::OnMouseDrag(), Grid::OnMouseMove(), LineChart::BuildChangeText(), LineChart::GetCursor(), LineChart::OnMouseMove(), LineChart::Render(), LineChart::RenderAxes(), LineChart::RenderPeakLine() (+9 more)
+Cohesion: 0.10
+Nodes (17): Add(), LineChart::BuildChangeText(), LineChart::BuildSegments(), LineChart::GetCursor(), LineChart::Render(), LineChart::RenderAxes(), LineChart::RenderPeakLine(), LineChart::RenderSeries() (+9 more)
 
 ### Community 34 - "APP_Constants.cpp"
 Cohesion: 0.22
 Nodes (9): CoTaskString, m_text, GetDataFilePath(), GetLocalAppDataFilePath(), GetUserDataFilePath(), ReadExecutableDirectory(), ReadLocalAppDataDirectory(), ReadUserDataDirectory() (+1 more)
 
 ### Community 36 - "Combat Extra Editor"
-Cohesion: 0.16
-Nodes (17): AddHeader(), AddIndexChoice(), AddNumber(), AddTextChoice(), CombatExtraEditor::Apply(), CombatExtraEditor::BuildAccessoryRows(), CombatExtraEditor::BuildArkGridRows(), CombatExtraEditor::BuildBraceletRows() (+9 more)
+Cohesion: 0.22
+Nodes (13): AddHeader(), AddIndexChoice(), AddNumber(), AddTextChoice(), CombatExtraEditor::BuildAccessoryRows(), CombatExtraEditor::BuildArkGridRows(), CombatExtraEditor::BuildBraceletRows(), CombatExtraEditor::BuildPassiveRows() (+5 more)
 
 ### Community 37 - "JSON Gem Data Repository"
 Cohesion: 0.22
@@ -464,16 +459,16 @@ Cohesion: 0.12
 Nodes (10): apply_module_edges(), find_file_nodes(), iter_sources(), make_edge(), module_node_id(), primary_name(), resolve_import(), run() (+2 more)
 
 ### Community 42 - "LostArkMultiTool.Models.MarketItem"
-Cohesion: 0.04
-Nodes (42): LostArkMultiTool::Views(), LostArkMultiTool::Models(), LostArkMultiTool::Models(), LostArkMultiTool::Core(), LostArkMultiTool::Models(), LostArkMultiTool::Services(), LostArkMultiTool::Models(), LostArkMultiTool::Models() (+34 more)
+Cohesion: 0.07
+Nodes (24): LostArkMultiTool::Core(), LostArkMultiTool::Models(), LostArkMultiTool::Core(), LostArkMultiTool::Models(), LostArkMultiTool::Core::LocalTime(), LostArkMultiTool::Services(), LostArkMultiTool::Services(), LostArkMultiTool::Models() (+16 more)
 
-### Community 43 - "RouteRun"
-Cohesion: 0.12
-Nodes (17): BuildRuns(), CanMerge(), FormatLevel(), GetRunValue(), GetSlotName(), GetTierText(), JoinSlotNames(), RefineSimulatorManager::ApplyArmory() (+9 more)
+### Community 43 - "RowResult"
+Cohesion: 0.27
+Nodes (10): FindComboOffset(), FindSliderOffsets(), GetWorstError(), RowResult, m_after, m_before, m_control, m_lopecRatio (+2 more)
 
 ### Community 44 - "MaterialQuery"
-Cohesion: 0.09
-Nodes (18): ApplyMaterialValues(), AssetCalculationService::AddAssetCalculatedListener(), AssetCalculationService::ApplyAllCharacterValues(), AssetCalculationService::AssetCalculationService(), AssetCalculationService::CalculateCharacterAssets(), AssetCalculationService::FetchMarketPrices(), AssetCalculationService::GetBotPrices(), AssetCalculationService::GetTopPrices() (+10 more)
+Cohesion: 0.10
+Nodes (16): ApplyMaterialValues(), AssetCalculationService::AddAssetCalculatedListener(), AssetCalculationService::ApplyAllCharacterValues(), AssetCalculationService::AssetCalculationService(), AssetCalculationService::CalculateCharacterAssets(), AssetCalculationService::FetchMarketPrices(), AssetCalculationService::GetBotPrices(), AssetCalculationService::GetTopPrices() (+8 more)
 
 ### Community 45 - "DX11 Renderer (3)"
 Cohesion: 0.15
@@ -489,11 +484,11 @@ Nodes (26): CalculatorManager::EditQuantity(), CalculatorView::ApplyQuantityStyl
 
 ### Community 48 - "Refine_Simulator_Manager.cpp"
 Cohesion: 0.06
-Nodes (31): FindStartPreset(), FormatAmount(), FormatGold(), FormatPrice(), FormatShortGold(), GetAverageLevel(), MakeChangeText(), ParseNumber() (+23 more)
+Nodes (36): AccessoryFinderManager::Initialize(), CombatSimulatorManager::Initialize(), BuildRuns(), CanMerge(), FindStartPreset(), FormatAmount(), FormatGold(), FormatLevel() (+28 more)
 
 ### Community 49 - "WinHTTP_Client.cpp"
-Cohesion: 0.07
-Nodes (29): APIKeyDialog::Cancel(), APIKeyDialog::Save(), TrimSpaces(), DateRangeDialog::Cancel(), DateRangeDialog::Confirm(), DateRangeDialog::DateRangeDialog(), DateRangeDialog::ShowError(), DateRangeDialog::ShowPreview() (+21 more)
+Cohesion: 0.12
+Nodes (20): APIKeyDialog::Cancel(), DateRangeDialog::Cancel(), MessageDialog::Answer(), EqualsIgnoreCase(), FindHeader(), HTTPNetworkError::HTTPNetworkError(), MakeHandle(), ReadRawHeaders() (+12 more)
 
 ### Community 50 - "DX11 Renderer (5)"
 Cohesion: 0.15
@@ -504,8 +499,8 @@ Cohesion: 0.17
 Nodes (9): RefreshScheduler::EstimateRequestsPerMinute(), RefreshScheduler::GetPauseReason(), RefreshScheduler::IsPaused(), RefreshScheduler::MarkStarted(), RefreshScheduler::OnTick(), RefreshScheduler::Pause(), RefreshScheduler::PauseForMaintenance(), RefreshScheduler::PauseForRateLimit() (+1 more)
 
 ### Community 52 - "JSON_File_Store.cpp"
-Cohesion: 0.26
-Nodes (10): AppendSuffix(), JSONFileStore::JSONFileStore(), JSONFileStore::Load(), JSONFileStore::Save(), JSONFileStore::TryImport(), PreserveCorruptFile(), ReadTextFile(), ToDisplayPath() (+2 more)
+Cohesion: 0.19
+Nodes (14): AppendSuffix(), JSONFileStore::JSONFileStore(), JSONFileStore::Load(), JSONFileStore::Save(), JSONFileStore::TryImport(), LoadStatus, CORRUPTED, LOADED (+6 more)
 
 ### Community 53 - "Button"
 Cohesion: 0.11
@@ -520,23 +515,23 @@ Cohesion: 0.11
 Nodes (10): ClipboardSession, m_isOpen, GlobalLockGuard, m_data, m_memory, GlobalMemory, m_memory, MainWindow::GetClipboardText() (+2 more)
 
 ### Community 56 - "Main Window (4)"
-Cohesion: 0.11
-Nodes (10): GetMouseX(), GetMouseY(), MainWindow::Impl::EmitMouseButton(), MainWindow::Impl::HandleComposition(), MainWindow::Impl::HandleMessage(), MainWindow::Impl::Impl(), MainWindow::Impl::WindowProc(), MainWindow::SetIMEEnabled() (+2 more)
+Cohesion: 0.15
+Nodes (7): GetMouseX(), GetMouseY(), MainWindow::Impl::EmitMouseButton(), MainWindow::Impl::HandleComposition(), MainWindow::Impl::HandleMessage(), MainWindow::Impl::WindowProc(), TranslateKey()
 
 ### Community 57 - "SlotOption"
 Cohesion: 0.18
-Nodes (20): AppendAdvanced(), AppendRegular(), EnumerateOptions(), FinishOption(), GetAdvancedTargets(), MakeInheritOption(), MakeOption(), MakeSameTierOption() (+12 more)
+Nodes (21): AppendAdvanced(), AppendRegular(), EnumerateOptions(), FinishOption(), GetAdvancedTargets(), MakeInheritOption(), MakeOption(), MakeSameTierOption() (+13 more)
 
 ### Community 58 - "Gem_Finder_View.ixx"
 Cohesion: 0.05
-Nodes (41): ReadArray(), FindOptionIndex(), FormatAmount(), GemFinderView::BuildStatCards(), GemFinderView::FindGemIndex(), GemFinderView::GemFinderView(), GemFinderView::GetAlarmGem(), GemFinderView::GetCategoryTypeName() (+33 more)
+Nodes (31): FindOptionIndex(), FormatAmount(), GemFinderView::BuildStatCards(), GemFinderView::FindGemIndex(), GemFinderView::GetAlarmGem(), GemFinderView::GetCategoryTypeName(), GemFinderView::GetChartGem(), GemFinderView::GetCursor() (+23 more)
 
-### Community 59 - "CardSpec"
-Cohesion: 0.15
-Nodes (11): ArkGemFinderView::ArkGemFinderView(), CalculatorView::CalculatorView(), RefineSimulatorView::RefineSimulatorView(), CardSpec, m_eyebrow, m_headers, m_hint, m_title (+3 more)
+### Community 59 - "vector"
+Cohesion: 0.13
+Nodes (15): MakeColumns(), ArkGemFinderView::ArkGemFinderView(), MakeBoundGemColumns(), CalculatorView::CalculatorView(), GemFinderView::GemFinderView(), GemFinderView::SetRateLimitText(), GemFinderView::SetStatusText(), MakeAlarmColumns() (+7 more)
 
 ### Community 60 - "Grid.cpp"
-Cohesion: 0.09
+Cohesion: 0.11
 Nodes (18): Grid::EnsureRowVisible(), Grid::GetColumnCount(), Grid::GetColumnEdge(), Grid::GetMaxFirstRow(), Grid::GetRowCount(), Grid::GetSelectedRow(), Grid::GetVisibleRowCapacity(), Grid::Grid() (+10 more)
 
 ### Community 62 - "Local_Time.cpp"
@@ -548,31 +543,31 @@ Cohesion: 0.13
 Nodes (6): Season::FindWeekIndex(), Season::GetDisplayName(), Season::GetPeriodWeekCount(), Season::GetWeekStartDate(), Season::SetPeriod(), Season::SetRecords()
 
 ### Community 64 - "DPAPI_Key_Store.cpp"
-Cohesion: 0.19
-Nodes (6): DPAPIKeyStore::Load(), DPAPIKeyStore::Save(), LocalBlob, m_blob, MakeInputBlob(), WriteBinaryFile()
+Cohesion: 0.11
+Nodes (10): LostArkMultiTool::Core(), DPAPIKeyStore::Load(), DPAPIKeyStore::Save(), LocalBlob, m_blob, LostArkMultiTool::Services(), MakeInputBlob(), WriteBinaryFile() (+2 more)
 
-### Community 65 - "LostArkMultiTool.Services.JSONFileStore"
-Cohesion: 0.06
-Nodes (24): LostArkMultiTool::Models(), LostArkMultiTool::Core(), LostArkMultiTool::Models(), LostArkMultiTool::Services(), LostArkMultiTool::Services(), LostArkMultiTool::Services(), LostArkMultiTool::Services(), LostArkMultiTool.Core.BoundGemRepository (+16 more)
+### Community 65 - "LostArkMultiTool.Models.RefineData"
+Cohesion: 0.13
+Nodes (10): LostArkMultiTool::Services(), LostArkMultiTool.Core.RefineSimulationService, LostArkMultiTool.Models.RefineData, LostArkMultiTool.Models.RefinePlan, LostArkMultiTool.Services.MarketRefineSimulationService, LostArkMultiTool.Services.RefineCalculator, LostArkMultiTool::Services::RefineCalculator(), LostArkMultiTool::Models::RefineData() (+2 more)
 
 ### Community 66 - "Transfer_Data.cpp"
-Cohesion: 0.14
-Nodes (11): GetAccessorySidePairs(), GetArmorSidePairs(), GetBraceletRules(), GetBraceletStatRules(), GetDealerAccessoryRules(), GetEstherTable(), GetGearTable(), GetPolishRankName() (+3 more)
+Cohesion: 0.06
+Nodes (29): ApplyPolishTiers(), AuctionAccessorySearchService::FetchOptions(), AuctionAccessorySearchService::FilterOptions(), AuctionAccessorySearchService::Search(), DealerOptionNames, FindRequestValue(), FindValidOptions(), ParseAmount() (+21 more)
 
 ### Community 67 - "Server_Config_Checker.cpp"
 Cohesion: 0.39
 Nodes (5): ParseVersion(), ServerConfigChecker::GetCurrentVersion(), ServerConfigChecker::IsNewerVersion(), TrimWhitespace(), VersionParts
 
 ### Community 69 - "Transfer_Manager.cpp"
-Cohesion: 0.16
-Nodes (21): Cell(), HeaderRow(), PartText(), SlotNameCell(), SourceLevelCell(), TargetGearCell(), TargetLevelCell(), TierCell() (+13 more)
+Cohesion: 0.11
+Nodes (26): Cell(), FixedRow, m_current, m_label, m_target, HeaderRow(), PartText(), SlotNameCell() (+18 more)
 
 ### Community 70 - "Main Window (5)"
-Cohesion: 0.12
-Nodes (12): CopyToFixedText(), MainWindow::Impl::AddTrayIcon(), MainWindow::Impl::OpenURL(), MainWindow::Impl::SetTrayTooltip(), MainWindow::Impl::ShowTrayBalloon(), MainWindow::MainWindow(), MainWindow::OpenURL(), MainWindow::SetClipboardText() (+4 more)
+Cohesion: 0.14
+Nodes (11): CopyToFixedText(), MainWindow::Impl::AddTrayIcon(), MainWindow::Impl::OpenURL(), MainWindow::Impl::SetTrayTooltip(), MainWindow::Impl::ShowTrayBalloon(), MainWindow::OpenURL(), MainWindow::SetClipboardText(), MainWindow::SetTitle() (+3 more)
 
 ### Community 72 - "GearReadResult"
-Cohesion: 0.29
+Cohesion: 0.33
 Nodes (5): MakeGearState(), GearReadResult, m_skipReason, m_state, ReadGearState()
 
 ### Community 75 - "User Data"
@@ -593,7 +588,7 @@ Nodes (6): DX11Renderer::DrawString(), DX11Renderer::Impl::CreateMeasureLayout()
 
 ### Community 80 - "Engraving_Finder_Manager.cpp"
 Cohesion: 0.06
-Nodes (19): CompareChange(), ComparePrice(), EngravingFinderManager::BuildStats(), EngravingFinderManager::FinishRefresh(), EngravingFinderManager::GetBackgroundStatus(), EngravingFinderManager::GetCursor(), EngravingFinderManager::GetTabTitle(), EngravingFinderManager::HandleAPIKeyError() (+11 more)
+Nodes (18): CompareChange(), ComparePrice(), EngravingFinderManager::BuildStats(), EngravingFinderManager::FinishRefresh(), EngravingFinderManager::GetBackgroundStatus(), EngravingFinderManager::GetCursor(), EngravingFinderManager::GetTabTitle(), EngravingFinderManager::HandleAPIKeyError() (+10 more)
 
 ### Community 81 - "Combat_Simulator_View.cpp"
 Cohesion: 0.09
@@ -601,18 +596,18 @@ Nodes (17): BuildNoteText(), CombatSimulatorView::GetCursor(), CombatSimulatorVi
 
 ### Community 82 - "Combat_Regression.cpp"
 Cohesion: 0.13
-Nodes (29): ApplyControl(), ApplyRow(), CharacterMeasure, m_columns, m_measure, m_rows, CsvRow, FindBaselineEnlightenment() (+21 more)
+Nodes (34): ApplyControl(), ApplyRow(), CharacterMeasure, m_columns, m_measure, m_rows, CheckCharacter(), CsvRow (+26 more)
 
 ### Community 83 - "Transfer_View.cpp"
-Cohesion: 0.09
-Nodes (16): CardCell, m_column, m_row, GetCellBounds(), TransferView::GetCursor(), TransferView::HandleInput(), TransferView::Layout(), TransferView::Render() (+8 more)
+Cohesion: 0.06
+Nodes (28): CombatSimulatorView::LayoutPanel(), CardCell, m_column, m_row, CardSpec, m_eyebrow, m_headers, m_hint (+20 more)
 
 ### Community 85 - "Refine_Calculator.cpp"
-Cohesion: 0.22
-Nodes (15): AddAmounts(), AddMaterial(), AddMaterials(), AddStepMaterials(), ApplyHoldings(), BuildCostCatalog(), BuildSupportActions(), CalculateAdvancedBlock() (+7 more)
+Cohesion: 0.21
+Nodes (16): AddAmounts(), AddMaterial(), AddMaterials(), AddStepMaterials(), ApplyHoldings(), BuildCostCatalog(), BuildSupportActions(), CalculateAdvancedBlock() (+8 more)
 
 ### Community 86 - "misc (4)"
-Cohesion: 0.30
+Cohesion: 0.33
 Nodes (6): CollectNames(), HasAnyScore(), IsSameType(), RosterChangeService::FindRenameCandidates(), RosterChangeService::GetPastCharacters(), RosterChangeService::RenameCharacter()
 
 ### Community 87 - "Gem Catalog"
@@ -648,12 +643,12 @@ Cohesion: 0.24
 Nodes (5): Label::Label(), Label::MeasureHeight(), Label::Render(), Label::SetColor(), Label::SetText()
 
 ### Community 99 - "WinHTTP_Market_API.cpp"
-Cohesion: 0.17
-Nodes (27): ParseJSONText(), BuildAccessoryPayload(), BuildAuctionPayload(), BuildMarketListPayload(), BuildMarketPayload(), CheckItemsArray(), EnsureSuccess(), EscapeDataString() (+19 more)
+Cohesion: 0.12
+Nodes (37): ParseJSONText(), BuildAccessoryPayload(), BuildAuctionPayload(), BuildMarketListPayload(), BuildMarketPayload(), CheckItemsArray(), ComputeAveragePrice(), EnsureSuccess() (+29 more)
 
 ### Community 101 - "LostArkMultiTool.Models.GrowthData"
-Cohesion: 0.13
-Nodes (11): LostArkMultiTool::Models(), LostArkMultiTool::Core(), LostArkMultiTool.Core.RosterService, LostArkMultiTool.Models.GrowthData, LostArkMultiTool.Models.Season, LostArkMultiTool.Models.WeeklyRecord, LostArkMultiTool.Services.RosterChangeService, LostArkMultiTool::Services() (+3 more)
+Cohesion: 0.12
+Nodes (13): LostArkMultiTool::Models(), LostArkMultiTool::Models(), LostArkMultiTool::Core(), LostArkMultiTool::Services(), LostArkMultiTool.Core.GrowthDataRepository, LostArkMultiTool.Core.RosterService, LostArkMultiTool.Models.CharacterInfo, LostArkMultiTool.Models.GrowthData (+5 more)
 
 ### Community 102 - "Main Window (7)"
 Cohesion: 0.31
@@ -675,9 +670,9 @@ Nodes (5): Clock, GetClockTicks(), IntervalTimer::Poll(), IntervalTimer::Start()
 Cohesion: 0.19
 Nodes (8): combat_power(), fetch_armory(), fingerprint(), main(), build_modules(), imports_of(), main(), read_text()
 
-### Community 108 - "wstring_view"
-Cohesion: 0.13
-Nodes (14): ArkGemFinderManager::GetTabTitle(), CombatSimulatorManager::GetTabTitle(), CombatSimulatorManager::RefreshResult(), GetFactorName(), GetSignText(), Grid::OnComposition(), Grid::OnTextInput(), RefineSimulatorManager::GetTabTitle() (+6 more)
+### Community 108 - "CombatExtraEditor::Apply"
+Cohesion: 0.28
+Nodes (4): CombatExtraEditor::Apply(), CombatExtraEditor::BuildRows(), HasDuplicateBook(), CombatSimulatorView::ShowCard()
 
 ### Community 111 - "ToTrimmedText"
 Cohesion: 0.24
@@ -688,8 +683,8 @@ Cohesion: 0.19
 Nodes (11): GearFactorComponent::GetFactor(), GearFactorComponent::GetKind(), GemFactorComponent::GetFactor(), GemFactorComponent::GetKind(), GetGemValue(), GetQualityValue(), GetRatio(), GetStatGain() (+3 more)
 
 ### Community 114 - "LostArkMultiTool.Models.CombatState"
-Cohesion: 0.13
-Nodes (18): LostArkMultiTool::Services(), LostArkMultiTool::Core(), LostArkMultiTool::Views(), LostArkMultiTool::Core(), LostArkMultiTool::Core(), LostArkMultiTool::Views(), LostArkMultiTool::Services(), LostArkMultiTool.Core.CombatExtraComponent (+10 more)
+Cohesion: 0.09
+Nodes (20): LostArkMultiTool::Services(), LostArkMultiTool::Models::CombatCoefficientData(), LostArkMultiTool::Core(), LostArkMultiTool::Core(), CombatPowerCalculator::AddComponent(), LostArkMultiTool::Core(), LostArkMultiTool::Services(), LostArkMultiTool::Services() (+12 more)
 
 ### Community 115 - "Market_Refine_Simulation_Service.cpp"
 Cohesion: 0.08
@@ -700,20 +695,16 @@ Cohesion: 0.31
 Nodes (8): DrawCard(), DrawCardWithHeader(), DrawEmptyState(), DrawStatCard(), DrawTableFooter(), GetPageColumn(), SplitColumns(), TakeTop()
 
 ### Community 120 - "ToColumn"
-Cohesion: 0.15
-Nodes (8): CombatSimulatorView::CombatSimulatorView(), CombatSimulatorView::ShowCard(), CombatSimulatorView::ShowGears(), CombatSimulatorView::ShowGems(), MakeGearColumns(), MakeGemColumns(), MakeListColumns(), ToColumn()
+Cohesion: 0.20
+Nodes (7): CombatSimulatorView::CombatSimulatorView(), CombatSimulatorView::ShowGears(), CombatSimulatorView::ShowGems(), MakeGearColumns(), MakeGemColumns(), MakeListColumns(), ToColumn()
 
 ### Community 121 - "BuildPriceChartPoints"
-Cohesion: 0.28
-Nodes (3): ArkGemFinderManager::RefreshPriceChart(), BuildPriceChartPoints(), ToChartDateLabel()
+Cohesion: 0.24
+Nodes (4): ArkGemFinderManager::RefreshPriceChart(), EngravingFinderManager::RefreshChart(), BuildPriceChartPoints(), ToChartDateLabel()
 
-### Community 122 - "windows"
-Cohesion: 0.14
-Nodes (4): GetExecutableDirectory(), wWinMain(), UTF8ToWide(), WideToUTF8()
-
-### Community 123 - "CheckCharacter"
-Cohesion: 0.19
-Nodes (16): BuildTrend(), CheckCharacter(), FindAbnormalReason(), FindRowOffset(), IsException(), LoadApiPower(), LoadCurrentState(), LoadExceptions() (+8 more)
+### Community 123 - "MainWindow::Impl::Impl"
+Cohesion: 0.22
+Nodes (4): MainWindow::Impl::Impl(), MainWindow::MainWindow(), MainWindow::SetIMEEnabled(), ScaleToPixels()
 
 ### Community 124 - "Application::FindTabAt"
 Cohesion: 0.29
@@ -721,7 +712,11 @@ Nodes (5): Application::FindTabAt(), Application::GetContentRect(), Application:
 
 ### Community 125 - "Gem_Finder_Manager.cpp"
 Cohesion: 0.05
-Nodes (34): AuctionGemPriceService::AuctionGemPriceService(), AuctionGemPriceService::GetSettings(), AuctionGemPriceService::RemoveAlarm(), AuctionGemPriceService::UpdateAlarmState(), AuctionGemPriceService::UpdateSettings(), LostArkMultiTool::Services(), LostArkMultiTool::Models(), LostArkMultiTool::Models::GemCatalog() (+26 more)
+Nodes (32): AuctionGemPriceService::ApplyPrice(), AuctionGemPriceService::ApplyPrices(), AuctionGemPriceService::AuctionGemPriceService(), AuctionGemPriceService::EvaluateAlarms(), AuctionGemPriceService::FetchPrices(), AuctionGemPriceService::GetAllTargets(), AuctionGemPriceService::GetSettings(), AuctionGemPriceService::GetWatchedTargets() (+24 more)
+
+### Community 126 - "LostArkMultiTool.Models.Character"
+Cohesion: 0.06
+Nodes (16): LostArkMultiTool::Core(), LostArkMultiTool::Services(), LostArkMultiTool::Models(), LostArkMultiTool::Core(), LostArkMultiTool::Models(), LostArkMultiTool::Services(), LostArkMultiTool.Core.AssetCalculator, LostArkMultiTool.Core.DataRepository (+8 more)
 
 ### Community 127 - "array"
 Cohesion: 0.16
@@ -739,9 +734,9 @@ Nodes (6): IsHighSurrogate(), IsLowSurrogate(), IsPrintable(), TextBox::GetNextP
 Cohesion: 0.40
 Nodes (3): CharacterInfo::CharacterInfo(), CharacterInfo::GetNumericItemLevel(), IsIgnoredLevelChar()
 
-### Community 132 - "Auction_Accessory_Search_Service.cpp"
-Cohesion: 0.17
-Nodes (10): ApplyPolishTiers(), AuctionAccessorySearchService::FetchOptions(), AuctionAccessorySearchService::FilterOptions(), AuctionAccessorySearchService::Search(), DealerOptionNames, FindRequestValue(), FindValidOptions(), ParseAmount() (+2 more)
+### Community 132 - "RosterMaterialLink"
+Cohesion: 0.40
+Nodes (4): RosterMaterialLink, m_bottom, m_key, m_top
 
 ### Community 133 - "Update_Installer.cpp"
 Cohesion: 0.19
@@ -763,12 +758,12 @@ Nodes (3): Application::OnInput(), Application::RouteInput(), Application::Route
 Cohesion: 0.67
 Nodes (3): Application::Run(), GetClockTicks(), TicksToSeconds()
 
-### Community 140 - "LostArkMultiTool.Core.APPConstants"
-Cohesion: 0.07
-Nodes (33): LostArkMultiTool::Core(), LostArkMultiTool::Views(), LostArkMultiTool::Services(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Services(), LostArkMultiTool::Core(), LostArkMultiTool.Core.APIKeyStore (+25 more)
+### Community 140 - "LostArkMultiTool.Views.Application"
+Cohesion: 0.13
+Nodes (29): LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), GetExecutableDirectory(), LostArkMultiTool.Core.APPExceptions, LostArkMultiTool.Core.BackgroundTask (+21 more)
 
 ### Community 143 - "windows"
-Cohesion: 0.28
+Cohesion: 0.24
 Nodes (3): OnTerminate(), OnUnhandledException(), WriteDump()
 
 ### Community 144 - "FindKind"
@@ -776,16 +771,16 @@ Cohesion: 0.18
 Nodes (4): FindKind(), GetOrderIndex(), MarketArkGemPriceService::ApplyQuotes(), MarketArkGemPriceService::FetchQuotes()
 
 ### Community 145 - "Transfer_Calculator.cpp"
-Cohesion: 0.24
-Nodes (8): FindGear(), FindRank(), FindRule(), JudgeScroll(), RankMap, ToOrder(), TransferCalculator::Calculate(), TransferCalculator::FindStoneResult()
+Cohesion: 0.14
+Nodes (16): FindGear(), FindRank(), FindRule(), JudgeScroll(), ParseAmount(), RankMap, ScrollJudge, m_grade (+8 more)
 
 ### Community 147 - "Text Box (4)"
 Cohesion: 0.40
 Nodes (3): TextBox::BuildDisplayText(), TextBox::SetText(), TextBox::TextBox()
 
-### Community 148 - "OverlayNotifier::AskDateRange"
-Cohesion: 0.31
-Nodes (4): OverlayNotifier::AskDateRange(), OverlayNotifier::AskYesNo(), OverlayNotifier::ShowMessage(), OverlayNotifier::ShowToast()
+### Community 148 - "LostArkMultiTool.Core.Notifier"
+Cohesion: 0.04
+Nodes (32): LostArkMultiTool::Views::UI(), LostArkMultiTool::Views::UI(), LostArkMultiTool::Views::UI(), MessageDialog::LayoutContent(), MessageDialog::MeasureContentHeight(), LostArkMultiTool.Core.Notifier, LostArkMultiTool.Views.ServerCheckDialog, LostArkMultiTool.Views.UI.DateRangeDialog (+24 more)
 
 ### Community 149 - "Engraving_Quote.cpp"
 Cohesion: 0.24
@@ -796,8 +791,8 @@ Cohesion: 0.50
 Nodes (3): TextBox::SetInputFilter(), TextBox::SetOnSubmit(), TextBox::SetOnTextChanged()
 
 ### Community 155 - "CardCell"
-Cohesion: 0.18
-Nodes (8): CombatSimulatorView::Layout(), CombatSimulatorView::LayoutListCard(), CombatSimulatorView::LayoutPanel(), CombatSimulatorView::Render(), CombatSimulatorView::RenderCaptions(), CombatSimulatorView::RenderPanels(), GetCellBounds(), TransferView::LayoutPanel()
+Cohesion: 0.25
+Nodes (6): CombatSimulatorView::Layout(), CombatSimulatorView::LayoutListCard(), CombatSimulatorView::Render(), CombatSimulatorView::RenderCaptions(), CombatSimulatorView::RenderPanels(), GetCellBounds()
 
 ### Community 156 - "Gist_Server_Config_Checker.cpp"
 Cohesion: 0.32
@@ -808,76 +803,72 @@ Cohesion: 0.29
 Nodes (6): CardCell, m_column, m_row, CombatSimulatorView::OnCardChoice(), CombatSimulatorView::SetGemTargetIndex(), CombatSimulatorView::SyncCardEditor()
 
 ### Community 160 - "StepCandidate"
-Cohesion: 0.18
-Nodes (11): ComesBefore(), GetActionPriority(), GetOrderIndex(), MakeCandidate(), StepCandidate, m_laneKind, m_levelIncrease, m_slotIndex (+3 more)
+Cohesion: 0.21
+Nodes (9): ComesBefore(), GetActionPriority(), GetOrderIndex(), MakeCandidate(), StepCandidate, m_laneKind, m_levelIncrease, m_slotIndex (+1 more)
 
 ### Community 163 - "MarketRefineBookPriceService::ApplyQuotes"
 Cohesion: 0.20
 Nodes (6): FindKind(), GetKeyword(), GetOrderIndex(), MarketRefineBookPriceService::ApplyQuotes(), MarketRefineBookPriceService::FetchQuotes(), RemoveSpaces()
 
-### Community 165 - "int64_t"
-Cohesion: 0.22
-Nodes (10): ComputeAveragePrice(), FindLowestBuyPrice(), ReadIntegerHeader(), ToOptionalInt(), WaitBeforeRetry(), WinHTTPMarketAPI::GetAveragePrice(), WinHTTPMarketAPI::GetLowestBuyPrice(), WinHTTPMarketAPI::SearchAuctionWithRetry() (+2 more)
+### Community 165 - "MouseMoveEvent"
+Cohesion: 0.50
+Nodes (3): Grid::OnMouseDrag(), Grid::OnMouseMove(), LineChart::OnMouseMove()
 
 ### Community 166 - "Bound_Gem_Roster_Data.cpp"
-Cohesion: 0.16
-Nodes (8): AddQuantities(), BoundGemRosterData::AddCharacter(), BoundGemRosterData::FindCharacter(), BoundGemRosterData::GetTotal(), BoundGemRosterData::HasUnassigned(), BoundGemRosterData::RecordHistory(), BoundGemRosterData::SetRoster(), HasAnyQuantity()
+Cohesion: 0.05
+Nodes (25): BoundGemData::GetQuantity(), BoundGemData::SetQuantity(), LostArkMultiTool::Models(), LostArkMultiTool::Core(), AddQuantities(), BoundGemRosterData::AddCharacter(), BoundGemRosterData::FindCharacter(), BoundGemRosterData::GetTotal() (+17 more)
+
+### Community 171 - "Toast_Host.cpp"
+Cohesion: 0.18
+Nodes (3): ToastHost::Add(), ToastHost::GetOpacity(), ToastHost::Render()
 
 ### Community 173 - "CursorShape"
 Cohesion: 0.33
 Nodes (5): CalculatorView::GetCursor(), CombatSimulatorManager::GetCursor(), Grid::GetCursor(), RefineSimulatorManager::GetCursor(), TransferManager::GetCursor()
-
-### Community 176 - "ScrollJudge"
-Cohesion: 0.18
-Nodes (8): ParseAmount(), ScrollJudge, m_grade, m_polishText, m_reason, TransferCalculator::FindEstherRow(), TransferCalculator::FindGearRow(), TransferCalculator::RankPolishLine()
 
 ### Community 177 - "string_view"
 Cohesion: 0.18
 Nodes (9): GetAccessoryCandidates(), GetBookCandidates(), GetBraceletEffectiveTypes(), GetBraceletMainStatTypes(), GetBraceletOptionCandidates(), GetBraceletStatTypes(), GetGemTypeFactor(), GetLegendFlatNames() (+1 more)
 
 ### Community 179 - "JSON_Value.cpp"
-Cohesion: 0.08
-Nodes (24): BuildJSONText(), BuildQuantities(), FindIndex(), JSONBoundGemRepository::JSONBoundGemRepository(), JSONBoundGemRepository::Save(), ReadData(), ReadQuantities(), AppendIndent() (+16 more)
-
-### Community 182 - "AuctionGemPriceService::FetchPrices"
-Cohesion: 0.16
-Nodes (8): AuctionGemPriceService::ApplyPrice(), AuctionGemPriceService::ApplyPrices(), AuctionGemPriceService::EvaluateAlarms(), AuctionGemPriceService::FetchPrices(), AuctionGemPriceService::GetAllTargets(), AuctionGemPriceService::GetWatchedTargets(), AuctionGemPriceService::RecordDailyLowest(), AuctionGemPriceService::SetAlarm()
+Cohesion: 0.13
+Nodes (17): AppendIndent(), AppendQuoted(), AppendUTF8(), AppendValue(), IsJSONWhitespace(), IsNumberChar(), JSONParser, m_position (+9 more)
 
 ### Community 185 - "wstring"
-Cohesion: 0.36
-Nodes (7): CombatSimulatorManager::OnGearCellEdited(), CombatSimulatorManager::OnGemCellEdited(), CombatSimulatorManager::OnVambraceEdited(), CombatSimulatorManager::RequestSearch(), ParseInteger(), TrimSpaces(), RefineSimulatorManager::LoadRosterHoldings()
+Cohesion: 0.10
+Nodes (23): ArkGemFinderManager::GetTabTitle(), CombatSimulatorManager::GetTabTitle(), CombatSimulatorManager::OnGearCellEdited(), CombatSimulatorManager::OnVambraceEdited(), CombatSimulatorManager::RequestSearch(), ParseInteger(), TrimSpaces(), Grid::OnComposition() (+15 more)
 
 ### Community 187 - "PriceHistory::RecordLowest"
 Cohesion: 0.32
 Nodes (4): PriceHistory::IsFavorite(), PriceHistory::Prune(), PriceHistory::RecordLowest(), PriceHistory::ToggleFavorite()
 
-### Community 188 - "PolishTier"
-Cohesion: 0.33
-Nodes (5): PolishTier, m_amounts, m_isPercent, m_name, GetPolishTiers()
-
 ### Community 190 - "wstring"
 Cohesion: 0.22
-Nodes (6): ArkGemFinderManager::ChangeQuantity(), ArkGemFinderManager::GetBackgroundStatus(), ArkGemFinderManager::SelectPriceRow(), ArkGemFinderManager::ShowAutoError(), ArkGemFinderManager::UpdateChart(), ToChartDateLabel()
+Nodes (6): ArkGemFinderManager::ChangeQuantity(), ArkGemFinderManager::GetBackgroundStatus(), ArkGemFinderManager::SelectPriceRow(), ArkGemFinderManager::ShowAutoError(), ArkGemFinderManager::SyncRoster(), TrimSpaces()
 
 ### Community 192 - "optional"
 Cohesion: 0.40
 Nodes (4): Grid::FindCellAt(), Grid::IsCellEditable(), Grid::IsCellSelected(), Grid::SetSelectedCell()
 
 ### Community 196 - "ToWideMessage"
-Cohesion: 0.29
-Nodes (7): ArkGemFinderManager::FinishRefresh(), ArkGemFinderManager::FinishRosterSync(), ArkGemFinderManager::HandleAPIKeyError(), ArkGemFinderManager::LoadCharacterList(), ArkGemFinderManager::SavePriceHistory(), ArkGemFinderManager::TrySave(), ToWideMessage()
+Cohesion: 0.25
+Nodes (8): ArkGemFinderManager::FinishRefresh(), ArkGemFinderManager::FinishRosterSync(), ArkGemFinderManager::HandleAPIKeyError(), ArkGemFinderManager::Initialize(), ArkGemFinderManager::LoadCharacterList(), ArkGemFinderManager::SavePriceHistory(), ArkGemFinderManager::TrySave(), ToWideMessage()
 
 ### Community 201 - "CsvColumns"
 Cohesion: 0.22
 Nodes (9): CsvColumns, m_after, m_baseCombat, m_before, m_character, m_control, m_group, m_measure (+1 more)
 
+### Community 202 - "BuildTrend"
+Cohesion: 0.33
+Nodes (3): ArkGemFinderManager::RefreshTables(), BuildTrend(), MakeRow()
+
 ### Community 204 - "SlotLane"
 Cohesion: 0.33
 Nodes (6): SlotLane, m_advancedIndex, m_isInherited, m_option, m_postIndex, m_regularIndex
 
-### Community 209 - "ToolContext"
-Cohesion: 0.40
-Nodes (4): AccessoryFinderManager::Initialize(), ArkGemFinderManager::Initialize(), CombatSimulatorManager::Initialize(), RefineSimulatorManager::Initialize()
+### Community 205 - "API_Key_Dialog.cpp"
+Cohesion: 0.11
+Nodes (6): APIKeyDialog::APIKeyDialog(), APIKeyDialog::LayoutContent(), APIKeyDialog::MeasureContentHeight(), APIKeyDialog::Save(), APIKeyDialog::ShowError(), TrimSpaces()
 
 ### Community 211 - "InputEvent"
 Cohesion: 0.40
@@ -887,61 +878,65 @@ Nodes (4): CalculatorView::HandleInput(), CombatSimulatorManager::HandleInput(),
 Cohesion: 0.40
 Nodes (5): SupportAction, m_breathCount, m_isBookUsed, m_supportCost, m_units
 
-### Community 214 - "export"
-Cohesion: 0.29
-Nodes (5): LostArkMultiTool::Core::APPConstants(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views()
+### Community 214 - "Application.ixx"
+Cohesion: 0.09
+Nodes (14): LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Views(), LostArkMultiTool::Services(), LostArkMultiTool::Views(), LostArkMultiTool.Core.ServerConfigChecker (+6 more)
 
 ### Community 219 - "LostArkMultiTool.Models.WeeklyRecord"
-Cohesion: 0.17
-Nodes (7): GetRecordedScores(), GrowthCalculationService::GetAverage(), GrowthCalculationService::GetTotal(), LostArkMultiTool::Services(), LostArkMultiTool::Core(), LostArkMultiTool.Core.GrowthCalculator, LostArkMultiTool.Services.GrowthCalculationService
-
-### Community 223 - "LoadStatus"
-Cohesion: 0.50
-Nodes (4): LoadStatus, CORRUPTED, LOADED, NOT_FOUND
+Cohesion: 0.12
+Nodes (10): GetRecordedScores(), GrowthCalculationService::GetAverage(), GrowthCalculationService::GetTotal(), LostArkMultiTool::Services(), LostArkMultiTool::Core(), LostArkMultiTool.Core.GrowthCalculator, LostArkMultiTool.Models.WeeklyRecord, LostArkMultiTool.Services.GrowthCalculationService (+2 more)
 
 ### Community 224 - "ArkGemFinderManager::RefreshBoundGems"
 Cohesion: 0.50
 Nodes (3): ArkGemFinderManager::RefreshBoundGems(), GetUnitPrice(), RemoveSpaces()
 
 ### Community 225 - "wchar_t"
-Cohesion: 0.25
-Nodes (7): IsQuantityCharacter(), IsQuantityCharacter(), GemFinderManager::ShowSaveError(), IsPriceCharacter(), ShowFatalError(), IsDigitCharacter(), IsPriceCharacter()
-
-### Community 226 - "Add"
-Cohesion: 0.67
-Nodes (3): Add(), LineChart::BuildSegments(), Subtract()
+Cohesion: 0.40
+Nodes (5): IsQuantityCharacter(), IsQuantityCharacter(), IsPriceCharacter(), IsDigitCharacter(), IsPriceCharacter()
 
 ### Community 227 - "BreathRule"
 Cohesion: 0.50
 Nodes (4): BreathRule, m_baseProbability, m_maxCount, m_probability
 
 ### Community 264 - "LostArkMultiTool.Core.Renderer"
-Cohesion: 0.05
-Nodes (61): LostArkMultiTool::Views(), APIKeyDialog::MeasureContentHeight(), LostArkMultiTool::Views(), LostArkMultiTool::Views::UI(), LostArkMultiTool::Views(), LostArkMultiTool::Views::UI(), LostArkMultiTool::Views(), LostArkMultiTool::Views::UI() (+53 more)
+Cohesion: 0.27
+Nodes (25): LostArkMultiTool.Core.Input, LostArkMultiTool.Core.Platform, LostArkMultiTool.Core.Renderer, LostArkMultiTool.Views.AccessoryFinderView, LostArkMultiTool.Views.APIKeyDialog, LostArkMultiTool.Views.ArkGemFinderView, LostArkMultiTool.Views.CalculatorView, LostArkMultiTool.Views.CombatSimulatorView (+17 more)
+
+### Community 312 - "Grid.cpp"
+Cohesion: 0.11
+Nodes (4): Grid::OnMouseDown(), Grid::OnMouseUp(), Grid::RenderGridLines(), SnapToPixel()
+
+### Community 338 - "LostArkMultiTool.Models.RateLimitState"
+Cohesion: 0.08
+Nodes (18): LostArkMultiTool::Models(), LostArkMultiTool::Models(), LostArkMultiTool::Services(), LostArkMultiTool::Models(), LostArkMultiTool::Core(), LostArkMultiTool.Core.AccessorySearchService, LostArkMultiTool.Models.AccessoryListing, LostArkMultiTool.Models.AccessorySearchQuery (+10 more)
 
 ### Community 351 - "ShardPouch"
-Cohesion: 0.67
-Nodes (3): ShardPouch, m_name, m_shardCount
+Cohesion: 0.19
+Nodes (5): ShardPouch, m_name, m_shardCount, WinHTTPMarketAPI::BuildHeaders(), WinHTTPMarketAPI::GetRateLimit()
+
+### Community 456 - "Date_Range_Dialog.cpp"
+Cohesion: 0.14
+Nodes (10): DateRangeDialog::Confirm(), DateRangeDialog::DateRangeDialog(), DateRangeDialog::LayoutContent(), DateRangeDialog::MeasureContentHeight(), DateRangeDialog::ShowError(), DateRangeDialog::ShowPreview(), IsDateCharacter(), ParseDate() (+2 more)
 
 ## Knowledge Gaps
-- **197 isolated node(s):** `m_name`, `m_shardCount`, `m_power`, `m_scale`, `m_icon` (+192 more)
+- **197 isolated node(s):** `m_failCount`, `m_lines`, `m_grade`, `m_polishText`, `m_reason` (+192 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1590 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **321 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **314 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `LostArkMultiTool.Core.Renderer` connect `LostArkMultiTool.Core.Renderer` to `Calculator_Manager.cpp`, `Renderer.ixx`, `Label`, `Control Host`, `LostArkMultiTool.Models.MarketItem`, `Text Box`, `LostArkMultiTool.Core.APPConstants`, `Toast_Host.cpp`, `Tracker_Manager.cpp`, `Engraving_Finder_Manager.cpp`, `Combo Box`, `LostArkMultiTool.Models.CombatState`, `Progress_Bar.cpp`, `Dialog`, `Control`, `Gem_Finder_Manager.cpp`, `DX11 Renderer (2)`?**
-  _High betweenness centrality (0.099) - this node is a cross-community bridge._
-- **What connects `m_name`, `m_shardCount`, `m_power` to the rest of the system?**
+- **Why does `LostArkMultiTool.Core.Renderer` connect `LostArkMultiTool.Core.Renderer` to `Calculator_Manager.cpp`, `Gem_Finder_Manager.cpp`, `Tracker_Manager.cpp`, `LostArkMultiTool.Views.Application`, `Combo Box`, `LostArkMultiTool.Core.Notifier`, `Control`, `Placeholder_View.ixx`, `DX11 Renderer (2)`, `Control Host`, `Toast_Host.cpp`, `Progress_Bar.cpp`, `Dialog`, `Date_Range_Dialog.cpp`, `Text Box`, `API_Key_Dialog.cpp`, `Engraving_Finder_Manager.cpp`, `Application.ixx`, `Renderer.ixx`, `Label`?**
+  _High betweenness centrality (0.113) - this node is a cross-community bridge._
+- **What connects `m_failCount`, `m_lines`, `m_grade` to the rest of the system?**
   _197 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Calculator_Manager.cpp` be split into smaller, more focused modules?**
-  _Cohesion score 0.04113924050632911 - nodes in this community are weakly interconnected._
-- **Why does `LostArkMultiTool.Core.APPConstants` connect `Gem_Finder_Manager.cpp` to `Calculator_Manager.cpp`, `LostArkMultiTool.Core.Renderer`, `Tracker_Manager.cpp`, `LostArkMultiTool.Core.APPConstants`, `JSON_Growth_Data_Repository.cpp`, `JSON Data Repository`, `APP_Constants.cpp`, `JSON Gem Data Repository`, `Bound_Gem_Roster_Data.cpp`, `LostArkMultiTool.Models.MarketItem`, `Refresh_Scheduler.cpp`, `JSON_File_Store.cpp`, `Local_Time.cpp`, `DPAPI_Key_Store.cpp`, `LostArkMultiTool.Services.JSONFileStore`, `Server_Config_Checker.cpp`, `Engraving_Finder_Manager.cpp`, `Gem Catalog`, `Character`, `Rate Limit State`, `Refresh Settings`, `LostArkMultiTool.Models.CombatState`?**
-  _High betweenness centrality (0.084) - this node is a cross-community bridge._
+  _Cohesion score 0.06553911205073996 - nodes in this community are weakly interconnected._
+- **Why does `LostArkMultiTool.Core.APPConstants` connect `LostArkMultiTool.Models.MarketItem` to `Calculator_Manager.cpp`, `Gem_Finder_Manager.cpp`, `LostArkMultiTool.Core.Renderer`, `Tracker_Manager.cpp`, `LostArkMultiTool.Views.Application`, `JSON_Growth_Data_Repository.cpp`, `JSON Data Repository`, `APP_Constants.cpp`, `Gem_Catalog.ixx`, `JSON Gem Data Repository`, `Bound_Gem_Roster_Data.cpp`, `Refresh_Scheduler.cpp`, `JSON_File_Store.cpp`, `Local_Time.cpp`, `DPAPI_Key_Store.cpp`, `LostArkMultiTool.Models.RefineData`, `Server_Config_Checker.cpp`, `Engraving_Finder_Manager.cpp`, `LostArkMultiTool.Models.RateLimitState`, `Application.ixx`, `Gem Catalog`, `Character`, `LostArkMultiTool.Models.GrowthData`, `Rate Limit State`, `Refresh Settings`, `LostArkMultiTool.Models.CombatState`, `Gem_Finder_Manager.cpp`, `LostArkMultiTool.Models.Character`?**
+  _High betweenness centrality (0.090) - this node is a cross-community bridge._
 - **Should `Combat_Supporter_Data.cpp` be split into smaller, more focused modules?**
   _Cohesion score 0.09057971014492754 - nodes in this community are weakly interconnected._
-- **Why does `read_text()` connect `json` to `CheckCharacter`?**
-  _High betweenness centrality (0.069) - this node is a cross-community bridge._
+- **Why does `read_text()` connect `json` to `Combat_Regression.cpp`?**
+  _High betweenness centrality (0.070) - this node is a cross-community bridge._
 - **Should `Combat_Simulator_Manager.cpp` be split into smaller, more focused modules?**
-  _Cohesion score 0.09872241579558652 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07541478129713423 - nodes in this community are weakly interconnected._

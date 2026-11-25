@@ -216,6 +216,12 @@ namespace LostArkMultiTool::Core::SelfTest
         constexpr int ESTHER_EXAMPLE_STAGE{ 4 };               // 이관 엘라 단계
         constexpr int ESTHER_EXAMPLE_POLISH{ 5 };              // 이관 연마 단계
         constexpr int ESTHER_EXAMPLE_TARGET_LEVEL{ 1865 };     // 이관 레벨
+        constexpr int ESTHER_REFINE_EVOLUTION{ 8 };            // 공지 예시: 8진화
+        constexpr int ESTHER_REFINE_ELA{ 2 };                  // 공지 예시: 엘라 2단계
+        constexpr int ESTHER_REFINE_LEVEL{ 1715 };             // 8진화 엘라2 레벨
+        constexpr int ESTHER_REFINE_STAGE{ 18 };               // → 무기 슬롯 재련 18단계
+        constexpr int ESTHER_REFINE_ENERGY{ 50 };              // → 환급 에스더의 기운 50
+        constexpr int ESTHER_REFINE_KIT{ 17000 };              // → 환급 로맨틱 재료 키트 17,000
         constexpr int STONE_EXAMPLE_HIGH{ 3 };                 // 9/7돌 높은 쪽 활성화 포인트
         constexpr int STONE_EXAMPLE_LOW{ 2 };                  // 9/7돌 낮은 쪽 활성화 포인트
         constexpr int STONE_FULL_POINT{ 4 };                   // 4+4 활성화 포인트
@@ -237,6 +243,18 @@ namespace LostArkMultiTool::Core::SelfTest
 
             const std::optional<Transfer::EstherTransferRow> esther{ Calculator::FindEstherRow(ESTHER_EXAMPLE_LEVEL) };   // 10단계 엘라3
             reporter.Check(esther.has_value() && esther->m_elaStage == ESTHER_EXAMPLE_STAGE && esther->m_polish == ESTHER_EXAMPLE_POLISH && esther->m_level == ESTHER_EXAMPLE_TARGET_LEVEL, "2부 에스더 이관 (1830 → 엘라 4단계 5연마 1865)");
+
+            const std::optional<Transfer::EstherTransferRow> estherRefine{ Calculator::FindEstherRow(ESTHER_REFINE_EVOLUTION, ESTHER_REFINE_ELA, ESTHER_REFINE_LEVEL) };   // 8진화 엘라2
+            reporter.Check(estherRefine.has_value() && estherRefine->m_slotRefine == ESTHER_REFINE_STAGE && estherRefine->m_refundEnergy == ESTHER_REFINE_ENERGY && estherRefine->m_refundKit == ESTHER_REFINE_KIT,
+                "2부 에스더 재련 · 환급 (8진화 엘라2 → 재련 18 · 기운 50 · 키트 17,000)");
+
+            const auto supporterRules{ Transfer::GetSupporterAccessoryRules() };   // 서포터 장신구 규칙
+            const bool isSupporterFiller{ std::ranges::all_of(supporterRules, [](const Transfer::AccessoryRule& rule)
+            {
+                return rule.m_partType == Transfer::SUPPORTER_EARRING_TYPE || (std::ranges::contains(rule.m_fillers, std::string_view{ "최대생명력" }) && !std::ranges::contains(rule.m_fillers, std::string_view{ "공격력+" }));   // 목걸이 · 반지 = 무공+ · 최생
+            }) };
+            reporter.Check(isSupporterFiller && Transfer::IsDealerEngraving("각성") && Transfer::IsSupporterEngraving("각성") && !Transfer::IsSupporterEngraving("원한") && Transfer::IsSupporterClass("바드"),
+                "2부 서포터 3옵션 · 유효 각인 · 서포터 직업 (11/25 공지)");
 
             std::string key;   // 연마 표 키
             const bool isHigh{ Calculator::RankPolishLine("적에게 주는 피해 +2.00%", key) == Transfer::PolishRank::RANK_HIGH && key == "적에게주는피해" };   // 상

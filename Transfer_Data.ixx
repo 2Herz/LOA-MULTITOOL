@@ -2,14 +2,13 @@
 
 import std;  // 표준 라이브러리 모듈 가져오기
 
-// 2부(겨울 업데이트) 기존 성장 이관 표 (2026-11-20 로스트아크 On Air 슬라이드 기준)
-// 11/25 이관 상세 공지가 나오면 이 모듈의 표만 고치면 되도록 계산 규칙과 분리함
+// 2부(겨울 업데이트) 기존 성장 이관 표 (2026-11-25 공식 공지 "로스트아크 2부 업데이트에 따른 주요 개편 사항 사전 안내" 기준)
+// 표는 이 모듈에만 두고 계산 규칙(TransferCalculator)과 분리함
 export namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네임스페이스 내보내기 시작
 {
     // ===== 공통 상수 =====
     inline constexpr int GEAR_MIN_EXCLUSIVE_LEVEL{ 1600 };     // 장비 이관 표의 시작 (이 레벨 "초과"부터 이관 장비를 받음)
     inline constexpr int ESTHER_FULL_LEVEL{ 1800 };            // 이 레벨 이상 에스더 무기 → 무기 기준 부위는 25강 무기(1800) 기준으로 받음
-    inline constexpr int ESTHER_FULL_SLOT_REFINE{ 25 };        // 9 · 10단계 엘라3 에스더 무기의 무기 슬롯 재련 단계
     inline constexpr int NEW_SLOT_REFINE{ 0 };                 // 새로 생기는 허리띠 슬롯 재련 시작 단계
     inline constexpr int ACCESSORY_MIN_TIER{ 4 };              // 장신구 · 팔찌 주문서 이관 대상 티어
     inline constexpr int ACCESSORY_MIN_QUALITY{ 67 };          // 장신구 주문서 이관 대상 최소 품질
@@ -18,6 +17,8 @@ export namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네�
     inline constexpr int STAR_FIRST_COST{ 3 };                 // 10레벨 광휘 3개 → 1레벨 성휘 1개
     inline constexpr int STAR_NEXT_COST{ 2 };                  // 성휘 2개 → 1레벨 상승 (이번 겨울은 2레벨까지)
     inline constexpr int MAX_GEM_LEVEL{ 10 };                  // 광휘 최고 레벨 (성휘 재료)
+    inline constexpr int OLD_GEM_LEVEL_DROP{ 2 };              // 티어 3 멸화 · 홍염 보석은 2레벨 낮은 광휘로 (1 · 2레벨은 제거)
+    inline constexpr std::array<std::string_view, 2> OLD_GEM_KINDS{ "멸화", "홍염" };   // 티어 3 보석 종류 (레벨이 내려가는 보석)
 
     // ===== 장비 (부위별 아이템 레벨 → 이관 장비) =====
     struct GearTransferRow
@@ -29,17 +30,20 @@ export namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네�
     };
     [[nodiscard]] std::span<const GearTransferRow> GetGearTable() noexcept;   // 1600 초과 ~ 1800 이하, 레벨 오름차순
 
-    // ===== 에스더 무기 (진화 · 엘라 단계 → 엘라 1 ~ 4단계) =====
+    // ===== 에스더 무기 (진화 · 엘라 단계 → 엘라 1 ~ 4단계 · 무기 슬롯 재련 · 재료 환급) =====
     struct EstherTransferRow
     {
-        int m_maxLevel{};                 // 기존 에스더 무기 레벨 상한 (이하)
-        std::string_view m_source;        // 기존 단계 설명 ("9단계 엘라3" 등)
+        int m_evolution{};                // 기존 진화 단계 (0 ~ 10)
+        int m_ela{};                      // 기존 엘라 부여 단계 (0 = 없음)
+        int m_sourceLevel{};              // 기존 에스더 무기 아이템 레벨
         int m_elaStage{};                 // 이관 엘라 단계 (1 ~ 4)
         int m_polish{};                   // 이관 연마 단계 (4단계부터, 0 ~ 5)
         int m_level{};                    // 이관 아이템 레벨
-        std::string_view m_refund;        // 재료 환급 안내 (없으면 빈 글자)
+        int m_slotRefine{};               // 이관 무기 슬롯 재련 단계
+        int m_refundEnergy{};             // 환급 에스더의 기운 (캐릭터 귀속, 0 = 없음)
+        int m_refundKit{};                // 환급 로맨틱 재료 키트 (캐릭터 귀속, 0 = 없음)
     };
-    [[nodiscard]] std::span<const EstherTransferRow> GetEstherTable() noexcept;   // 레벨 오름차순 (마지막 행 = 그 위 전부)
+    [[nodiscard]] std::span<const EstherTransferRow> GetEstherTable() noexcept;   // 진화 · 엘라 조합마다 한 줄 (공지 표 순서)
 
     // ===== 장신구 · 무기 기준 부위 짝 =====
     struct SlotPair
@@ -98,7 +102,9 @@ export namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네�
     inline constexpr std::string_view RELIC_GRADE{ "유물" };    // 유물 등급 이름
     inline constexpr std::string_view ESTHER_GRADE{ "에스더" }; // 에스더 등급 이름
 
-    // ===== 팔찌 → 인장 주문서 (옵션 티어, 등급 계산식은 11/25 공지 대기) =====
+    // ===== 팔찌 → 인장 주문서 (옵션 티어, 1 ~ 21등급 조합표는 공지에도 없음) =====
+    [[nodiscard]] bool IsSupporterClass(std::string_view className) noexcept;   // 바드 · 도화가 · 홀리나이트 · 발키리 (나머지는 딜러 직업)
+
     struct BraceletRule
     {
         std::array<std::string_view, 2> m_keywords;   // 띄어쓰기를 뺀 옵션 글자에 모두 들어 있어야 하는 낱말 (두 번째가 비면 하나만)
@@ -123,8 +129,12 @@ export namespace LostArkMultiTool::Models::TransferData  // 2부 이관 표 네�
         int m_low{};                      // 낮은 쪽 활성화 포인트 (유효 각인)
         std::string_view m_result;        // 이관 결과 ("슬롯 5개 7단계" 등)
     };
-    [[nodiscard]] std::span<const StoneTransferRow> GetStoneTable() noexcept;   // 표에 없는 조합은 "표 밖 (공지 대기)"
+    [[nodiscard]] std::span<const StoneTransferRow> GetStoneTable() noexcept;   // 표에 없는 조합은 각인 반영 없음 (초월의 가루)
+
+    // 유효 각인 (스톤 두 줄이 모두 같은 목록에 있어야 유효, 각성은 양쪽 목록에 다 있음)
+    [[nodiscard]] bool IsDealerEngraving(std::string_view name) noexcept;      // 딜러 유효 각인 22종
+    [[nodiscard]] bool IsSupporterEngraving(std::string_view name) noexcept;   // 서포터 유효 각인 11종
 
     // ===== 안내 =====
-    [[nodiscard]] std::string_view GetSourceText() noexcept;   // 표 출처 ("2026-11-20 On Air 슬라이드 · 상세 공지 11/25 예정")
+    [[nodiscard]] std::string_view GetSourceText() noexcept;   // 표 출처 ("2026-11-25 공식 공지 기준")
 }
