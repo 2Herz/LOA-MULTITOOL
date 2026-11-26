@@ -2,6 +2,7 @@
 
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.Renderer;  // 미리 보기 그림 형식 가져오기
+import LostArkMultiTool.Vision.BossHealthDetector;  // 보스 체력 형식 가져오기
 import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 별칭 형식 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.NameplateMemory;  // 이름표 모양 기억 가져오기
@@ -115,6 +116,13 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::chrono::system_clock::time_point m_lastReadAt;  // 그 시각
     };
 
+    // 마지막으로 읽은 보스 체력 (시각 포함 → 깎이는 속도 계산용)
+    struct BossHealthSample
+    {
+        BossHealthReading m_reading;                          // 체력 · 줄 수
+        std::chrono::steady_clock::time_point m_capturedAt;   // 읽은 시각
+    };
+
     // 상시 감시기
     class ScreenWatcher
     {
@@ -136,6 +144,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         void SetCharacterInterval(std::chrono::milliseconds interval) noexcept;   // 현재 캐릭터 확인 간격 (같은 캐릭터를 계속 보면 두 배로 늘어남)
         void SetPreviewEnabled(bool isEnabled) noexcept;              // 미리 보기 그림 만들기 켜기 · 끄기 (설정 탭이 보일 때만)
         [[nodiscard]] WatcherDiagnostics GetDiagnostics() const;      // 감시 상태 복사본
+        void SetBossScanEnabled(bool isEnabled) noexcept;             // 보스 체력 읽기 켜기 · 끄기
+        [[nodiscard]] std::optional<BossHealthSample> GetBossHealth() const;   // 마지막 보스 체력 (보스가 안 보인 지 오래면 nullopt)
 
         void Start();                                  // 감시 시작 (이미 감시 중이면 그대로)
         void Stop();                                   // 감시 멈춤 (스레드가 끝날 때까지 기다림)
@@ -164,6 +174,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::atomic<bool> m_isCharacterScanEnabled{ true };            // 현재 캐릭터 확인 켜짐
         std::atomic<std::int64_t> m_characterIntervalMs{ 2000 };      // 현재 캐릭터 확인 간격 (밀리초)
         std::atomic<bool> m_isPreviewEnabled{};                        // 미리 보기 그림 만들기
+        std::atomic<bool> m_isBossScanEnabled{ true };                 // 보스 체력 읽기
+        std::optional<BossHealthSample> m_bossHealth;                  // 마지막 보스 체력 (m_mutex로 보호)
         WatcherDiagnostics m_diagnostics;                              // 감시 상태 (m_mutex로 보호)
         std::vector<std::wstring> m_characterNames;                    // 원정대 이름 (m_mutex로 보호)
         std::vector<CharacterAlias> m_characterAliases;                // 별칭 (m_mutex로 보호)

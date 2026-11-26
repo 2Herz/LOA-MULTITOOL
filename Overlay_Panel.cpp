@@ -54,6 +54,11 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     std::wstring OverlayPanel::GetTitleText() const { return m_title; }                       // 기본: 제목
     bool OverlayPanel::HandleContentInput(const Core::InputEvent&, const Core::RectF&) { return false; }   // 기본: 안 받음
 
+    bool OverlayPanel::IsContentAvailable() const noexcept
+    {
+        return true;   // 기본: 늘 보여 줌
+    }
+
     bool OverlayPanel::IsChanged() noexcept
     {
         return std::exchange(m_isChanged, false);   // 확인하면 초기화

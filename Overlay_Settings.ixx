@@ -33,6 +33,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
 
         [[nodiscard]] bool IsEnabled() const noexcept;                          // 오버레이 켜짐
         void SetEnabled(bool isEnabled) noexcept;                               // 켜기 · 끄기
+        [[nodiscard]] bool IsCaptureHidden() const noexcept;                    // 캡처 · 방송에서 숨기기
+        void SetCaptureHidden(bool isHidden) noexcept;                          // 숨기기 바꾸기
         [[nodiscard]] float GetOpacity() const noexcept;                        // 패널 바탕 불투명도
         void SetOpacity(float opacity) noexcept;                                // 불투명도 (범위 제한)
         [[nodiscard]] std::size_t GetMiniToolIndex() const noexcept;            // 미니 모드 탭 번호
@@ -45,6 +47,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
     private:
         Services::JSONFileStore m_fileStore;          // 안전한 파일 읽기 · 쓰기
         bool m_isEnabled{};                           // 켜짐
+        bool m_isCaptureHidden{};                     // 캡처 · 방송에서 숨기기
         float m_opacity{ DEFAULT_OPACITY };           // 불투명도
         std::size_t m_miniToolIndex{};                // 미니 모드 탭
         std::vector<OverlayPanelState> m_panels;      // 패널 상태들

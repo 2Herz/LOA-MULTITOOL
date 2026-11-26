@@ -19,6 +19,8 @@ import LostArkMultiTool.Services.ArmoryParser;
 import LostArkMultiTool.Services.JSONValue;
 import LostArkMultiTool.Services.TransferCalculator;
 import LostArkMultiTool.Core.TextEncoding;
+import LostArkMultiTool.Vision.BossHealthDetector;
+import LostArkMultiTool.Views.BossPanel;
 import LostArkMultiTool.Vision.CharacterDetector;
 import LostArkMultiTool.Vision.DigitReader;
 import LostArkMultiTool.Vision.NameplateMemory;
@@ -793,6 +795,69 @@ namespace LostArkMultiTool::Core::SelfTest
             }
         }
 
+        // 보스 체력바 읽기 (v1.10.0): 글자 해석 · 단위 글자 · 실제 화면 샘플
+        void CheckBossHealth(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            constexpr std::int64_t SAMPLE_HEALTH{ 83'119'120'458 };                    // 샘플 체력 (루멘칼리고)
+            constexpr int SAMPLE_LINES{ 100 };                                         // 샘플 줄 수
+            const auto parse = [](std::initializer_list<std::wstring_view> lines)      // 줄들 → 해석
+                {
+                    Vision::TextResult text;                                           // 가짜 OCR 결과
+                    for (std::wstring_view line : lines) text.m_lines.push_back(Vision::TextLine{ std::wstring{ line }, {}, {} });
+                    return Vision::BossHealthDetector::Parse(text);
+                };
+            const auto spaced = parse({ L"83.1 19.1 20.458/83.119.120.458", L"X 100" });   // 쉼표를 마침표 · 띄어쓰기로 읽음
+            const auto bracket = parse({ L"41.559.560.229/83,119,120,458 )(100" });     // X를 ")("로 읽음, 한 줄
+            const auto broken = parse({ L"83.119.120.458i83111의12다458" });            // '/'를 못 읽음 → 버림
+            const auto reversed = parse({ L"90,000/80,000" });                          // 현재 > 최대 → 버림
+            const bool isParsed = spaced && spaced->m_current == SAMPLE_HEALTH && spaced->m_maximum == SAMPLE_HEALTH && spaced->m_lines == SAMPLE_LINES
+                && bracket && bracket->m_current == 41'559'560'229 && bracket->m_lines == SAMPLE_LINES && !broken && !reversed;
+            reporter.Check(isParsed, "보스 체력 · 글자 해석 (쉼표 오인식 · X 오인식 · '/' 없음 · 현재 > 최대 제외)");
+
+            const bool isFormatted = Views::BossPanel::FormatKoreanNumber(SAMPLE_HEALTH) == L"831억 1,912만"
+                && Views::BossPanel::FormatKoreanNumber(1'234'000'000'000) == L"1조 2,340억"
+                && Views::BossPanel::FormatKoreanNumber(50'000) == L"5만";
+            reporter.Check(isFormatted, "보스 체력 · 조 · 억 · 만 단위 글자 (831억 1,912만)");
+
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
+            if (!folder) { reporter.Note("보스 체력 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
+            struct BossSample
+            {
+                std::wstring_view m_file;      // 파일
+                std::int64_t m_current;        // 기대 현재 체력
+                int m_lines;                   // 기대 줄 수
+                std::string_view m_name;       // 검사 이름
+            };
+            constexpr std::array BOSS_SAMPLES{
+                BossSample{ L"boss_hp.webp", SAMPLE_HEALTH, SAMPLE_LINES, "가득 · 주황 막대" },
+                BossSample{ L"boss_hp_half.webp", 37'019'552'389, 45, "절반 · 노란 막대" },
+                BossSample{ L"boss_hp_low.webp", 4'816'559'070, 6, "조금 · 파란 막대" } };   // 체력 · 막대 색이 다른 세 장
+            std::vector<std::optional<Vision::BossHealthReading>> readings(BOSS_SAMPLES.size());   // 읽은 값
+            std::thread worker{ [&]                                                    // OCR 일꾼 스레드
+                {
+                    const Vision::VisionApartment apartment;                           // WinRT 준비
+                    const Vision::TextRecognizer recognizer;                           // OCR
+                    for (std::size_t index = 0; index < BOSS_SAMPLES.size(); ++index)  // 샘플마다
+                        if (const auto frame = Vision::ImageFile::Load(*folder / BOSS_SAMPLES[index].m_file)) readings[index] = Vision::BossHealthDetector::Detect(*frame, recognizer);
+                } };
+            worker.join();                                                             // 기다림
+            for (std::size_t index = 0; index < BOSS_SAMPLES.size(); ++index)          // 한 장씩: 현재 체력 · 줄 수 (최대 체력은 아래 투표에서)
+            {
+                const BossSample& sample = BOSS_SAMPLES[index];                        // 기대
+                const auto& reading = readings[index];                                 // 읽은 값
+                reporter.Check(reading && reading->m_current == sample.m_current && reading->m_lines == sample.m_lines,
+                    std::format("보스 체력 샘플 ({})", sample.m_name),
+                    reading ? std::format("{} / {} · {}줄", reading->m_current, reading->m_maximum, reading->m_lines.value_or(0)) : std::string{ "못 읽음" });
+            }
+            Vision::BossHealthTracker tracker;                                         // 여러 장 투표
+            std::optional<Vision::BossHealthReading> voted;                            // 마지막 결과
+            for (const std::size_t index : { std::size_t{ 2 }, std::size_t{ 1 }, std::size_t{ 0 }, std::size_t{ 1 } })   // 조금 → 절반(최대 오인식) → 가득 → 절반
+                if (readings[index]) voted = tracker.Feed(*readings[index]);
+            reporter.Check(voted && voted->m_maximum == SAMPLE_HEALTH && voted->m_current == BOSS_SAMPLES[1].m_current,
+                "보스 체력 · 최대 체력 투표 (한 장 오인식을 고침)",
+                voted ? std::format("{} / {}", voted->m_current, voted->m_maximum) : std::string{ "결과 없음" });
+        }
+
         // 설정 탭 부품 · 요소 투명도 · 프로그램 아이콘 (v1.9.3)
         void CheckOverlaySetup(Reporter& reporter)
         {
@@ -885,6 +950,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckOverlay(reporter);                              // 인게임 오버레이 투명 창
             CheckMiniToolPanel(reporter);                        // 인게임 오버레이 미니 모드
             CheckOverlaySetup(reporter);                         // 설정 탭 부품 · 요소 투명도 · 아이콘
+            CheckBossHealth(reporter, reportPath);               // 보스 체력바
         }
         catch (const std::exception& exception)
         {

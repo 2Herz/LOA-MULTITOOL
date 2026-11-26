@@ -35,6 +35,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         [[nodiscard]] bool HandleInput(const Core::InputEvent& event, bool isInteractive);        // 입력 (처리했으면 true)
         [[nodiscard]] virtual Core::CursorShape GetCursor() const noexcept;                      // 마우스 커서 모양
         [[nodiscard]] bool IsChanged() noexcept;                                                  // 사용자가 옮기거나 닫았는지 (확인하면 초기화 → 설정 저장 신호)
+        [[nodiscard]] virtual bool IsContentAvailable() const noexcept;                          // 지금 보여 줄 내용이 있는지 (없으면 평소엔 안 그림, 기본: 늘 있음)
 
     protected:
         virtual void RenderContent(Core::Renderer& renderer, const Core::RectF& content) = 0;   // 내용 그리기

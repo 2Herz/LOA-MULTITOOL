@@ -7,7 +7,8 @@ import LostArkMultiTool.Core.Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Core.ToolManager;  // 탭 매니저 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 픽셀 사각형 가져오기
 import LostArkMultiTool.Vision.GameWindowFinder;  // 게임 창 찾기 가져오기
-import LostArkMultiTool.Views.CalculatorManager;  // 재료 요약 · 현재 캐릭터
+import LostArkMultiTool.Views.BossPanel;  // 보스 체력 패널
+import LostArkMultiTool.Views.CalculatorManager;  // 재료 요약 · 현재 캐릭터 · 보스 체력
 import LostArkMultiTool.Views.CharacterPanel;  // 현재 캐릭터 패널
 import LostArkMultiTool.Views.DX11Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Views.MaterialPanel;  // 재료 패널
@@ -26,6 +27,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     {
         constexpr int HOTKEY_TOGGLE_OVERLAY{ 1 };            // 단축키 번호: 오버레이 켜기 · 끄기
         constexpr int HOTKEY_TOGGLE_INTERACT{ 2 };           // 단축키 번호: 조작 모드
+        constexpr int HOTKEY_REFRESH_PRICES{ 3 };            // 단축키 번호: 시세 갱신
+        constexpr unsigned KEY_F5{ 0x74 };                   // F5 키 (VK_F5)
+        constexpr float BOSS_PANEL_TOP_RATIO{ 0.15f };       // 보스 체력 패널 위쪽 (게임 체력바 바로 아래, 화면 세로 비율)
         constexpr unsigned MODIFIER_CONTROL{ 0x0002 };       // MOD_CONTROL (Ctrl)
         constexpr unsigned MODIFIER_SHIFT{ 0x0004 };         // MOD_SHIFT (Shift)
         constexpr unsigned KEY_O{ 'O' };                     // O 키 (가상 키 = 대문자)
@@ -53,6 +57,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr Core::TextStyle TOOLBAR_STYLE{ TOOLBAR_FONT_SIZE, Core::FontWeight::BOLD, Core::TextAlign::CENTER };   // 단추 글꼴
         constexpr Core::TextStyle HINT_STYLE{ TOOLBAR_FONT_SIZE, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };    // 안내 글꼴
         constexpr std::wstring_view TOOLBAR_CHARACTER_TEXT{ L"현재 캐릭터" };   // 단추 글자
+        constexpr std::wstring_view TOOLBAR_BOSS_TEXT{ L"보스 체력" };
+        constexpr std::wstring_view REFRESH_HOTKEY_FAILED_TEXT{ L"시세 갱신 단축키(Ctrl+Shift+F5)를 다른 프로그램이 쓰고 있어요. 그 프로그램의 단축키를 바꾸거나 계산기의 [시세 갱신]을 눌러 주세요." };
         constexpr std::wstring_view TOOLBAR_MATERIAL_TEXT{ L"재료 시세" };
         constexpr std::wstring_view TOOLBAR_PARADISE_TEXT{ L"낙원력" };
         constexpr std::wstring_view TOOLBAR_MINI_TEXT{ L"미니 탭" };
@@ -82,6 +88,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         const bool isOverlayKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_OVERLAY, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_O);    // Ctrl+Shift+O
         const bool isInteractKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_INTERACT, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_I);  // Ctrl+Shift+I
         if (!isOverlayKey || !isInteractKey) m_pendingNotice = std::wstring{ HOTKEY_FAILED_TEXT };                              // 등록 실패 안내
+        else if (!m_window->RegisterHotkey(HOTKEY_REFRESH_PRICES, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_F5))                   // Ctrl+Shift+F5
+            m_pendingNotice = std::wstring{ REFRESH_HOTKEY_FAILED_TEXT };                                                       // 등록 실패 안내
+        [[maybe_unused]] const bool isCaptureApplied = m_window->SetCaptureHidden(m_settings->IsCaptureHidden());              // 캡처 · 방송에서 숨기기 (옛 윈도우면 그대로)
 
         // 패널들 (컴포넌트): 탭 미니 모드(큰 패널이라 맨 아래에 그림), 재료 시세 · 총자산, 낙원력 주간 현황
         if (!m_tools.empty())
@@ -93,6 +102,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         }
         m_panels.push_back(std::make_unique<MaterialPanel>([] { return CalculatorManager::GetInstance().GetOverlaySummary(); }));
         m_panels.push_back(std::make_unique<ParadisePanel>([] { return TrackerManager::GetInstance().GetOverlaySummary(); }));
+        m_panels.push_back(std::make_unique<BossPanel>([] { return CalculatorManager::GetInstance().GetBossHealth(); }));   // 보스 체력
         m_panels.push_back(std::make_unique<CharacterPanel>(
             [] { return CalculatorManager::GetInstance().GetCurrentCharacter(); },                        // 현재 캐릭터 요약
             [](std::size_t index) { CalculatorManager::GetInstance().PickCurrentCharacter(index); },      // [변경]으로 고름
@@ -103,6 +113,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_CHARACTER_TEXT },
             [this] { if (auto* panel = FindPanel(CharacterPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
             [this] { const auto* panel = FindPanel(CharacterPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });  // 현재 캐릭터 패널 켜기 · 끄기
+        m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_BOSS_TEXT },
+            [this] { if (auto* panel = FindPanel(BossPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
+            [this] { const auto* panel = FindPanel(BossPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });   // 보스 체력 패널 켜기 · 끄기
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_MATERIAL_TEXT },
             [this] { if (auto* panel = FindPanel(MaterialPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
             [this] { const auto* panel = FindPanel(MaterialPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });   // 재료 패널 켜기 · 끄기
@@ -173,6 +186,24 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     void OverlayManager::SetOnEnabledChanged(std::function<void(bool isEnabled)> onEnabledChanged)
     {
         m_onEnabledChanged = std::move(onEnabledChanged);   // 알림 연결
+    }
+
+    void OverlayManager::SetOnRefreshHotkey(std::function<void()> onRefreshHotkey)
+    {
+        m_onRefreshHotkey = std::move(onRefreshHotkey);     // 알림 연결
+    }
+
+    bool OverlayManager::IsCaptureHidden() const noexcept
+    {
+        return m_settings && m_settings->IsCaptureHidden(); // 캡처 숨기기
+    }
+
+    void OverlayManager::SetCaptureHidden(bool isHidden)
+    {
+        if (!m_settings || !m_window) return;               // 초기화 전
+        m_settings->SetCaptureHidden(isHidden);             // 기록
+        [[maybe_unused]] const bool isApplied = m_window->SetCaptureHidden(isHidden);   // 창에 반영
+        SaveSettings();                                     // 저장
     }
 
     std::vector<OverlayElementInfo> OverlayManager::GetElements() const
@@ -252,6 +283,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     {
         if (hotkeyId == HOTKEY_TOGGLE_OVERLAY) SetEnabled(!IsEnabled());                             // 켜기 · 끄기
         else if (hotkeyId == HOTKEY_TOGGLE_INTERACT && IsEnabled()) SetInteractive(!m_window->IsInteractive());   // 조작 모드
+        else if (hotkeyId == HOTKEY_REFRESH_PRICES && m_onRefreshHotkey) m_onRefreshHotkey();                       // 시세 갱신
     }
 
     void OverlayManager::SetInteractive(bool isInteractive)
@@ -324,7 +356,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
         m_renderer->Clear(TRANSPARENT_COLOR);                                  // 전부 투명 (게임 화면이 비침)
         for (const auto& panel : m_panels)                                     // 패널마다 (뒤가 위)
-            if (panel->IsVisible()) panel->Render(*m_renderer, m_settings->GetOpacity(), isInteractive);
+            if (panel->IsVisible() && (isInteractive || panel->IsContentAvailable())) panel->Render(*m_renderer, m_settings->GetOpacity(), isInteractive);   // 보일 내용이 없으면 평소엔 안 그림
         if (isInteractive) RenderToolbar(*m_renderer);                         // 조작 모드 도구 막대
         m_toasts.Render(*m_renderer, GetOverlayArea());                        // 토스트 (오른쪽 아래)
         m_renderer->EndFrame();                                                // 화면에 내보내기
@@ -395,6 +427,13 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 const float centerLeft = area.m_left + (area.GetWidth() - size.m_width) * HALF;     // 가로 가운데
                 const float centerTop = area.m_top + (area.GetHeight() - size.m_height) * HALF;     // 세로 가운데
                 panel->SetBounds(Core::RectF{ centerLeft, centerTop, centerLeft + size.m_width, centerTop + size.m_height });
+                continue;                                                      // 오른쪽 쌓기에서 뺌
+            }
+            if (panel->GetId() == BossPanel::PANEL_ID)                         // 보스 체력은 게임 체력바 바로 아래 가운데
+            {
+                const float bossLeft = area.m_left + (area.GetWidth() - size.m_width) * HALF;   // 가로 가운데
+                const float bossTop = area.m_top + area.GetHeight() * BOSS_PANEL_TOP_RATIO;     // 체력바 아래
+                panel->SetBounds(Core::RectF{ bossLeft, bossTop, bossLeft + size.m_width, bossTop + size.m_height });
                 continue;                                                      // 오른쪽 쌓기에서 뺌
             }
             if (panel->GetId() == CharacterPanel::PANEL_ID)                    // 현재 캐릭터는 왼쪽 위

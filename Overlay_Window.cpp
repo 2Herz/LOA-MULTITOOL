@@ -300,6 +300,11 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_impl->m_onDPIChanged = std::move(onDPIChanged);   // 배율 알림 연결
     }
 
+    bool OverlayWindow::SetCaptureHidden(bool isHidden) noexcept
+    {
+        return ::SetWindowDisplayAffinity(m_impl->m_handle, isHidden ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE) != FALSE;   // 캡처 · 녹화 · 방송에 안 찍힘 (게임 화면 인식과는 무관)
+    }
+
     bool OverlayWindow::RegisterHotkey(int hotkeyId, unsigned modifiers, unsigned virtualKey)
     {
         if (!::RegisterHotKey(m_impl->m_handle, hotkeyId, modifiers | MOD_NOREPEAT, virtualKey)) return false;   // 이미 다른 프로그램이 씀

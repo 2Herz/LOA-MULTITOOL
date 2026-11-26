@@ -2,6 +2,7 @@
 
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.TextEncoding;  // 이름 UTF-8 바꾸기 가져오기
+import LostArkMultiTool.Vision.BossHealthDetector;  // 보스 체력바 인식기 가져오기
 import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 인식기 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.GameWindowFinder;  // 게임 창 찾기 가져오기
@@ -27,6 +28,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::chrono::milliseconds CHARACTER_LOADING_INTERVAL{ 1000 };// 로딩 화면이면 더 자주 (새 캐릭터를 빨리 알아봄)
         constexpr std::chrono::milliseconds PREVIEW_INTERVAL{ 1000 };         // 미리 보기 그림 갱신 간격
         constexpr std::chrono::milliseconds FULL_SCAN_INTERVAL{ 6000 };       // 화면 전체 OCR(정보 창 찾기) 간격 (1초 안팎으로 무거워서 가끔만)
+        constexpr std::chrono::milliseconds BOSS_SCAN_INTERVAL{ 500 };        // 보스 체력 읽기 간격 (작은 영역 · 흑백이라 가벼움)
+        constexpr std::chrono::milliseconds BOSS_KEEP_DURATION{ 3000 };       // 보스를 못 읽어도 이 시간까지는 마지막 값 유지 (잠깐 가려짐 · 오인식)
         constexpr int PREVIEW_MAX_WIDTH{ 640 };                               // 미리 보기 그림 가로 상한 (줄여서 메모리 · 시간 절약)
         constexpr double AVERAGE_WEIGHT{ 0.3 };                               // 처리 시간 평균: 새 값 비중 (지수 이동 평균)
         constexpr double MILLISECONDS_PER_SECOND{ 1000.0 };                   // 초 → 밀리초
@@ -177,6 +180,18 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         m_isPreviewEnabled = isEnabled;   // 다음 주기부터
     }
 
+    void ScreenWatcher::SetBossScanEnabled(bool isEnabled) noexcept
+    {
+        m_isBossScanEnabled = isEnabled;   // 다음 주기부터
+    }
+
+    std::optional<BossHealthSample> ScreenWatcher::GetBossHealth() const
+    {
+        const std::scoped_lock lock{ m_mutex };                                                   // 보호
+        if (!m_bossHealth || std::chrono::steady_clock::now() - m_bossHealth->m_capturedAt > BOSS_KEEP_DURATION) return std::nullopt;   // 오래됨
+        return m_bossHealth;                                                                      // 복사본
+    }
+
     WatcherDiagnostics ScreenWatcher::GetDiagnostics() const
     {
         const std::scoped_lock lock{ m_mutex };   // 보호
@@ -259,6 +274,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         std::string lastCharacterName;                                             // 마지막으로 확정한 캐릭터 (같으면 확인 간격을 늘림)
         auto nextPreview = std::chrono::steady_clock::now();                       // 다음 미리 보기 그림 시각
         auto nextFullScan = std::chrono::steady_clock::now();                      // 다음 화면 전체 OCR 시각
+        auto nextBossScan = std::chrono::steady_clock::now();                      // 다음 보스 체력 읽기 시각
+        BossHealthTracker bossTracker;                                             // 보스 체력 투표 (오인식 걸러내기)
+        auto lastBossSeen = std::chrono::steady_clock::now();                      // 마지막으로 체력바를 읽은 시각
         std::uint64_t previewVersion = 0;                                          // 미리 보기 그림 버전
         void* gameWindow = nullptr;                                                // 지난번에 찾은 게임 창
         std::optional<PixelPoint> lastCursor;                                      // 지난 주기 커서 (프레임 기준)
@@ -328,6 +346,20 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 }
 
                 const auto steadyNow = std::chrono::steady_clock::now();           // 지금 (캐릭터 확인 주기용)
+                if (frame && m_isBossScanEnabled && steadyNow >= nextBossScan)     // 보스 체력 (커서와 상관없이)
+                {
+                    nextBossScan = steadyNow + BOSS_SCAN_INTERVAL;                 // 다음 시각
+                    if (const auto boss = BossHealthDetector::Detect(*frame, text))   // 체력바 읽기
+                    {
+                        lastBossSeen = steadyNow;                                  // 봤음
+                        if (const auto confirmed = bossTracker.Feed(*boss))        // 투표로 믿을 만한 값만
+                        {
+                            const std::scoped_lock lock{ m_mutex };                // 보호
+                            m_bossHealth = BossHealthSample{ *confirmed, steadyNow };   // 기록
+                        }
+                    }
+                    else if (steadyNow - lastBossSeen > BOSS_KEEP_DURATION) bossTracker.Reset();   // 보스가 사라짐 → 투표 새로
+                }
                 if (frame && m_isCharacterScanEnabled && steadyNow >= nextCharacterScan)   // 캐릭터 확인할 때 (커서와 상관없이)
                 {
                     const std::chrono::milliseconds characterInterval{ m_characterIntervalMs.load() };   // 설정한 간격

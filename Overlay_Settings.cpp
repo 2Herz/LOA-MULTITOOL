@@ -13,6 +13,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         using Services::JSONValue;   // JSON 값
 
         constexpr std::string_view KEY_ENABLED{ "Enabled" };        // 켜짐 키
+        constexpr std::string_view KEY_CAPTURE_HIDDEN{ "HideFromCapture" };   // 캡처 · 방송에서 숨기기 키
         constexpr std::string_view KEY_OPACITY{ "Opacity" };        // 불투명도 키
         constexpr std::string_view KEY_MINI_TOOL{ "MiniTool" };     // 미니 탭 키
         constexpr std::string_view KEY_PANELS{ "Panels" };          // 패널 목록 키
@@ -53,6 +54,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         [[maybe_unused]] const auto result = m_fileStore.Load([this](const JSONValue& root)   // 파일 읽기 (형식이 조금 달라도 기본값으로 채움)
             {
                 m_isEnabled = ReadBool(root, KEY_ENABLED, false);                                          // 켜짐
+                m_isCaptureHidden = ReadBool(root, KEY_CAPTURE_HIDDEN, false);                             // 캡처 숨기기 (없으면 꺼짐)
                 SetOpacity(static_cast<float>(ReadNumber(root, KEY_OPACITY, DEFAULT_OPACITY)));             // 불투명도
                 m_miniToolIndex = static_cast<std::size_t>(std::max(ReadNumber(root, KEY_MINI_TOOL, 0.0), 0.0));   // 미니 탭
                 for (const JSONValue& item : root.FindMember(KEY_PANELS).GetItems())                       // 패널마다
@@ -75,6 +77,16 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     void OverlaySettings::SetEnabled(bool isEnabled) noexcept
     {
         m_isEnabled = isEnabled;   // 바꾸기
+    }
+
+    bool OverlaySettings::IsCaptureHidden() const noexcept
+    {
+        return m_isCaptureHidden;   // 캡처 숨기기
+    }
+
+    void OverlaySettings::SetCaptureHidden(bool isHidden) noexcept
+    {
+        m_isCaptureHidden = isHidden;   // 바꾸기
     }
 
     float OverlaySettings::GetOpacity() const noexcept
@@ -124,8 +136,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 { JSONValue::CreateString(panel.m_id), JSONValue::CreateBool(panel.m_isVisible), JSONValue::CreateNumber(panel.m_x),
                   JSONValue::CreateNumber(panel.m_y), JSONValue::CreateNumber(panel.m_width), JSONValue::CreateNumber(panel.m_height),
                   JSONValue::CreateNumber(panel.m_alpha) }));   // 한 패널
-        m_fileStore.Save(Services::WriteJSONText(JSONValue::CreateObject(MakeKeys({ KEY_ENABLED, KEY_OPACITY, KEY_MINI_TOOL, KEY_PANELS }),
-            { JSONValue::CreateBool(m_isEnabled), JSONValue::CreateNumber(m_opacity),
+        m_fileStore.Save(Services::WriteJSONText(JSONValue::CreateObject(MakeKeys({ KEY_ENABLED, KEY_CAPTURE_HIDDEN, KEY_OPACITY, KEY_MINI_TOOL, KEY_PANELS }),
+            { JSONValue::CreateBool(m_isEnabled), JSONValue::CreateBool(m_isCaptureHidden), JSONValue::CreateNumber(m_opacity),
               JSONValue::CreateNumber(static_cast<double>(m_miniToolIndex)), JSONValue::CreateArray(std::move(panels)) })));   // 저장
     }
 }

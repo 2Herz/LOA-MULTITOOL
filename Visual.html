@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.9.3 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
+      <div class="sub">C++23 모듈 · v1.10.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -481,7 +481,7 @@ const MODULES = [
    "LostArkMultiTool.Views.TransferManager"
   ],
   "lines": 149,
-  "cppLines": 1283,
+  "cppLines": 1284,
   "hasCpp": true,
   "filter": "소스 파일\\1. 앱",
   "desc": "프로그램 본체 (xmind의 Main)",
@@ -746,6 +746,47 @@ const MODULES = [
   ]
  },
  {
+  "file": "Boss_Health_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.BossHealthDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "cppImports": [],
+  "lines": 54,
+  "cppLines": 179,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "화면 위쪽 가운데 보스 체력바에서 \"현재 체력 / 최대 체력\"과 남은 줄 수(\"X 100\") 읽기",
+  "types": [
+   "BossHealthReading",
+   "BossHealthTracker",
+   "BossHealthDetector"
+  ]
+ },
+ {
+  "file": "Boss_Panel.ixx",
+  "module": "LostArkMultiTool.Views.BossPanel",
+  "imports": [
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.OverlayPanel",
+   "LostArkMultiTool.Vision.ScreenWatcher"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.NumberFormat",
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 47,
+  "cppLines": 142,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "오버레이 보스 체력 패널: 체력바 숫자를 조 · 억 · 만 단위로, 남은 비율(소수 둘째 자리) · 줄 수 · 공대 DPS · 예상 남은 시간",
+  "types": [
+   "BossPanel",
+   "HistoryPoint"
+  ]
+ },
+ {
   "file": "Bound_Gem_Data.ixx",
   "module": "LostArkMultiTool.Models.BoundGemData",
   "imports": [],
@@ -859,8 +900,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.ShardBarDetector",
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
-  "lines": 197,
-  "cppLines": 1104,
+  "lines": 199,
+  "cppLines": 1114,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\1. 귀속재료 계산기 매니저",
   "desc": "인게임 오버레이 재료 패널 한 줄",
@@ -2493,6 +2534,7 @@ const MODULES = [
    "LostArkMultiTool.Views.UI.ToastHost"
   ],
   "cppImports": [
+   "LostArkMultiTool.Views.BossPanel",
    "LostArkMultiTool.Views.CalculatorManager",
    "LostArkMultiTool.Views.CharacterPanel",
    "LostArkMultiTool.Views.MaterialPanel",
@@ -2503,8 +2545,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.GameWindowFinder"
   ],
-  "lines": 110,
-  "cppLines": 480,
+  "lines": 114,
+  "cppLines": 519,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이 매니저 (프로그램에 하나 → 싱글톤, 탭이 아니라 Application이 직접 부름)",
@@ -2548,8 +2590,8 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 68,
-  "cppLines": 223,
+  "lines": 69,
+  "cppLines": 228,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이에 띄우는 패널 하나 (컴포넌트 패턴: 오버레이 매니저가 패널들을 모아 그림)",
@@ -2588,8 +2630,8 @@ const MODULES = [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Services.JSONValue"
   ],
-  "lines": 53,
-  "cppLines": 132,
+  "lines": 56,
+  "cppLines": 144,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이 설정 (사용자 데이터 폴더 OverlaySettings.json)",
@@ -2615,7 +2657,7 @@ const MODULES = [
    "LostArkMultiTool.Views.OverlayManager"
   ],
   "lines": 49,
-  "cppLines": 146,
+  "cppLines": 148,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "오버레이 · 인식 설정 탭 (현재 캐릭터 · UI 구성 · 인식 설정)",
@@ -2641,6 +2683,7 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Core.LocalTime",
    "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Views.BossPanel",
    "LostArkMultiTool.Views.CharacterPanel",
    "LostArkMultiTool.Views.MaterialPanel",
    "LostArkMultiTool.Views.MiniToolPanel",
@@ -2650,8 +2693,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.ScreenWatcher"
   ],
-  "lines": 158,
-  "cppLines": 667,
+  "lines": 161,
+  "cppLines": 674,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "오버레이 · 인식 설정 탭 화면 (세 쪽)",
@@ -2670,8 +2713,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.FrameImage"
   ],
   "cppImports": [],
-  "lines": 52,
-  "cppLines": 374,
+  "lines": 53,
+  "cppLines": 379,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "게임 화면 위에 띄우는 투명 최상위 창 (게임 프로세스와는 무관한 내 프로그램의 창)",
@@ -3283,6 +3326,7 @@ const MODULES = [
   "module": "LostArkMultiTool.Vision.ScreenWatcher",
   "imports": [
    "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Vision.BossHealthDetector",
    "LostArkMultiTool.Vision.CharacterDetector",
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.NameplateMemory",
@@ -3294,8 +3338,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.GameWindowFinder",
    "LostArkMultiTool.Vision.ScreenCaptureService"
   ],
-  "lines": 176,
-  "cppLines": 471,
+  "lines": 188,
+  "cppLines": 503,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "게임 화면 상시 감시 (\"마우스를 올려 두면 읽기\")",
@@ -3344,6 +3388,7 @@ const MODULES = [
    "LostArkMultiTool.Services.ArmoryParser",
    "LostArkMultiTool.Services.JSONValue",
    "LostArkMultiTool.Services.TransferCalculator",
+   "LostArkMultiTool.Views.BossPanel",
    "LostArkMultiTool.Views.CharacterPanel",
    "LostArkMultiTool.Views.DX11Renderer",
    "LostArkMultiTool.Views.MainWindow",
@@ -3351,6 +3396,7 @@ const MODULES = [
    "LostArkMultiTool.Views.OverlayPlaceholderTool",
    "LostArkMultiTool.Views.OverlayWindow",
    "LostArkMultiTool.Views.UI.Slider",
+   "LostArkMultiTool.Vision.BossHealthDetector",
    "LostArkMultiTool.Vision.CharacterDetector",
    "LostArkMultiTool.Vision.DigitReader",
    "LostArkMultiTool.Vision.FrameImage",
@@ -3367,7 +3413,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 900,
+  "cppLines": 966,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",

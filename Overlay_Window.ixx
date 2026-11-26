@@ -43,6 +43,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         static void ActivateWindow(void* windowHandle);    // 다른 창(게임)을 맨 앞으로 (조작 모드를 끌 때)
 
         void SetCursor(Core::CursorShape shape) noexcept;  // 마우스 커서 모양
+        [[nodiscard]] bool SetCaptureHidden(bool isHidden) noexcept;   // 화면 캡처 · 방송에서 숨기기 (Windows 10 2004 이상, 실패하면 false)
 
     private:
         class Impl;                     // 구현 (Win32)

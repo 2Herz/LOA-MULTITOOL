@@ -525,6 +525,16 @@ namespace LostArkMultiTool::Views
         return snapshot;                                                  // 상태
     }
 
+    std::optional<Vision::BossHealthSample> CalculatorManager::GetBossHealth() const
+    {
+        return m_screenWatcher ? m_screenWatcher->GetBossHealth() : std::nullopt;   // 감시 중일 때만
+    }
+
+    void CalculatorManager::RequestRefresh()
+    {
+        if (m_view) StartRefresh(false);   // [시세 갱신]과 같은 흐름 (끝나면 알림)
+    }
+
     std::size_t CalculatorManager::GetRosterCount() const noexcept
     {
         return m_characterNames.size();   // 원정대 캐릭터 수

@@ -48,6 +48,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         callbacks.m_onClearShapes = [this] { CalculatorManager::GetInstance().ClearNameplateShapes(); ShowToast(std::wstring{ SHAPES_CLEARED_TEXT }); Refresh(); };
         callbacks.m_onClearAliases = [this] { CalculatorManager::GetInstance().ClearCharacterAliases(); ShowToast(std::wstring{ ALIASES_CLEARED_TEXT }); Refresh(); };
         callbacks.m_onOverlayEnabled = [this](bool isEnabled) { OverlayManager::GetInstance().SetEnabled(isEnabled); Refresh(); };
+        callbacks.m_onCaptureHidden = [this](bool isHidden) { OverlayManager::GetInstance().SetCaptureHidden(isHidden); Refresh(); };
         callbacks.m_onEditing = [this](bool isEditing)                           // 편집 · 잠금
             {
                 const bool isDone = OverlayManager::GetInstance().SetEditing(isEditing);   // 조작 모드
@@ -103,6 +104,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         snapshot.m_character = calculator.GetCurrentCharacter();                 // 현재 캐릭터
         snapshot.m_rosterCount = calculator.GetRosterCount();                    // 원정대 수
         snapshot.m_isOverlayEnabled = overlay.IsEnabled();                       // 오버레이 켜짐
+        snapshot.m_isCaptureHidden = overlay.IsCaptureHidden();                  // 캡처 숨기기
         snapshot.m_isEditing = overlay.IsEditing();                              // 편집 중
         snapshot.m_isGameFound = overlay.IsGameFound();                          // 게임 창
         snapshot.m_backOpacity = overlay.GetBackOpacity();                       // 바탕 진하기

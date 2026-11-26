@@ -49,6 +49,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         [[nodiscard]] bool ShowToast(const std::wstring& message, Core::NoticeKind kind);   // 게임 위 토스트 (보일 때만, 띄웠으면 true)
         [[nodiscard]] std::optional<std::wstring> TakeNotice();                             // 메인 창에 보여 줄 안내 (단축키 등록 실패 등)
         void SetOnEnabledChanged(std::function<void(bool isEnabled)> onEnabledChanged);     // 켜짐이 바뀌면 알림 (메뉴 버튼 글자)
+        void SetOnRefreshHotkey(std::function<void()> onRefreshHotkey);                     // Ctrl+Shift+F5 (시세 갱신) 알림
 
         // ===== 설정 탭 (UI 구성) =====
         [[nodiscard]] std::vector<OverlayElementInfo> GetElements() const;                  // 요소 목록 (그리는 순서)
@@ -60,6 +61,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         [[nodiscard]] bool IsEditing() const noexcept;                                      // 조작(편집) 모드인지
         [[nodiscard]] bool SetEditing(bool isEditing);                                      // 편집 켜기 · 끄기 (게임이 없거나 오버레이가 꺼져 있으면 false)
         [[nodiscard]] bool IsGameFound() const noexcept;                                    // 게임 창을 찾았는지
+        [[nodiscard]] bool IsCaptureHidden() const noexcept;                                // 캡처 · 방송에서 숨기기
+        void SetCaptureHidden(bool isHidden);                                               // 숨기기 바꾸기 (저장)
 
     private:
         friend class Core::Singleton<OverlayManager>;   // GetInstance만 생성 · 소멸
@@ -97,6 +100,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         UI::ToastHost m_toasts;                                   // 게임 위 토스트
         std::vector<std::reference_wrapper<Core::ToolManager>> m_tools;   // 미니 모드 탭들
         std::function<void(bool)> m_onEnabledChanged;            // 켜짐 알림
+        std::function<void()> m_onRefreshHotkey;                  // 시세 갱신 단축키 알림
         std::optional<std::wstring> m_pendingNotice;              // 메인 창 안내
         void* m_gameWindow{};                                     // 따라가는 게임 창
         double m_findElapsed{};                                   // 게임 창을 다시 찾은 뒤 지난 시간

@@ -123,6 +123,8 @@ export namespace LostArkMultiTool::Views
         void SetVisionPreview(bool isEnabled);                              // 미리 보기 그림 만들기 (설정 탭이 보일 때만)
         [[nodiscard]] std::optional<VisionStatusSnapshot> GetVisionStatus() const;   // 화면 인식 상태 (꺼져 있으면 nullopt)
         [[nodiscard]] std::size_t GetRosterCount() const noexcept;           // 원정대 캐릭터 수
+        [[nodiscard]] std::optional<Vision::BossHealthSample> GetBossHealth() const;   // 마지막 보스 체력 (화면 인식이 꺼졌거나 보스가 없으면 nullopt)
+        void RequestRefresh();                                              // 시세 갱신 (단축키 Ctrl+Shift+F5)
 
     private:
         friend class Core::Singleton<CalculatorManager>;   // GetInstance만 생성 · 소멸할 수 있게

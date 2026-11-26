@@ -6,6 +6,7 @@ import LostArkMultiTool.Core.LocalTime;  // 시각 글자 가져오기
 import LostArkMultiTool.Core.Platform;  // 플랫폼 가져오기
 import LostArkMultiTool.Core.Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Core.TextEncoding;  // UTF-8 → 넓은 글자 가져오기
+import LostArkMultiTool.Views.BossPanel;  // 보스 체력 패널 이름 가져오기
 import LostArkMultiTool.Views.CalculatorManager;  // 현재 캐릭터 · 화면 인식 상태 형식 가져오기
 import LostArkMultiTool.Views.CharacterPanel;  // 현재 캐릭터 패널 이름 가져오기
 import LostArkMultiTool.Views.MaterialPanel;  // 재료 패널 이름 가져오기
@@ -39,6 +40,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         };
         const std::array<ElementSpec, OverlaySetupView::ELEMENT_COUNT> ELEMENT_SPECS{ {
             { CharacterPanel::PANEL_ID, L"현재 캐릭터", L"이름 · 직업 · 아이템 레벨 · 알아본 방법 (조작 모드에서 [변경]) · 기본: 왼쪽 위" },
+            { BossPanel::PANEL_ID, L"보스 체력", L"현재 · 최대 체력(조 · 억 · 만) · 남은 % · 공대 DPS · 남은 시간 (보스가 보일 때만) · 기본: 체력바 아래" },
             { MaterialPanel::PANEL_ID, L"재료 시세 · 자산", L"재료 수량 · 단가 · 가치 · 캐릭터/원정대 자산 · 기본: 오른쪽 위" },
             { ParadisePanel::PANEL_ID, L"낙원력 주간 현황", L"이번 주차 캐릭터별 낙원력 (미기록 강조) · 기본: 오른쪽 위" },
             { MiniToolPanel::PANEL_ID, L"탭 미니 모드", L"멀티툴 탭을 게임 위에서 그대로 (◀ ▶ · 크기 조절) · 기본: 화면 가운데" },
@@ -69,6 +71,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view LAYOUT_TITLE{ L"화면 배치" };
         constexpr std::wstring_view LAYOUT_HINT{ L"Ctrl+Shift+O 켜기 · Ctrl+Shift+I 편집" };
         constexpr std::wstring_view OVERLAY_TEXT{ L"인게임 오버레이 켜기 (게임이 맨 앞일 때만 보여요)" };
+        constexpr std::wstring_view CAPTURE_TEXT{ L"화면 캡처 · 녹화 · 방송에서 오버레이 숨기기" };
+        constexpr float CHECK_GAP{ 24.0f };             // 체크 상자 두 개 사이
         constexpr std::wstring_view EDIT_LABEL_TEXT{ L"끌어 옮기기" };
         constexpr std::wstring_view LOCK_TEXT{ L"잠금" };
         constexpr std::wstring_view EDIT_TEXT{ L"편집" };
@@ -230,6 +234,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         , m_clearShapesButton{ m_host.Emplace<UI::Button>(std::wstring{}, UI::ButtonStyle::BUTTON_SECONDARY, [this] { if (m_callbacks.m_onClearShapes) m_callbacks.m_onClearShapes(); }) }
         , m_clearAliasesButton{ m_host.Emplace<UI::Button>(std::wstring{}, UI::ButtonStyle::BUTTON_SECONDARY, [this] { if (m_callbacks.m_onClearAliases) m_callbacks.m_onClearAliases(); }) }
         , m_overlayBox{ m_host.Emplace<UI::CheckBox>(std::wstring{ OVERLAY_TEXT }, [this](bool isChecked) { if (m_callbacks.m_onOverlayEnabled) m_callbacks.m_onOverlayEnabled(isChecked); }) }
+        , m_captureBox{ m_host.Emplace<UI::CheckBox>(std::wstring{ CAPTURE_TEXT }, [this](bool isChecked) { if (m_callbacks.m_onCaptureHidden) m_callbacks.m_onCaptureHidden(isChecked); }) }
         , m_lockButton{ m_host.Emplace<UI::Button>(std::wstring{ LOCK_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY, [this] { if (m_callbacks.m_onEditing) m_callbacks.m_onEditing(false); }) }
         , m_editButton{ m_host.Emplace<UI::Button>(std::wstring{ EDIT_TEXT }, UI::ButtonStyle::BUTTON_PRIMARY, [this] { if (m_callbacks.m_onEditing) m_callbacks.m_onEditing(true); }) }
         , m_backSlider{ m_host.Emplace<UI::Slider>(BACK_OPACITY_MIN, PERCENT_MAX, PERCENT_STEP,
@@ -293,7 +298,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         const bool isVision = page == SetupPage::PAGE_VISION;
         for (UI::Control* control : std::initializer_list<UI::Control*>{ &m_autoBox, &m_characterBox, &m_pickButton, &m_refreshButton, &m_clearShapesButton, &m_clearAliasesButton })
             control->SetVisible(isCharacter);                                                            // 현재 캐릭터 쪽
-        for (UI::Control* control : std::initializer_list<UI::Control*>{ &m_overlayBox, &m_lockButton, &m_editButton, &m_backSlider })
+        for (UI::Control* control : std::initializer_list<UI::Control*>{ &m_overlayBox, &m_captureBox, &m_lockButton, &m_editButton, &m_backSlider })
             control->SetVisible(isLayout);                                                               // UI 구성 쪽
         for (const ElementRow& row : m_elementRows)                                                      // 요소 줄
         {
@@ -341,6 +346,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
         // UI 구성 쪽
         m_overlayBox.SetChecked(m_snapshot.m_isOverlayEnabled);                                          // 오버레이 켜짐
+        m_captureBox.SetChecked(m_snapshot.m_isCaptureHidden);                                           // 캡처 숨기기
         m_editButton.SetEnabled(m_snapshot.m_isOverlayEnabled && !m_snapshot.m_isEditing);               // 편집 (켜져 있을 때만)
         m_lockButton.SetEnabled(m_snapshot.m_isEditing);                                                 // 잠금 (편집 중에만)
         m_backSlider.SetValue(m_snapshot.m_backOpacity * PERCENT_SCALE);                                 // 바탕 진하기
@@ -476,6 +482,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_firstContent = GetCardContent(m_firstCard);                                                    // 본문
         float y = m_firstContent.m_top;                                                                  // 줄 위치
         m_overlayBox.SetBounds(Core::RectF{ m_firstContent.m_left, y, m_firstContent.m_left + CHECK_WIDTH, y + Theme::CONTROL_HEIGHT });   // 오버레이 켜기
+        m_captureBox.SetBounds(Core::RectF{ m_firstContent.m_left + CHECK_WIDTH + CHECK_GAP, y, m_firstContent.m_left + CHECK_WIDTH * 2.0f + CHECK_GAP, y + Theme::CONTROL_HEIGHT });   // 캡처 숨기기
         y += Theme::CONTROL_HEIGHT + ROW_GAP;
         float x = m_firstContent.m_left;                                                                 // 잠금 · 편집 줄
         m_editLabelBounds = Core::RectF{ x, y, x + INFO_LABEL_WIDTH, y + Theme::CONTROL_HEIGHT };

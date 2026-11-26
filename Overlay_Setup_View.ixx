@@ -34,6 +34,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         CurrentCharacterSummary m_character;              // 현재 캐릭터
         std::size_t m_rosterCount{};                      // 원정대 캐릭터 수
         bool m_isOverlayEnabled{};                        // 오버레이 켜짐
+        bool m_isCaptureHidden{};                         // 캡처 · 방송에서 숨기기
         bool m_isEditing{};                               // 편집(조작) 모드
         bool m_isGameFound{};                             // 게임 창을 찾음
         float m_backOpacity{};                            // 패널 바탕 진하기 (0.3 ~ 1)
@@ -53,6 +54,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         std::function<void()> m_onClearShapes;                                    // 이름표 모양 초기화
         std::function<void()> m_onClearAliases;                                   // 읽은 글자 초기화
         std::function<void(bool)> m_onOverlayEnabled;                             // 오버레이 켜기 · 끄기
+        std::function<void(bool)> m_onCaptureHidden;                              // 캡처 · 방송에서 숨기기
         std::function<void(bool)> m_onEditing;                                    // 편집 · 잠금
         std::function<void(std::string_view, bool)> m_onElementVisible;           // 요소 표시
         std::function<void(std::string_view, float, bool)> m_onElementAlpha;      // 요소 투명도 (끝이면 true)
@@ -67,7 +69,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
     class OverlaySetupView
     {
     public:
-        static constexpr std::size_t ELEMENT_COUNT{ 4 };   // 설정할 요소 수 (현재 캐릭터 · 재료 · 낙원력 · 미니 탭)
+        static constexpr std::size_t ELEMENT_COUNT{ 5 };   // 설정할 요소 수 (현재 캐릭터 · 보스 체력 · 재료 · 낙원력 · 미니 탭)
 
         explicit OverlaySetupView(Core::Platform& platform);   // 생성자: 부품을 만들어 호스트에 추가
         ~OverlaySetupView();                                    // 소멸자
@@ -125,6 +127,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
 
         // UI 구성 쪽
         UI::CheckBox& m_overlayBox;           // 오버레이 켜기
+        UI::CheckBox& m_captureBox;           // 캡처 · 방송에서 숨기기
         UI::Button& m_lockButton;             // 잠금
         UI::Button& m_editButton;             // 편집
         UI::Slider& m_backSlider;             // 바탕 진하기

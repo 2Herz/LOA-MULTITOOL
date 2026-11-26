@@ -660,6 +660,7 @@ namespace LostArkMultiTool::Views
         try
         {
             overlay.Initialize(std::span{ m_tools }.first<OVERLAY_TOOL_COUNT>());   // 투명 창 · 렌더러 · 단축키 · 패널 (미니 탭에는 설정 탭을 빼고 넘김)
+            overlay.SetOnRefreshHotkey([] { CalculatorManager::GetInstance().RequestRefresh(); });   // Ctrl+Shift+F5 = 시세 갱신 (게임 중에도)
         }
         catch (const std::exception& error)
         {
