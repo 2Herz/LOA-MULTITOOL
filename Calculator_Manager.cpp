@@ -27,6 +27,8 @@ import LostArkMultiTool.Services.JSONDataRepository;
 import LostArkMultiTool.Views.CalculatorView;
 import LostArkMultiTool.Views.UI.LineChart;
 import LostArkMultiTool.Views.TrackerManager;          // 낙원력을 기록할 트래커
+import LostArkMultiTool.Vision.CharacterDetector;      // 현재 캐릭터 인식 결과 이름
+import LostArkMultiTool.Vision.NameplateMemory;        // 이름표 모양 기억
 import LostArkMultiTool.Vision.OCRTextParser;          // 인식 값 이름 해석 ("Dest/top")
 import LostArkMultiTool.Vision.ParadiseDetector;       // 낙원력 인식기
 import LostArkMultiTool.Vision.ScreenWatcher;          // 화면 인식 감시기
@@ -79,7 +81,15 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view TRIM_CHARACTERS{ L" \u3000" };   // 일반 공백 · 전각 공백
 
         // ===== 화면 인식 안내 =====
-        constexpr std::wstring_view VISION_ON_TEXT{ L"화면 인식을 켰어요. 게임에서 재료 툴팁 · 상단바 파편 · 현재 낙원력 위에 마우스를 잠깐 올려 두면, 고른 캐릭터에 반영돼요." };
+        constexpr std::wstring_view VISION_ON_TEXT{ L"화면 인식을 켰어요. 게임에서 재료 툴팁 · 상단바 파편 · 현재 낙원력 위에 마우스를 잠깐 올려 두면, 지금 접속한 캐릭터에 반영돼요." };
+        constexpr std::wstring_view VISION_WAIT_CHARACTER_TEXT{ L"화면 인식: 지금 접속한 캐릭터를 확인하는 중이라 반영하지 않았어요. 머리 위 이름이 보이게 하거나 캐릭터 정보 창(P)을 한 번 열어 주세요." };
+        constexpr std::wstring_view CURRENT_CHARACTER_FORMAT{ L"현재 캐릭터: {}" };   // 캐릭터를 확인했을 때 안내
+        constexpr std::wstring_view MANUAL_CHARACTER_FORMAT{ L"현재 캐릭터를 {}(으)로 바꿨어요." };   // [변경]으로 골랐을 때
+        constexpr std::wstring_view ALIAS_SAVED_FORMAT{ L"'{}'(으)로 읽히는 이름을 {}(으)로 기억했어요. 다음부터는 바로 알아봐요." };   // 별칭 기억
+        constexpr std::wstring_view SHAPE_SAVED_FORMAT{ L"{}의 머리 위 이름표 모양을 기억했어요. 다음부터는 바로 알아봐요." };   // 이름표 모양 기억
+        constexpr std::wstring_view REFRESH_NO_CHARACTER_TEXT{ L"현재 캐릭터를 아직 모르겠어요. 먼저 [변경]으로 골라 주세요." };       // [갱신] 실패
+        constexpr std::chrono::seconds ALIAS_CANDIDATE_LIFETIME{ 120 };   // 못 맞춘 이름을 별칭 후보로 쓰는 시간 (정보 창을 본 뒤 이 안에 고르면 기억)
+        constexpr double ITEM_LEVEL_TOLERANCE{ 0.005 };                   // 아이템 레벨이 이만큼 넘게 다르면 [갱신] 필요
         constexpr std::wstring_view VISION_OFF_TEXT{ L"화면 인식을 껐어요." };
         constexpr std::wstring_view VISION_NO_CHARACTER_TEXT{ L"화면 인식: 먼저 캐릭터를 골라 주세요." };
         constexpr std::wstring_view VISION_SAVE_FAILED_TEXT{ L"화면 인식 설정을 저장하지 못했어요." };
@@ -167,6 +177,7 @@ namespace LostArkMultiTool::Views
 
         // 화면 인식: 지난번에 켜 두었으면 바로 시작
         m_visionSettings = std::make_unique<Vision::VisionSettings>();
+        m_nameplateMemory = std::make_shared<Vision::NameplateMemory>();   // 이름표 모양 기억 (꺼져 있어도 설정 탭에서 개수 · 초기화)
         m_view->SetVisionChecked(m_visionSettings->IsEnabled());
         if (m_visionSettings->IsEnabled()) StartVision();
 
@@ -189,6 +200,7 @@ namespace LostArkMultiTool::Views
         m_rosterTask.Wait();
         m_screenWatcher.reset();     // 감시 스레드를 멈추고 기다림 (저장소를 지우기 전에)
         m_visionSettings.reset();
+        m_nameplateMemory.reset();   // 감시 스레드가 끝난 뒤 놓음
 
         m_view.reset();
         m_calculator.reset();
@@ -270,6 +282,7 @@ namespace LostArkMultiTool::Views
 
         if (isEnabled) StartVision();                                       // 감시 시작
         else m_screenWatcher.reset();                                       // 감시 멈춤 (스레드 정리)
+        ClearCurrentCharacter();                                            // 켜고 끌 때마다 현재 캐릭터는 다시 확인
         m_context->m_notifier.ShowToast(std::wstring{ isEnabled ? VISION_ON_TEXT : VISION_OFF_TEXT }, Core::NoticeKind::NOTICE_INFO);   // 안내
     }
 
@@ -281,7 +294,142 @@ namespace LostArkMultiTool::Views
         m_screenWatcher->AddDetector(std::make_unique<Vision::TooltipDetector>());    // 재료 툴팁
         m_screenWatcher->AddDetector(std::make_unique<Vision::ShardBarDetector>());   // 상단바 운명의 파편
         m_screenWatcher->AddDetector(std::make_unique<Vision::ParadiseDetector>());   // 현재 낙원력
+        PushCharacterNames();                                               // 현재 캐릭터 비교용 원정대 이름 · 별칭
+        m_screenWatcher->SetCharacterScanEnabled(m_visionSettings->IsCharacterAutoEnabled());   // 자동 인식을 껐으면 캐릭터 확인 안 함
         m_screenWatcher->Start();                                           // 감시 스레드 시작
+    }
+
+    // 감시기에 원정대 이름 넘기기 (원정대를 다시 불러오면 다시 부름)
+    void CalculatorManager::PushCharacterNames()
+    {
+        if (!m_screenWatcher) return;                                       // 화면 인식이 꺼져 있음
+        std::vector<std::wstring> names;                                    // 넓은 글자 이름들
+        names.reserve(m_characterNames.size());                             // 자리 확보
+        for (const std::string& name : m_characterNames) names.push_back(Core::TextEncoding::UTF8ToWide(name));   // UTF-8 → 넓은 글자
+        std::vector<Vision::CharacterAlias> aliases;                        // 별칭 (넓은 글자)
+        for (const Vision::SavedCharacterAlias& alias : m_visionSettings->GetCharacterAliases())   // 저장된 별칭마다
+        {
+            if (std::ranges::find(m_characterNames, alias.m_name) == m_characterNames.end()) continue;   // 원정대에 없는 캐릭터는 뺌
+            aliases.push_back(Vision::CharacterAlias{ Core::TextEncoding::UTF8ToWide(alias.m_readText), Core::TextEncoding::UTF8ToWide(alias.m_name) });
+        }
+        m_screenWatcher->SetCharacterNames(std::move(names), std::move(aliases), m_nameplateMemory);   // 넘기기 (모양 기억은 공유)
+    }
+
+    // 현재 캐릭터 바꾸기 → 계산기 선택 · 오버레이 패널도 그 캐릭터로 (같은 캐릭터면 알아본 방법 · 읽은 레벨만 갱신)
+    void CalculatorManager::SetCurrentCharacter(const std::string& name, CurrentCharacterSource source, std::optional<double> readItemLevel)
+    {
+        const bool isChanged{ m_currentCharacter != name };                 // 다른 캐릭터로 바뀌는지
+        m_currentSource = source;                                           // 알아본 방법
+        if (isChanged) m_readItemLevel = readItemLevel;                     // 새 캐릭터면 읽은 레벨도 새로
+        else if (readItemLevel.has_value()) m_readItemLevel = readItemLevel;   // 같은 캐릭터면 새로 읽었을 때만 바꿈
+        if (!isChanged) return;                                             // 같은 캐릭터
+        m_currentCharacter = name;                                          // 기록
+        m_isWaitNoticeShown = false;                                        // 다음 확인 대기 때 다시 안내
+        SelectCharacterByName(name);                                        // 계산기에서도 고름
+        if (source != CurrentCharacterSource::SOURCE_MANUAL)                // 자동으로 알아봤을 때만 (직접 고르면 따로 안내)
+            m_context->m_notifier.ShowToast(std::format(CURRENT_CHARACTER_FORMAT, Core::TextEncoding::UTF8ToWide(name)), Core::NoticeKind::NOTICE_INFO);
+    }
+
+    void CalculatorManager::ClearCurrentCharacter()
+    {
+        m_currentCharacter.reset();                                         // 다시 확인
+        m_readItemLevel.reset();                                            // 읽은 레벨
+        m_isWaitNoticeShown = false;                                        // 안내 초기화
+    }
+
+    // [변경]: 후보 번호로 현재 캐릭터를 직접 고르기 (방금 정보 창에서 못 맞춘 이름이 있으면 그 글자를 이 캐릭터로 기억)
+    void CalculatorManager::PickCurrentCharacter(std::size_t index)
+    {
+        if (index >= m_characterNames.size()) return;                       // 경계 검사
+        const std::string name{ m_characterNames[index] };                  // 고른 캐릭터
+        const bool isRecentUnknown{ m_lastUnknownName.has_value()
+            && std::chrono::steady_clock::now() - m_lastUnknownAt <= ALIAS_CANDIDATE_LIFETIME };   // 방금 못 맞춘 이름
+        if (isRecentUnknown && m_visionSettings)                            // 별칭으로 기억
+        {
+            m_visionSettings->AddCharacterAlias(*m_lastUnknownName, name);  // "읽은 글자 → 캐릭터"
+            try
+            {
+                m_visionSettings->Save();                                   // 저장
+            }
+            catch (const std::exception&)
+            {
+                m_context->m_notifier.ShowToast(std::wstring{ VISION_SAVE_FAILED_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 저장 실패 안내
+            }
+            m_context->m_notifier.ShowToast(std::format(ALIAS_SAVED_FORMAT, Core::TextEncoding::UTF8ToWide(*m_lastUnknownName),
+                Core::TextEncoding::UTF8ToWide(name)), Core::NoticeKind::NOTICE_SUCCESS);   // 안내
+            m_lastUnknownName.reset();                                      // 한 번만
+            PushCharacterNames();                                           // 감시기에 새 별칭
+        }
+        if (m_nameplateMemory && m_nameplateMemory->LearnPending(name, ALIAS_CANDIDATE_LIFETIME))   // 방금 본 내 이름표 모양을 이 캐릭터로 기억
+            m_context->m_notifier.ShowToast(std::format(SHAPE_SAVED_FORMAT, Core::TextEncoding::UTF8ToWide(name)), Core::NoticeKind::NOTICE_SUCCESS);   // 안내
+        SetCurrentCharacter(name, CurrentCharacterSource::SOURCE_MANUAL, std::nullopt);   // 직접 고름
+        m_context->m_notifier.ShowToast(std::format(MANUAL_CHARACTER_FORMAT, Core::TextEncoding::UTF8ToWide(name)), Core::NoticeKind::NOTICE_INFO);   // 안내
+    }
+
+    // [갱신]: 현재 캐릭터 이름으로 원정대 정보를 다시 받음 (아이템 레벨 · 직업 · 새 캐릭터)
+    void CalculatorManager::RefreshCurrentCharacter()
+    {
+        if (!m_currentCharacter.has_value())                                // 현재 캐릭터를 모름
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ REFRESH_NO_CHARACTER_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 안내
+            return;                                                         // 끝
+        }
+        SyncRoster(Core::TextEncoding::UTF8ToWide(*m_currentCharacter));    // 원정대 동기화와 같은 흐름 (끝나면 목록 · 레벨 갱신)
+    }
+
+    // 이름으로 캐릭터 고르기 (이미 고른 캐릭터면 그대로)
+    void CalculatorManager::SelectCharacterByName(const std::string& name)
+    {
+        const auto found{ std::ranges::find(m_characterNames, name) };     // 선택 목록에서 찾기
+        if (found == m_characterNames.end()) return;                        // 목록에 없음
+        const std::size_t index{ static_cast<std::size_t>(found - m_characterNames.begin()) };   // 선택 번호 = 이름 번호
+        if (m_view->GetSelectedCharacterIndex() == index) return;           // 이미 고름
+        m_view->SelectCharacterIndex(index);                                // 표시 바꾸기
+        SelectCharacter();                                                  // 수량 표시 · 계산 (손으로 고를 때와 같은 흐름)
+    }
+
+    // 인식 값을 넣을 캐릭터 = 화면에서 확인한 현재 캐릭터 (모르면 다른 캐릭터에 잘못 넣지 않도록 건너뜀)
+    std::optional<std::string> CalculatorManager::GetScanTarget()
+    {
+        if (!m_currentCharacter.has_value())                                // 아직 확인 못 함
+        {
+            if (!m_isWaitNoticeShown)                                       // 안내는 한 번만
+            {
+                m_context->m_notifier.ShowToast(std::wstring{ VISION_WAIT_CHARACTER_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 안내
+                m_isWaitNoticeShown = true;                                 // 띄움
+            }
+            return std::nullopt;                                            // 넣지 않음
+        }
+        SelectCharacterByName(*m_currentCharacter);                         // 손으로 다른 캐릭터를 골라 뒀어도 현재 캐릭터로
+        return m_currentCharacter;                                          // 현재 캐릭터
+    }
+
+    // 오버레이 현재 캐릭터 패널용 상태
+    CurrentCharacterSummary CalculatorManager::GetCurrentCharacter() const
+    {
+        CurrentCharacterSummary summary;                                    // 결과 (기본: 화면 인식 꺼짐)
+        if (!m_screenWatcher) return summary;                               // 꺼짐
+        if (m_characterNames.empty()) { summary.m_state = CurrentCharacterState::CHARACTER_NO_ROSTER; return summary; }       // 원정대 없음
+        summary.m_isAutoEnabled = m_visionSettings && m_visionSettings->IsCharacterAutoEnabled();   // 자동 인식
+        summary.m_aliasCount = m_visionSettings ? m_visionSettings->GetCharacterAliases().size() : 0;   // 별칭 수
+        summary.m_shapeCount = m_nameplateMemory ? m_nameplateMemory->GetCharacterCount() : 0;           // 모양을 기억한 캐릭터 수
+        summary.m_isSyncing = m_rosterTask.IsRunning();                     // 원정대 갱신 중
+        summary.m_candidates.reserve(m_characterNames.size());              // 자리 확보
+        for (const std::string& name : m_characterNames) summary.m_candidates.push_back(Core::TextEncoding::UTF8ToWide(name));   // [변경] 후보
+        if (!m_currentCharacter.has_value()) { summary.m_state = CurrentCharacterState::CHARACTER_CHECKING; return summary; }  // 확인 중
+        summary.m_state = CurrentCharacterState::CHARACTER_KNOWN;           // 확인됨
+        summary.m_source = m_currentSource;                                 // 알아본 방법
+        summary.m_name = Core::TextEncoding::UTF8ToWide(*m_currentCharacter);   // 이름
+        if (const auto found{ std::ranges::find(m_characterNames, *m_currentCharacter) }; found != m_characterNames.end())
+            summary.m_currentIndex = static_cast<std::size_t>(found - m_characterNames.begin());   // 후보 중 번호
+        summary.m_readItemLevel = m_readItemLevel;                          // 정보 창에서 읽은 레벨
+        if (const Models::Character* character{ m_repository ? m_repository->GetData().FindCharacter(*m_currentCharacter) : nullptr }; character != nullptr)   // 저장된 캐릭터
+        {
+            if (const auto& className{ character->GetClassName() }; className.has_value()) summary.m_className = Core::TextEncoding::UTF8ToWide(*className);   // 직업
+            summary.m_itemLevel = character->GetItemLevel();                // 레벨
+            summary.m_isOutdated = m_readItemLevel.has_value() && std::abs(*m_readItemLevel - summary.m_itemLevel) > ITEM_LEVEL_TOLERANCE;   // 저장된 정보가 옛날 것
+        }
+        return summary;   // 상태
     }
 
     // 확정된 인식 결과를 화면 스레드에서 반영 (모델은 이 스레드에서만 바뀜)
@@ -296,8 +444,35 @@ namespace LostArkMultiTool::Views
             return;                                                           // 끝
         }
 
-        for (const Vision::ScanResult& result : m_screenWatcher->TakeResults())   // 확정 결과마다
+        for (const Vision::ScanResult& result : m_screenWatcher->TakeResults())   // 확정 결과마다 (들어온 순서대로)
         {
+            const bool isAuto{ m_visionSettings->IsCharacterAutoEnabled() };      // 자동 인식 (끄면 직접 고른 캐릭터 유지)
+            if (result.m_screenName == Vision::CharacterDetector::LOADING_SCREEN_NAME)   // 로딩 화면 → 캐릭터가 바뀌었을 수 있음
+            {
+                if (isAuto) ClearCurrentCharacter();                              // 다시 확인
+                continue;                                                         // 다음 결과
+            }
+            if (result.m_screenName == Vision::CharacterDetector::UNKNOWN_SCREEN_NAME)   // 정보 창 이름을 못 맞춤 → [변경] 때 별칭 후보
+            {
+                m_lastUnknownName = result.m_characterName;                       // 읽은 글자
+                m_lastUnknownAt = std::chrono::steady_clock::now();               // 시각
+                continue;                                                         // 다음 결과
+            }
+            if (result.m_screenName == Vision::CharacterDetector::SCREEN_NAME)    // 현재 캐릭터 확인
+            {
+                if (!isAuto) continue;                                            // 자동 인식 꺼짐
+                CurrentCharacterSource source{ CurrentCharacterSource::SOURCE_NAMEPLATE };   // 알아본 방법
+                std::optional<double> readItemLevel;                              // 정보 창 레벨
+                for (const Vision::ScanValue& value : result.m_values)            // 값마다
+                {
+                    if (value.m_key == Vision::CharacterDetector::SOURCE_VALUE_KEY
+                        && value.m_value == static_cast<std::int64_t>(Vision::CharacterSource::SOURCE_INFO_WINDOW)) source = CurrentCharacterSource::SOURCE_INFO_WINDOW;   // 정보 창
+                    if (value.m_key == Vision::CharacterDetector::ITEM_LEVEL_VALUE_KEY)
+                        readItemLevel = static_cast<double>(value.m_value) / Vision::CharacterDetector::ITEM_LEVEL_SCALE;   // 아이템 레벨
+                }
+                SetCurrentCharacter(result.m_characterName, source, readItemLevel);   // 반영
+                continue;                                                         // 다음 결과
+            }
             for (const Vision::ScanValue& value : result.m_values)                // 값마다
             {
                 if (value.m_key == Vision::ParadiseDetector::VALUE_KEY) ApplyParadiseScan(static_cast<double>(value.m_value));   // 낙원력
@@ -315,9 +490,10 @@ namespace LostArkMultiTool::Views
         if (keyIt == Core::APPConstants::MAT_KEYS.end() || parsed->first.empty()) return;                        // 모르는 재료
         const std::size_t materialIndex{ static_cast<std::size_t>(keyIt - Core::APPConstants::MAT_KEYS.begin()) };   // 열 번호
 
-        const std::optional<std::string> name{ GetSelectedCharacterName() };           // 고른 캐릭터
-        const Models::Character* character{ name.has_value() ? m_repository->GetData().FindCharacter(*name) : nullptr };   // 캐릭터 데이터
-        if (character == nullptr)                                                      // 캐릭터를 안 골랐음
+        const std::optional<std::string> name{ GetScanTarget() };                      // 현재 캐릭터 (모르면 안내 후 건너뜀)
+        if (!name.has_value()) return;                                                 // 반영 안 함
+        const Models::Character* character{ m_repository->GetData().FindCharacter(*name) };   // 캐릭터 데이터
+        if (character == nullptr)                                                      // 저장소에 없음 (원정대를 다시 불러온 직후 등)
         {
             m_context->m_notifier.ShowToast(std::wstring{ VISION_NO_CHARACTER_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 안내
             return;                                                                    // 반영 안 함
@@ -340,12 +516,8 @@ namespace LostArkMultiTool::Views
     // 낙원력 → 낙원력 트래커의 고른 캐릭터 이번 주차
     void CalculatorManager::ApplyParadiseScan(double score)
     {
-        const std::optional<std::string> name{ GetSelectedCharacterName() };           // 고른 캐릭터
-        if (!name.has_value())                                                         // 캐릭터를 안 골랐음
-        {
-            m_context->m_notifier.ShowToast(std::wstring{ VISION_NO_CHARACTER_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 안내
-            return;                                                                    // 반영 안 함
-        }
+        const std::optional<std::string> name{ GetScanTarget() };                      // 현재 캐릭터 (모르면 안내 후 건너뜀)
+        if (!name.has_value()) return;                                                 // 반영 안 함
 
         const std::wstring wideName{ Core::TextEncoding::UTF8ToWide(*name) };          // 안내용 이름
         const std::wstring scoreText{ Core::NumberFormat::FormatNumber(score, SCAN_NUMBER_DECIMALS) };   // 안내용 점수
@@ -633,10 +805,18 @@ namespace LostArkMultiTool::Views
             items.push_back(MakeDisplayName(*name, *character));
         }
 
-        // 기본 선택은 첫 번째 캐릭터 (캐릭터가 없으면 선택 없음)
-        const std::optional<std::size_t> selectedIndex{ m_characterNames.empty() ? std::nullopt : std::optional<std::size_t>{ FIRST_CHARACTER_INDEX } };
+        // 기본 선택은 첫 번째 캐릭터, 화면 인식으로 확인한 현재 캐릭터가 있으면 그 캐릭터 (캐릭터가 없으면 선택 없음)
+        std::optional<std::size_t> selectedIndex{ m_characterNames.empty() ? std::nullopt : std::optional<std::size_t>{ FIRST_CHARACTER_INDEX } };
+        if (m_currentCharacter.has_value())                                    // 현재 캐릭터를 알면
+        {
+            if (const auto found{ std::ranges::find(m_characterNames, *m_currentCharacter) }; found != m_characterNames.end())
+                selectedIndex = static_cast<std::size_t>(found - m_characterNames.begin());   // 현재 캐릭터
+            else m_currentCharacter.reset();                                                     // 원정대에서 빠짐 → 다시 확인
+        }
         m_view->SetCharacterItems(std::move(items), selectedIndex);
         SelectCharacter();
+        if (m_nameplateMemory) m_nameplateMemory->RemoveMissing(m_characterNames);   // 원정대에서 빠진 캐릭터 모양은 지움
+        PushCharacterNames();   // 화면 인식에 새 이름 목록
     }
 
     // 단가 · 재료값 · 합계 · 그래프 · 트레이 글자 갱신 (원본 RefreshUI)
@@ -822,4 +1002,4 @@ namespace LostArkMultiTool::Views
                 Core::NoticeKind::NOTICE_ERROR, nullptr);
         }
     }
-}
+}

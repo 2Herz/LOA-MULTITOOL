@@ -7,7 +7,8 @@ import LostArkMultiTool.Core.Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Core.ToolManager;  // 탭 매니저 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 픽셀 사각형 가져오기
 import LostArkMultiTool.Vision.GameWindowFinder;  // 게임 창 찾기 가져오기
-import LostArkMultiTool.Views.CalculatorManager;  // 재료 요약
+import LostArkMultiTool.Views.CalculatorManager;  // 재료 요약 · 현재 캐릭터
+import LostArkMultiTool.Views.CharacterPanel;  // 현재 캐릭터 패널
 import LostArkMultiTool.Views.DX11Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Views.MaterialPanel;  // 재료 패널
 import LostArkMultiTool.Views.MiniToolPanel;  // 탭 미니 모드 패널
@@ -34,6 +35,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr float PANEL_MARGIN{ 16.0f };               // 화면 가장자리와 패널 사이
         constexpr float PANEL_GAP{ 12.0f };                  // 패널 사이
         constexpr float PANEL_TOP{ 110.0f };                 // 첫 패널 위쪽 (게임 위쪽 재화 줄 · 미니맵 아래)
+        constexpr float CHARACTER_PANEL_TOP{ 64.0f };        // 현재 캐릭터 패널 위쪽 (왼쪽 위 아이콘 줄 아래)
         constexpr float OPACITY_STEP{ 0.1f };                // 불투명도 한 단계
         constexpr float TOOLBAR_TOP{ 8.0f };                 // 도구 막대 위쪽
         constexpr float TOOLBAR_HEIGHT{ 30.0f };             // 도구 막대 높이
@@ -50,7 +52,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr Core::Color TRANSPARENT_COLOR{ 0.0f, 0.0f, 0.0f, 0.0f };   // 완전 투명 (게임 화면이 비침)
         constexpr Core::TextStyle TOOLBAR_STYLE{ TOOLBAR_FONT_SIZE, Core::FontWeight::BOLD, Core::TextAlign::CENTER };   // 단추 글꼴
         constexpr Core::TextStyle HINT_STYLE{ TOOLBAR_FONT_SIZE, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };    // 안내 글꼴
-        constexpr std::wstring_view TOOLBAR_MATERIAL_TEXT{ L"재료 시세" };      // 단추 글자
+        constexpr std::wstring_view TOOLBAR_CHARACTER_TEXT{ L"현재 캐릭터" };   // 단추 글자
+        constexpr std::wstring_view TOOLBAR_MATERIAL_TEXT{ L"재료 시세" };
         constexpr std::wstring_view TOOLBAR_PARADISE_TEXT{ L"낙원력" };
         constexpr std::wstring_view TOOLBAR_MINI_TEXT{ L"미니 탭" };
         constexpr std::wstring_view TOOLBAR_OPACITY_DOWN_TEXT{ L"투명하게" };
@@ -90,9 +93,16 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         }
         m_panels.push_back(std::make_unique<MaterialPanel>([] { return CalculatorManager::GetInstance().GetOverlaySummary(); }));
         m_panels.push_back(std::make_unique<ParadisePanel>([] { return TrackerManager::GetInstance().GetOverlaySummary(); }));
+        m_panels.push_back(std::make_unique<CharacterPanel>(
+            [] { return CalculatorManager::GetInstance().GetCurrentCharacter(); },                        // 현재 캐릭터 요약
+            [](std::size_t index) { CalculatorManager::GetInstance().PickCurrentCharacter(index); },      // [변경]으로 고름
+            [] { CalculatorManager::GetInstance().RefreshCurrentCharacter(); }));                         // [갱신]
         LoadPanelStates();                                                               // 저장된 위치 · 표시
 
         // 조작 모드 도구 막대
+        m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_CHARACTER_TEXT },
+            [this] { if (auto* panel = FindPanel(CharacterPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
+            [this] { const auto* panel = FindPanel(CharacterPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });  // 현재 캐릭터 패널 켜기 · 끄기
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_MATERIAL_TEXT },
             [this] { if (auto* panel = FindPanel(MaterialPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
             [this] { const auto* panel = FindPanel(MaterialPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });   // 재료 패널 켜기 · 끄기
@@ -313,6 +323,13 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 panel->SetBounds(Core::RectF{ centerLeft, centerTop, centerLeft + size.m_width, centerTop + size.m_height });
                 continue;                                                      // 오른쪽 쌓기에서 뺌
             }
+            if (panel->GetId() == CharacterPanel::PANEL_ID)                    // 현재 캐릭터는 왼쪽 위
+            {
+                const float left = area.m_left + PANEL_MARGIN;                 // 왼쪽 여백
+                const float characterTop = area.m_top + CHARACTER_PANEL_TOP;   // 아이콘 줄 아래
+                panel->SetBounds(Core::RectF{ left, characterTop, left + size.m_width, characterTop + size.m_height });
+                continue;                                                      // 오른쪽 쌓기에서 뺌
+            }
             const float left = area.m_right - PANEL_MARGIN - size.m_width;     // 오른쪽 정렬
             panel->SetBounds(Core::RectF{ left, top, left + size.m_width, top + size.m_height });   // 위치
             top += size.m_height + PANEL_GAP;                                  // 다음 패널 아래로
@@ -370,7 +387,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         }
         const float hintTop = TOOLBAR_TOP + TOOLBAR_HEIGHT + TOOLBAR_GAP;      // 안내 줄 위쪽
         const Core::RectF hint{ area.m_left, hintTop, area.m_right, hintTop + TOOLBAR_HINT_HEIGHT };   // 안내 줄
-        renderer.DrawString(TOOLBAR_HINT_TEXT, hint, Theme::ACCENT_TEXT_COLOR, HINT_STYLE);            // 안내
+        renderer.DrawString(TOOLBAR_HINT_TEXT, hint, Theme::ACCENT_COLOR, HINT_STYLE);            // 안내
     }
 
     bool OverlayManager::HandleToolbarInput(const Core::InputEvent& event)

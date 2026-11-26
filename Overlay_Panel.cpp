@@ -88,6 +88,11 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             m_bounds.m_right - PADDING, m_bounds.m_bottom - PADDING };   // 머리말 · 여백을 뺀 영역
     }
 
+    bool OverlayPanel::IsInteractive() const noexcept
+    {
+        return m_isInteractive;   // 조작 모드 여부
+    }
+
     void OverlayPanel::SetHeight(float height) noexcept
     {
         m_bounds.m_bottom = m_bounds.m_top + HEADER_HEIGHT + PADDING * 1.5f + height;   // 내용 높이 + 머리말 + 여백
@@ -95,6 +100,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
     void OverlayPanel::Render(Core::Renderer& renderer, float backOpacity, bool isInteractive)
     {
+        m_isInteractive = isInteractive;                                                              // 내용 그리기에서 쓸 조작 모드
         renderer.FillRoundedRect(m_bounds, CORNER_RADIUS, Core::WithAlpha(Theme::PANEL_BACK_COLOR, backOpacity));                 // 반투명 카드
         renderer.DrawRoundedRect(m_bounds, CORNER_RADIUS, isInteractive ? Theme::ACCENT_COLOR : Theme::PANEL_BORDER_COLOR, BORDER_WIDTH);   // 테두리 (조작 모드는 강조색)
 
@@ -102,7 +108,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         if (isInteractive && m_isHoverHeader)                                                         // 끌 수 있는 곳 표시
             renderer.FillRoundedRect(header, CORNER_RADIUS, Core::WithAlpha(Theme::ACCENT_COLOR, HOVER_BACK_ALPHA * HALF));
         renderer.DrawString(GetTitleText(), Core::RectF{ header.m_left + PADDING, header.m_top, header.m_right - PADDING - CLOSE_SIZE, header.m_bottom },
-            Theme::ACCENT_TEXT_COLOR, TITLE_STYLE);                                                   // 제목
+            Theme::ACCENT_COLOR, TITLE_STYLE);                                                   // 제목
         renderer.DrawLine(header.m_left + PADDING, header.m_bottom, header.m_right - PADDING, header.m_bottom,
             Core::WithAlpha(Theme::PANEL_BORDER_COLOR, HEADER_LINE_ALPHA), BORDER_WIDTH);             // 머리말 아래 선
 

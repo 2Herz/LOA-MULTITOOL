@@ -38,6 +38,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         [[nodiscard]] virtual bool HandleContentInput(const Core::InputEvent& event, const Core::RectF& content);   // 내용 입력 (기본: 안 받음)
         [[nodiscard]] virtual std::wstring GetTitleText() const;                                // 머리말 글자 (기본: 제목)
         [[nodiscard]] Core::RectF GetContentRect() const noexcept;                              // 머리말을 뺀 내용 영역
+        [[nodiscard]] bool IsInteractive() const noexcept;                                      // 지금 조작 모드인지 (마지막으로 그릴 때 기준)
         void SetHeight(float height) noexcept;                                                  // 내용에 맞춰 높이 바꾸기 (크기 조절 안 되는 패널)
 
     private:
@@ -56,6 +57,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         bool m_isHoverClose{};            // 닫기 위에 마우스
         bool m_isHoverHeader{};           // 머리말 위에 마우스
         bool m_isChanged{};               // 옮김 · 닫음 · 크기 바뀜
+        bool m_isInteractive{};           // 마지막으로 그릴 때 조작 모드였는지 (내용이 단추를 보일지 정함)
         Core::PointF m_dragOffset;        // 끌기 시작점과 패널 왼쪽 위의 차이
     };
 }

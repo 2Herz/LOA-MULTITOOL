@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.9.1 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
+      <div class="sub">C++23 모듈 · v1.9.2 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -387,7 +387,7 @@ const MODULES = [
   "module": "LostArkMultiTool.Core.APPConstants",
   "imports": [],
   "cppImports": [],
-  "lines": 150,
+  "lines": 151,
   "cppLines": 128,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\1. 상수",
@@ -830,6 +830,7 @@ const MODULES = [
    "LostArkMultiTool.Models.Character",
    "LostArkMultiTool.Models.CharacterInfo",
    "LostArkMultiTool.Views.CalculatorView",
+   "LostArkMultiTool.Vision.NameplateMemory",
    "LostArkMultiTool.Vision.ScreenWatcher",
    "LostArkMultiTool.Vision.VisionSettings"
   ],
@@ -850,18 +851,20 @@ const MODULES = [
    "LostArkMultiTool.Services.JSONDataRepository",
    "LostArkMultiTool.Views.TrackerManager",
    "LostArkMultiTool.Views.UI.LineChart",
+   "LostArkMultiTool.Vision.CharacterDetector",
    "LostArkMultiTool.Vision.OCRTextParser",
    "LostArkMultiTool.Vision.ParadiseDetector",
    "LostArkMultiTool.Vision.ShardBarDetector",
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
-  "lines": 123,
-  "cppLines": 826,
+  "lines": 174,
+  "cppLines": 1006,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\1. 귀속재료 계산기 매니저",
   "desc": "인게임 오버레이 재료 패널 한 줄",
   "types": [
    "CalculatorOverlayRow",
+   "CurrentCharacterSummary",
    "CalculatorOverlaySummary",
    "CalculatorManager"
   ]
@@ -887,8 +890,8 @@ const MODULES = [
    "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 127,
-  "cppLines": 566,
+  "lines": 128,
+  "cppLines": 571,
   "hasCpp": true,
   "filter": "4. 뷰\\5. 계산기",
   "desc": "재료 등급 (표의 상위 · 하위 행)",
@@ -932,6 +935,29 @@ const MODULES = [
   ]
  },
  {
+  "file": "Character_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.CharacterDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.NameplateMemory",
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Vision.OCRTextParser"
+  ],
+  "lines": 89,
+  "cppLines": 449,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "게임 화면에서 지금 접속한 캐릭터 알아내기 (원정대 캐릭터 이름 목록과만 비교)",
+  "types": [
+   "CharacterReading",
+   "CharacterAlias",
+   "CharacterDetector"
+  ]
+ },
+ {
   "file": "Character_Info.ixx",
   "module": "LostArkMultiTool.Models.CharacterInfo",
   "imports": [],
@@ -943,6 +969,27 @@ const MODULES = [
   "desc": "원정대 API 응답 한 줄 (읽기 전용 값 객체)",
   "types": [
    "CharacterInfo"
+  ]
+ },
+ {
+  "file": "Character_Panel.ixx",
+  "module": "LostArkMultiTool.Views.CharacterPanel",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.CalculatorManager",
+   "LostArkMultiTool.Views.OverlayPanel"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 51,
+  "cppLines": 290,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "오버레이 현재 캐릭터 패널: \"현재 캐릭터 : 이름 · 직업 · 레벨\" + 알아본 방법 · 경고",
+  "types": [
+   "CharacterPanel"
   ]
  },
  {
@@ -2362,6 +2409,29 @@ const MODULES = [
   ]
  },
  {
+  "file": "Nameplate_Memory.ixx",
+  "module": "LostArkMultiTool.Vision.NameplateMemory",
+  "imports": [
+   "LostArkMultiTool.Services.JSONFileStore",
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "lines": 81,
+  "cppLines": 369,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "내 캐릭터 머리 위 이름표(연한 노란 글자)의 \"모양\"을 캐릭터별로 기억 (사용자 데이터 폴더 NameplateShapes.json)",
+  "types": [
+   "NameplateShape",
+   "NameplateBlob",
+   "NameplateMemory",
+   "Entry"
+  ]
+ },
+ {
   "file": "Notifier.ixx",
   "module": "LostArkMultiTool.Core.Notifier",
   "imports": [],
@@ -2421,6 +2491,7 @@ const MODULES = [
   ],
   "cppImports": [
    "LostArkMultiTool.Views.CalculatorManager",
+   "LostArkMultiTool.Views.CharacterPanel",
    "LostArkMultiTool.Views.MaterialPanel",
    "LostArkMultiTool.Views.MiniToolPanel",
    "LostArkMultiTool.Views.ParadisePanel",
@@ -2430,7 +2501,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.GameWindowFinder"
   ],
   "lines": 89,
-  "cppLines": 389,
+  "cppLines": 406,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이 매니저 (프로그램에 하나 → 싱글톤, 탭이 아니라 Application이 직접 부름)",
@@ -2473,8 +2544,8 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 62,
-  "cppLines": 197,
+  "lines": 64,
+  "cppLines": 203,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이에 띄우는 패널 하나 (컴포넌트 패턴: 오버레이 매니저가 패널들을 모아 그림)",
@@ -3143,16 +3214,19 @@ const MODULES = [
   "file": "Screen_Watcher.ixx",
   "module": "LostArkMultiTool.Vision.ScreenWatcher",
   "imports": [
+   "LostArkMultiTool.Vision.CharacterDetector",
    "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.NameplateMemory",
    "LostArkMultiTool.Vision.ScreenLayout",
    "LostArkMultiTool.Vision.TextRecognizer"
   ],
   "cppImports": [
+   "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Vision.GameWindowFinder",
    "LostArkMultiTool.Vision.ScreenCaptureService"
   ],
-  "lines": 144,
-  "cppLines": 290,
+  "lines": 155,
+  "cppLines": 376,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "게임 화면 상시 감시 (\"마우스를 올려 두면 읽기\")",
@@ -3192,6 +3266,7 @@ const MODULES = [
    "LostArkMultiTool.Core.CombatRegression",
    "LostArkMultiTool.Core.Input",
    "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Core.ToolManager",
    "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CombatCoefficientData",
@@ -3204,9 +3279,11 @@ const MODULES = [
    "LostArkMultiTool.Views.MiniToolPanel",
    "LostArkMultiTool.Views.OverlayPlaceholderTool",
    "LostArkMultiTool.Views.OverlayWindow",
+   "LostArkMultiTool.Vision.CharacterDetector",
    "LostArkMultiTool.Vision.DigitReader",
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.ImageFile",
+   "LostArkMultiTool.Vision.NameplateMemory",
    "LostArkMultiTool.Vision.OCRTextParser",
    "LostArkMultiTool.Vision.ParadiseDetector",
    "LostArkMultiTool.Vision.ScreenCaptureService",
@@ -3218,7 +3295,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 733,
+  "cppLines": 851,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
@@ -3704,12 +3781,13 @@ const MODULES = [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Services.JSONValue"
   ],
-  "lines": 24,
-  "cppLines": 44,
+  "lines": 42,
+  "cppLines": 101,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
-  "desc": "화면 인식 켜기 설정 (사용자 데이터 폴더 VisionSettings.json)",
+  "desc": "화면 인식 설정 (사용자 데이터 폴더 VisionSettings.json)",
   "types": [
+   "SavedCharacterAlias",
    "VisionSettings"
   ]
  },

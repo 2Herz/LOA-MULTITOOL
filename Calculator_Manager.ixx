@@ -13,6 +13,7 @@ import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Models.Character;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Views.CalculatorView;
+import LostArkMultiTool.Vision.NameplateMemory;  // 이름표 모양 기억
 import LostArkMultiTool.Vision.ScreenWatcher;    // 화면 인식 감시기
 import LostArkMultiTool.Vision.VisionSettings;   // 화면 인식 켜기 설정
 
@@ -26,6 +27,41 @@ export namespace LostArkMultiTool::Views
         double m_unitPrice{};    // 단가 (골드, 시세가 없으면 0)
         double m_priceDiff{};    // 단가 변동 (지난 갱신 대비)
         double m_value{};        // 재료값 (골드)
+    };
+
+    // 화면 인식으로 알아낸 현재 캐릭터 상태
+    enum class CurrentCharacterState
+    {
+        CHARACTER_VISION_OFF,   // 화면 인식이 꺼져 있음
+        CHARACTER_NO_ROSTER,    // 원정대를 아직 불러오지 않음 (비교할 이름이 없음)
+        CHARACTER_CHECKING,     // 확인 중 (켠 직후 · 로딩 화면 뒤)
+        CHARACTER_KNOWN         // 확인됨
+    };
+
+    // 현재 캐릭터를 알아본 방법
+    enum class CurrentCharacterSource
+    {
+        SOURCE_NAMEPLATE,      // 머리 위 이름표
+        SOURCE_INFO_WINDOW,    // 캐릭터 정보 창
+        SOURCE_MANUAL          // 직접 고름 ([변경])
+    };
+
+    // 인게임 오버레이 현재 캐릭터 패널 · 설정 탭 내용
+    struct CurrentCharacterSummary
+    {
+        CurrentCharacterState m_state{ CurrentCharacterState::CHARACTER_VISION_OFF };   // 상태
+        CurrentCharacterSource m_source{ CurrentCharacterSource::SOURCE_NAMEPLATE };    // 알아본 방법 (확인됐을 때)
+        std::wstring m_name;                         // 캐릭터 이름 (확인됐을 때)
+        std::wstring m_className;                    // 직업 (모르면 빈 글자)
+        double m_itemLevel{};                        // 저장된 아이템 레벨 (모르면 0)
+        std::optional<double> m_readItemLevel;       // 캐릭터 정보 창에서 읽은 아이템 레벨 (안 읽었으면 nullopt)
+        bool m_isOutdated{};                         // 읽은 레벨이 저장된 레벨과 다름 → [갱신] 필요
+        bool m_isSyncing{};                          // 원정대 갱신 중
+        bool m_isAutoEnabled{ true };                // 자동 인식 켜짐
+        std::vector<std::wstring> m_candidates;      // [변경]으로 고를 원정대 이름 (계산기 선택 순서)
+        std::optional<std::size_t> m_currentIndex;   // 후보 중 현재 캐릭터 번호
+        std::size_t m_aliasCount{};                  // 직접 고른 캐릭터(읽은 글자 별칭) 수
+        std::size_t m_shapeCount{};                  // 이름표 모양을 기억한 캐릭터 수
     };
 
     // 인게임 오버레이 재료 패널 내용
@@ -62,6 +98,9 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] std::optional<std::wstring> GetBackgroundStatus() const override;
 
         [[nodiscard]] CalculatorOverlaySummary GetOverlaySummary() const;   // 인게임 오버레이 재료 패널용 요약 (화면 스레드에서)
+        [[nodiscard]] CurrentCharacterSummary GetCurrentCharacter() const;  // 화면 인식으로 알아낸 현재 캐릭터 (화면 스레드에서)
+        void PickCurrentCharacter(std::size_t index);                       // [변경]: 후보 번호로 현재 캐릭터 직접 고르기 (방금 못 맞춘 이름은 별칭으로 기억)
+        void RefreshCurrentCharacter();                                     // [갱신]: 현재 캐릭터 기준으로 원정대 정보 다시 받기
 
     private:
         friend class Core::Singleton<CalculatorManager>;   // GetInstance만 생성 · 소멸할 수 있게
@@ -83,6 +122,11 @@ export namespace LostArkMultiTool::Views
         void ApplyScanResults();                              // 확정된 인식 결과 반영 (화면 스레드에서)
         void ApplyMaterialScan(const std::string& valueKey, double quantity);   // 재료 수량 → 계산기 칸
         void ApplyParadiseScan(double score);                 // 낙원력 → 낙원력 트래커 이번 주차
+        void SetCurrentCharacter(const std::string& name, CurrentCharacterSource source, std::optional<double> readItemLevel);   // 현재 캐릭터 바꾸기 (계산기 선택도 따라감)
+        void ClearCurrentCharacter();                         // 현재 캐릭터 지우기 (로딩 화면 · 화면 인식 켜고 끄기)
+        void SelectCharacterByName(const std::string& name);  // 이름으로 캐릭터 고르기 (이미 골랐으면 그대로)
+        void PushCharacterNames();                            // 감시기에 원정대 이름 넘기기 (현재 캐릭터 비교용)
+        [[nodiscard]] std::optional<std::string> GetScanTarget();   // 인식 값을 넣을 캐릭터 (현재 캐릭터를 모르면 안내 후 nullopt)
 
         // ===== 백그라운드 작업이 끝났을 때 (화면 스레드에서) =====
         void FinishRefresh();
@@ -118,5 +162,12 @@ export namespace LostArkMultiTool::Views
 
         std::unique_ptr<Vision::VisionSettings> m_visionSettings;   // 화면 인식 켜기 설정
         std::unique_ptr<Vision::ScreenWatcher> m_screenWatcher;     // 화면 인식 감시기 (켜져 있을 때만)
+        std::shared_ptr<Vision::NameplateMemory> m_nameplateMemory; // 이름표 모양 기억 (감시 스레드와 공유)
+        std::optional<std::string> m_currentCharacter;              // 화면에서 확인한 현재 캐릭터 (모르면 nullopt → 인식 값을 넣지 않음)
+        CurrentCharacterSource m_currentSource{ CurrentCharacterSource::SOURCE_NAMEPLATE };   // 알아본 방법
+        std::optional<double> m_readItemLevel;                      // 캐릭터 정보 창에서 읽은 아이템 레벨
+        std::optional<std::string> m_lastUnknownName;               // 정보 창 이름 자리에서 읽었지만 원정대와 안 맞은 글자 (UTF-8)
+        std::chrono::steady_clock::time_point m_lastUnknownAt;      // 그 글자를 읽은 시각 (오래되면 별칭으로 쓰지 않음)
+        bool m_isWaitNoticeShown{};                                 // "캐릭터 확인 중" 안내를 이미 띄웠는지 (확인될 때까지 한 번만)
     };
-}
+}

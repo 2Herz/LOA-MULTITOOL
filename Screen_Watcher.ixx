@@ -1,7 +1,9 @@
 ﻿export module LostArkMultiTool.Vision.ScreenWatcher;  // 화면 상시 감시 모듈 선언 (내보내기)
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 별칭 형식 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
+import LostArkMultiTool.Vision.NameplateMemory;  // 이름표 모양 기억 가져오기
 import LostArkMultiTool.Vision.ScreenLayout;  // 화면 배치 가져오기
 import LostArkMultiTool.Vision.TextRecognizer;  // 글자 인식 가져오기
 
@@ -10,6 +12,7 @@ import LostArkMultiTool.Vision.TextRecognizer;  // 글자 인식 가져오기
 // - 커서 주변을 한 번 OCR해서 등록된 화면 인식기(전략 패턴)에 넘김 → 툴팁 · 상단바 · 낙원 UI를 같은 방식으로 읽음
 // - 커서가 멈춰 있는 동안 확정에 필요한 횟수만 읽고 쉼 (가만히 둬도 계속 OCR하지 않음 → CPU 절약)
 // - 같은 결과가 연속으로 나와야 확정 (깜빡임 · 애니메이션 중간 장면 오인식 방지)
+// - 현재 캐릭터: 커서와 상관없이 몇 초마다 화면 전체를 읽어 원정대 이름 · 로딩 화면을 찾음 (CharacterDetector)
 // - 확정 결과는 잠금으로 보호된 큐에 쌓이고, 화면 스레드가 TakeResults로 가져감 (데이터는 화면 스레드에서만 바꿈 → 데이터 레이스 없음)
 export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 내보내기 시작
 {
@@ -112,6 +115,9 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         void AddDetector(std::unique_ptr<ScreenDetector> detector);   // 인식기 등록 (감시 중이면 무시 → 멈춘 뒤 등록)
         void SetInterval(std::chrono::milliseconds interval) noexcept;// 감시 주기 (다음 주기부터)
         void RequestLayoutReload() noexcept;                          // 교정 후 화면 배치 다시 읽기 요청
+        // 현재 캐릭터 인식에 쓸 원정대 이름 · 별칭 · 이름표 모양 기억 (이름이 비면 로딩 화면만 봄)
+        void SetCharacterNames(std::vector<std::wstring> names, std::vector<CharacterAlias> aliases = {}, std::shared_ptr<NameplateMemory> memory = nullptr);
+        void SetCharacterScanEnabled(bool isEnabled) noexcept;        // 현재 캐릭터 확인 켜기 · 끄기 (끄면 화면 전체 OCR을 하지 않음)
 
         void Start();                                  // 감시 시작 (이미 감시 중이면 그대로)
         void Stop();                                   // 감시 멈춤 (스레드가 끝날 때까지 기다림)
@@ -137,6 +143,11 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         WatcherStatus m_status;                                        // 지금 상태
         std::atomic<std::int64_t> m_intervalMs{ DEFAULT_INTERVAL.count() };   // 감시 주기 (밀리초)
         std::atomic<bool> m_isReloadRequested{};                       // 배치 다시 읽기 요청
+        std::atomic<bool> m_isCharacterScanEnabled{ true };            // 현재 캐릭터 확인 켜짐
+        std::vector<std::wstring> m_characterNames;                    // 원정대 이름 (m_mutex로 보호)
+        std::vector<CharacterAlias> m_characterAliases;                // 별칭 (m_mutex로 보호)
+        std::shared_ptr<NameplateMemory> m_nameplateMemory;            // 이름표 모양 기억 (m_mutex로 보호, 기억 자체는 스스로 잠금)
+        std::uint64_t m_characterNamesVersion{};                       // 이름이 바뀐 횟수 (감시 스레드가 새로 받을 때 비교, m_mutex로 보호)
         std::atomic<bool> m_isRunning{};                               // 감시 중인지
         std::jthread m_thread;                                         // 감시 스레드 (소멸 때 멈춤 요청 + 기다림)
     };

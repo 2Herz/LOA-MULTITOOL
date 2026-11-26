@@ -18,7 +18,10 @@ import LostArkMultiTool.Models.TransferData;
 import LostArkMultiTool.Services.ArmoryParser;
 import LostArkMultiTool.Services.JSONValue;
 import LostArkMultiTool.Services.TransferCalculator;
+import LostArkMultiTool.Core.TextEncoding;
+import LostArkMultiTool.Vision.CharacterDetector;
 import LostArkMultiTool.Vision.DigitReader;
+import LostArkMultiTool.Vision.NameplateMemory;
 import LostArkMultiTool.Vision.FrameImage;
 import LostArkMultiTool.Vision.ImageFile;
 import LostArkMultiTool.Vision.OCRTextParser;
@@ -640,6 +643,119 @@ namespace LostArkMultiTool::Core::SelfTest
         }
     }
 
+    namespace  // 현재 캐릭터 인식 검사
+    {
+        constexpr double ITEM_LEVEL_EPSILON{ 0.001 };   // 아이템 레벨 비교 오차
+
+        // 원정대 이름 맞추기 (자모 거리 · 애매함 · 별칭) + 아이템 레벨 읽기 (OCR 없이)
+        void CheckCharacterMatching(Reporter& reporter)
+        {
+            constexpr std::size_t ONE_JAMO{ 1 };                                                // 자모 하나 차이
+            const bool isJamo = Vision::CharacterDetector::FindJamoDistance(L"외숡모", L"외숙모") == ONE_JAMO      // 겹받침 → 홑받침
+                && Vision::CharacterDetector::FindJamoDistance(L"읾모", L"읽모") == ONE_JAMO                       // 받침 하나 다름
+                && Vision::CharacterDetector::FindJamoDistance(L"할머니", L"할머니") == 0;                         // 같음
+            reporter.Check(isJamo, "현재 캐릭터 · 자모 거리 (외숡모↔외숙모 1 · 읾모↔읽모 1)");
+
+            const Vision::CharacterDetector detector{ { L"외숡모", L"당숡모", L"읾모", L"할머니" } };   // 검사 원정대
+            const auto fuzzy = detector.MatchName(L"외숙모");                                    // 한 자모 오인식
+            const auto exact = detector.MatchName(L"할머니");                                    // 정확히 같음
+            const auto other = detector.MatchName(L"정찻");                                      // 다른 사람
+            const auto title = detector.MatchName(L"죽음의");                                    // 칭호
+            const bool isMatched = fuzzy && fuzzy->first == L"외숡모" && fuzzy->second == ONE_JAMO
+                && exact && exact->first == L"할머니" && exact->second == 0 && !other && !title;
+            reporter.Check(isMatched, "현재 캐릭터 · 원정대 이름 맞추기 (OCR 한 자모 오인식 · 다른 사람 · 칭호 제외)");
+
+            const Vision::CharacterDetector ambiguous{ { L"가나", L"가다" } };                   // 거리가 같은 두 이름
+            reporter.Check(!ambiguous.MatchName(L"가라").has_value(), "현재 캐릭터 · 애매하면 고르지 않음 (가라 → 가나 · 가다)");
+
+            const Vision::CharacterDetector aliased{ { L"외숡모" }, { Vision::CharacterAlias{ L"외숨 모", L"외숡모" } } };   // 별칭 (띄어쓰기 무시)
+            const auto alias = aliased.MatchName(L"외숨모");                                     // 별칭 글자
+            reporter.Check(alias && alias->first == L"외숡모" && alias->second == 0, "현재 캐릭터 · 직접 고른 캐릭터(별칭) 기억");
+
+            const auto close = [](std::optional<double> value, double expected) { return value && std::abs(*value - expected) < ITEM_LEVEL_EPSILON; };
+            constexpr double EXPECTED_LEVEL{ 1775.0 };                                           // 기대 레벨
+            const bool isLevel = close(Vision::CharacterDetector::ParseItemLevel(L"1775.00"), EXPECTED_LEVEL)
+                && close(Vision::CharacterDetector::ParseItemLevel(L"1,775.00"), EXPECTED_LEVEL)
+                && close(Vision::CharacterDetector::ParseItemLevel(L"I775.0O"), EXPECTED_LEVEL)
+                && !Vision::CharacterDetector::ParseItemLevel(L"Lv.70").has_value()
+                && !Vision::CharacterDetector::ParseItemLevel(L"전투력").has_value();
+            reporter.Check(isLevel, "현재 캐릭터 · 아이템 레벨 읽기 (1775.00 · 1,775.00 · I775.0O, Lv.70 제외)");
+        }
+
+        // 실제 화면 샘플: 이름표 · 캐릭터 정보 창 · 로딩 화면 (샘플이 없으면 건너뜀)
+        void CheckCharacterSamples(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            const auto folder = FindSampleFolder(reportPath.parent_path());               // 샘플 폴더
+            if (!folder) { reporter.Note("현재 캐릭터 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }   // 개발 PC가 아님
+
+            std::vector<std::pair<std::string, bool>> outcomes;                           // (내용, 통과)
+            std::thread worker{ [&]                                                       // OCR 일꾼 스레드
+                {
+                    const Vision::VisionApartment apartment;                              // WinRT · DPI 준비
+                    const Vision::TextRecognizer recognizer;                              // OCR 엔진
+                    const std::vector<std::wstring> roster{ L"외숡모", L"당숡모", L"읾모", L"핢머니", L"정찻" };   // 원정대 (다른 사람 '정찻'도 넣어 노란 이름 규칙 검사)
+                    const auto memory = std::make_shared<Vision::NameplateMemory>(Vision::MemoryStorage::STORAGE_NONE);   // 파일을 건드리지 않는 모양 기억
+                    const Vision::CharacterDetector detector{ roster, {}, memory };       // 인식기
+                    const auto load = [&](std::wstring_view file) { return Vision::ImageFile::Load(*folder / file); };   // 이미지 읽기
+                    const auto read = [&](std::wstring_view file) -> std::optional<Vision::CharacterReading>   // 샘플 하나 읽기
+                        {
+                            const auto frame = load(file);                                // 이미지
+                            if (!frame) return std::nullopt;                              // 파일 없음
+                            return detector.Detect(*frame, recognizer);                   // 인식
+                        };
+                    const auto describe = [](const std::optional<Vision::CharacterReading>& reading)   // 결과 글자
+                        {
+                            if (!reading) return std::string{ "파일을 못 읽음" };
+                            return std::format("신호 {} · 곳 {} · 이름 '{}' · 레벨 {}", static_cast<int>(reading->m_signal), static_cast<int>(reading->m_source),
+                                Core::TextEncoding::WideToUTF8(reading->m_name), reading->m_itemLevel ? std::format("{:.2f}", *reading->m_itemLevel) : std::string{ "-" });
+                        };
+
+                    // 내 이름표 찾기 (연한 노란 글자만, 칭호 · 길드 · 다른 사람 제외)
+                    const auto plateFrame = load(L"character_nameplate.webp");           // 머리 위 이름표 화면
+                    const auto blob = plateFrame ? Vision::NameplateMemory::FindOwnNameplate(*plateFrame) : std::nullopt;   // 내 이름표
+                    constexpr int EXPECTED_LEFT{ 985 };                                   // 기대 위치 (샘플 기준 "핢머니" 글자)
+                    constexpr int EXPECTED_RIGHT{ 1022 };
+                    constexpr int POSITION_TOLERANCE{ 3 };                                // 허용 오차 (픽셀)
+                    outcomes.emplace_back(blob ? std::format("내 이름표 위치 x {} ~ {} · y {} · {}×{}", blob->m_bounds.m_x, blob->m_bounds.GetRight() - 1, blob->m_bounds.m_y,
+                        blob->m_bounds.m_width, blob->m_bounds.m_height) : std::string{ "내 이름표 위치: 못 찾음" },
+                        blob && std::abs(blob->m_bounds.m_x - EXPECTED_LEFT) <= POSITION_TOLERANCE && std::abs(blob->m_bounds.GetRight() - 1 - EXPECTED_RIGHT) <= POSITION_TOLERANCE);
+
+                    const auto plate = read(L"character_nameplate.webp");                // 처음: 이름표 OCR로 맞추고 모양 기억
+                    outcomes.emplace_back("이름표 → 핢머니 (이름표만 3배 OCR · 자모 비교) : " + describe(plate),
+                        plate && plate->m_signal == Vision::CharacterSignal::SIGNAL_NAME && plate->m_name == L"핢머니");
+                    const bool isLearned = blob && memory->Match(blob->m_shape) == std::optional<std::string>{ Core::TextEncoding::WideToUTF8(L"핢머니") };   // 모양 기억
+                    outcomes.emplace_back("이름표 모양 기억 → 다음부터 OCR 없이 핢머니", isLearned);
+
+                    const auto manual = std::make_shared<Vision::NameplateMemory>(Vision::MemoryStorage::STORAGE_NONE);   // [변경]으로 고를 때 흐름
+                    if (blob) manual->SetPending(blob->m_shape);                          // 못 알아본 모양 대기
+                    constexpr std::chrono::seconds PENDING_AGE{ 60 };                     // 대기 시간
+                    const bool isPicked = manual->LearnPending(Core::TextEncoding::WideToUTF8(L"외숡모"), PENDING_AGE)
+                        && manual->Match(blob->m_shape) == std::optional<std::string>{ Core::TextEncoding::WideToUTF8(L"외숡모") };   // 고른 캐릭터로 기억
+                    outcomes.emplace_back("[변경]으로 고르면 그 이름표 모양을 기억", isPicked);
+
+                    const auto info = read(L"character_info.webp");                      // 캐릭터 정보 창 ("Lv." 줄 위 이름)
+                    const bool isInfoRead = info && (info->m_signal == Vision::CharacterSignal::SIGNAL_NAME ? info->m_name == L"핢머니"
+                        : (!info->m_unknownName.empty() && info->m_unknownName != L"예리"));       // 길드 이름("Lv.38 Family" 위)을 이름으로 잡으면 안 됨
+                    outcomes.emplace_back("정보 창 → 핢머니 또는 별칭 후보 : " + describe(info) + " · 못 맞춘 글자 '" + (info ? Core::TextEncoding::WideToUTF8(info->m_unknownName) : std::string{}) + "'", isInfoRead);
+                    if (info && info->m_signal != Vision::CharacterSignal::SIGNAL_NAME && !info->m_unknownName.empty())   // 별칭으로 기억하면 다음엔 맞춤
+                    {
+                        const Vision::CharacterDetector aliased{ roster, { Vision::CharacterAlias{ info->m_unknownName, L"핢머니" } } };   // 별칭 인식기
+                        const auto infoFrame = load(L"character_info.webp");             // 다시 읽기
+                        const auto again = infoFrame ? std::optional{ aliased.Detect(*infoFrame, recognizer) } : std::nullopt;
+                        outcomes.emplace_back("정보 창 별칭 기억 → 핢머니 : " + describe(again), again && again->m_signal == Vision::CharacterSignal::SIGNAL_NAME && again->m_name == L"핢머니");
+                    }
+
+                    const auto loading = read(L"loading.webp");                          // 로딩 화면 (픽셀)
+                    outcomes.emplace_back("로딩 화면 → 다시 확인 : " + describe(loading),
+                        loading && loading->m_signal == Vision::CharacterSignal::SIGNAL_LOADING);
+                    const bool isNotLoading = plateFrame && !Vision::CharacterDetector::IsLoadingScreen(*plateFrame);   // 게임 화면은 로딩 아님
+                    outcomes.emplace_back("게임 화면은 로딩 화면이 아님", isNotLoading);
+                } };
+            worker.join();                                                                // 끝날 때까지 기다림
+            for (const auto& [text, isPassed] : outcomes) reporter.Check(isPassed, "현재 캐릭터 샘플", text);   // 기록
+        }
+    }
+
     namespace  // 인게임 오버레이 검사
     {
         constexpr Core::Color OVERLAY_TEST_CLEAR{ 0.0f, 0.0f, 0.0f, 0.0f };   // 투명 지우기 색
@@ -716,6 +832,8 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckLopecRegression(reporter, reportPath);          // lopec 회귀
             CheckVision(reporter);                               // 화면 인식 기반
             CheckVisionSamples(reporter, reportPath);            // 화면 인식 실제 화면 샘플
+            CheckCharacterMatching(reporter);                    // 현재 캐릭터 이름 맞추기
+            CheckCharacterSamples(reporter, reportPath);         // 현재 캐릭터 실제 화면 샘플
             CheckOverlay(reporter);                              // 인게임 오버레이 투명 창
             CheckMiniToolPanel(reporter);                        // 인게임 오버레이 미니 모드
         }

@@ -6,10 +6,10 @@
 
 #define APP_VERSION_MAJOR          1                          // 주 버전
 #define APP_VERSION_MINOR          9                          // 부 버전
-#define APP_VERSION_PATCH          1                          // 수정 버전
+#define APP_VERSION_PATCH          2                          // 수정 버전
 #define APP_VERSION_BUILD          0                          // 빌드 번호 (쓰지 않음, 항상 0)
-#define APP_VERSION_TEXT           "1.9.1"                    // 화면용 버전 글자 (APP_VERSION과 같아야 함)
-#define APP_FILE_VERSION_TEXT      "1.9.1.0"                  // 네 자리 버전 글자
+#define APP_VERSION_TEXT           "1.9.2"                    // 화면용 버전 글자 (APP_VERSION과 같아야 함)
+#define APP_FILE_VERSION_TEXT      "1.9.2.0"                  // 네 자리 버전 글자
 
 #define APP_COMPANY_TEXT           "ESTOPPEL"                 // 회사 이름
 #define APP_PRODUCT_TEXT           "로스트아크 멀티툴"            // 제품 이름
@@ -22,6 +22,10 @@
 #define APP_LANGUAGE_BLOCK         "041204b0"                 // 한국어(0x0412) + 유니코드(1200) 문자열 블록
 #define APP_LANGUAGE_ID            0x0412                     // 한국어
 #define APP_CODE_PAGE              1200                       // 유니코드
+
+#define APP_ICON_ID                1                          // 프로그램 아이콘 번호 (exe의 첫 아이콘 = 탐색기 · 창 제목줄 · 작업 표시줄 · 트레이 아이콘)
+
+APP_ICON_ID ICON "App_Icon.ico"                               // 프로그램 아이콘 (tools/Make-Icon.py로 만듦: 남색 바탕 · 금색 고리 · 청록 보석, 16 ~ 256px)
 
 VS_VERSION_INFO VERSIONINFO                                   // 버전 정보 리소스 시작
  FILEVERSION     APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH, APP_VERSION_BUILD   // 숫자 파일 버전

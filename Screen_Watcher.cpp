@@ -1,6 +1,8 @@
 ﻿module LostArkMultiTool.Vision.ScreenWatcher;  // 화면 상시 감시 모듈 구현
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Core.TextEncoding;  // 이름 UTF-8 바꾸기 가져오기
+import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 인식기 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.GameWindowFinder;  // 게임 창 찾기 가져오기
 import LostArkMultiTool.Vision.ScreenCaptureService;  // 화면 캡처 가져오기
@@ -20,6 +22,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int HOVER_HALF_WIDTH{ 700 };                            // 커서 주변 OCR 영역 가로 반폭 (툴팁 너비 + 여유)
         constexpr int HOVER_UP{ 500 };                                    // 커서 위로 볼 높이 (위로 뜨는 툴팁 · 상단바)
         constexpr int HOVER_DOWN{ 450 };                                  // 커서 아래로 볼 높이
+        constexpr std::chrono::milliseconds CHARACTER_SCAN_INTERVAL{ 2000 };   // 현재 캐릭터 확인 간격 (화면 전체 OCR이라 가끔만)
+        constexpr std::chrono::milliseconds CHARACTER_STEADY_INTERVAL{ 4000 }; // 같은 캐릭터를 계속 확인하는 중이면 더 드물게 (CPU 절약)
+        constexpr std::chrono::milliseconds CHARACTER_LOADING_INTERVAL{ 1000 };// 로딩 화면이면 더 자주 (새 캐릭터를 빨리 알아봄)
         constexpr int OCR_SCALE{ 1 };                                     // OCR 확대 배율 (1080p 글자는 원본 크기가 가장 잘 읽힘)
         constexpr std::string_view NO_GAME_TEXT{ "로스트아크 창을 찾지 못했어요" };                 // 게임 없음 안내
         constexpr std::string_view BACKGROUND_TEXT{ "게임이 맨 앞에 있을 때만 읽어요" };              // 쉬는 중 안내
@@ -98,6 +103,20 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         m_isReloadRequested = true;   // 다음 주기에 다시 읽음
     }
 
+    void ScreenWatcher::SetCharacterNames(std::vector<std::wstring> names, std::vector<CharacterAlias> aliases, std::shared_ptr<NameplateMemory> memory)
+    {
+        const std::scoped_lock lock{ m_mutex };       // 감시 스레드와 공유
+        m_characterNames = std::move(names);          // 새 이름들
+        m_characterAliases = std::move(aliases);      // 새 별칭들
+        m_nameplateMemory = std::move(memory);        // 이름표 모양 기억
+        ++m_characterNamesVersion;                    // 바뀜 표시 (감시 스레드가 다음 확인 때 새로 받음)
+    }
+
+    void ScreenWatcher::SetCharacterScanEnabled(bool isEnabled) noexcept
+    {
+        m_isCharacterScanEnabled = isEnabled;   // 다음 주기부터
+    }
+
     void ScreenWatcher::Start()
     {
         if (m_isRunning) return;                                                      // 이미 감시 중
@@ -166,6 +185,12 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
         ScreenCaptureService capture;                                              // 캡처 서비스 (이 스레드 전용)
         ScanConfirmer confirmer;                                                   // 연속 확정 도구
+        ScanConfirmer characterConfirmer;                                          // 현재 캐릭터 확정 도구 (로딩 화면이면 새로 만듦)
+        std::optional<CharacterDetector> characterDetector;                        // 현재 캐릭터 인식기 (이름을 받으면 만듦)
+        std::uint64_t characterNamesVersion = 0;                                   // 받은 이름 버전
+        auto nextCharacterScan = std::chrono::steady_clock::now();                 // 다음 캐릭터 확인 시각
+        bool wasLoading = false;                                                   // 직전 확인이 로딩 화면이었는지 (로딩 알림은 한 번만)
+        std::string lastCharacterName;                                             // 마지막으로 확정한 캐릭터 (같으면 확인 간격을 늘림)
         void* gameWindow = nullptr;                                                // 지난번에 찾은 게임 창
         std::optional<PixelPoint> lastCursor;                                      // 지난 주기 커서 (프레임 기준)
         std::chrono::milliseconds restTime{};                                      // 커서가 멈춘 시간
@@ -222,6 +247,67 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 {
                     const std::scoped_lock lock{ m_mutex };                        // 상태 보호
                     m_status.m_lastFrameAt = std::chrono::system_clock::now();     // 마지막 프레임 시각
+                }
+
+                const auto steadyNow = std::chrono::steady_clock::now();           // 지금 (캐릭터 확인 주기용)
+                if (frame && m_isCharacterScanEnabled && steadyNow >= nextCharacterScan)   // 캐릭터 확인할 때 (커서와 상관없이)
+                {
+                    nextCharacterScan = steadyNow + CHARACTER_SCAN_INTERVAL;       // 다음 확인 시각
+                    {
+                        const std::scoped_lock lock{ m_mutex };                    // 이름 보호
+                        if (!characterDetector || characterNamesVersion != m_characterNamesVersion)   // 이름이 바뀌었으면
+                        {
+                            characterDetector.emplace(m_characterNames, m_characterAliases, m_nameplateMemory);   // 인식기 다시 만들기 (이름 · 별칭 복사, 기억은 공유)
+                            characterNamesVersion = m_characterNamesVersion;       // 버전 기록
+                        }
+                    }
+                    const CharacterReading reading = characterDetector->Detect(*frame, text);   // 화면 전체 읽기
+                    ScanResult characterResult;                                    // 결과
+                    characterResult.m_capturedAt = std::chrono::system_clock::now();   // 시각
+                    if (reading.m_signal == CharacterSignal::SIGNAL_LOADING)       // 로딩 화면 → 캐릭터가 바뀌었을 수 있음
+                    {
+                        nextCharacterScan = steadyNow + CHARACTER_LOADING_INTERVAL;// 로딩 중엔 자주 확인
+                        characterConfirmer = ScanConfirmer{};                      // 확정 기록 지움 (로딩 뒤 같은 캐릭터도 다시 확정)
+                        lastCharacterName.clear();                                 // 확정 이름도 지움
+                        if (!wasLoading)                                           // 이번 로딩에서 처음 봄
+                        {
+                            characterResult.m_screenName = std::string{ CharacterDetector::LOADING_SCREEN_NAME };   // 로딩 알림
+                            const std::scoped_lock lock{ m_mutex };                // 큐 보호
+                            m_results.push_back(std::move(characterResult));       // 바로 알림 (확정 기다리지 않음)
+                        }
+                        wasLoading = true;                                         // 기록
+                    }
+                    else if (reading.m_signal == CharacterSignal::SIGNAL_NAME)     // 원정대 이름을 찾음
+                    {
+                        wasLoading = false;                                        // 로딩 끝
+                        characterResult.m_screenName = std::string{ CharacterDetector::SCREEN_NAME };   // 캐릭터
+                        characterResult.m_characterName = Core::TextEncoding::WideToUTF8(reading.m_name); // 이름 (UTF-8)
+                        characterResult.m_values.push_back(ScanValue{ std::string{ CharacterDetector::SOURCE_VALUE_KEY }, static_cast<std::int64_t>(reading.m_source) });   // 찾은 곳
+                        if (reading.m_itemLevel) characterResult.m_values.push_back(ScanValue{ std::string{ CharacterDetector::ITEM_LEVEL_VALUE_KEY },
+                            std::llround(*reading.m_itemLevel * CharacterDetector::ITEM_LEVEL_SCALE) });   // 정보 창 아이템 레벨 (× 100)
+                        const bool isSameAsConfirmed = lastCharacterName == characterResult.m_characterName;   // 확정한 캐릭터를 다시 봄
+                        if (auto confirmed = characterConfirmer.Feed(characterResult))   // 두 번 연속 같으면 확정
+                        {
+                            lastCharacterName = confirmed->m_characterName;        // 확정 이름 기록
+                            const std::scoped_lock lock{ m_mutex };                // 큐 보호
+                            m_results.push_back(std::move(*confirmed));            // 큐에 추가
+                        }
+                        if (isSameAsConfirmed) nextCharacterScan = steadyNow + CHARACTER_STEADY_INTERVAL;   // 같은 캐릭터면 천천히
+                    }
+                    else                                                           // 못 찾음 → 연속 횟수만 초기화 (지금 캐릭터는 유지)
+                    {
+                        characterConfirmer.Reset(CharacterDetector::SCREEN_NAME);  // 캐릭터 연속 횟수 초기화
+                        if (!reading.m_unknownName.empty() || reading.m_hasUnknownPlate)   // 이름을 못 맞춤 → 직접 고를 때 별칭 · 모양으로 쓰도록 알림
+                        {
+                            characterResult.m_screenName = std::string{ CharacterDetector::UNKNOWN_SCREEN_NAME };   // 못 맞춘 이름
+                            characterResult.m_characterName = Core::TextEncoding::WideToUTF8(reading.m_unknownName);   // 읽은 글자
+                            if (auto confirmed = characterConfirmer.Feed(characterResult))   // 두 번 연속 같으면
+                            {
+                                const std::scoped_lock lock{ m_mutex };            // 큐 보호
+                                m_results.push_back(std::move(*confirmed));        // 큐에 추가
+                            }
+                        }
+                    }
                 }
 
                 const bool isReadyToScan = cursor && restTime >= REST_BEFORE_SCAN && scansThisRest < SCANS_PER_REST;   // 읽을 때인지

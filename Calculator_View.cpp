@@ -1,4 +1,4 @@
-module LostArkMultiTool.Views.CalculatorView;
+﻿module LostArkMultiTool.Views.CalculatorView;
 
 import std;
 import LostArkMultiTool.Core.APPConstants;
@@ -253,6 +253,11 @@ namespace LostArkMultiTool::Views
     {
         m_characterBox.SetItems(std::move(items));
         m_characterBox.SetSelectedIndex(selectedIndex);
+    }
+
+    void CalculatorView::SelectCharacterIndex(std::size_t index)
+    {
+        m_characterBox.SetSelectedIndex(index);   // 표시만 바꿈 (매니저가 직접 SelectCharacter를 부름)
     }
 
     std::optional<std::size_t> CalculatorView::GetSelectedCharacterIndex() const noexcept
@@ -562,4 +567,4 @@ namespace LostArkMultiTool::Views
         const MaterialTier tier{ row == ROW_TOP_QTY ? MaterialTier::TIER_TOP : MaterialTier::TIER_BOTTOM };
         if (const auto onQuantityEdited{ m_onQuantityEdited }) onQuantityEdited(tier, column, quantity);
     }
-}
+}

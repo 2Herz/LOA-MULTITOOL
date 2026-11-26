@@ -123,7 +123,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         renderer.DrawLine(content.m_left, y - SECTION_GAP * HALF, content.m_right, y - SECTION_GAP * HALF, Theme::PANEL_BORDER_COLOR, DIVIDER_WIDTH);   // 구분선
         const auto drawTotal = [&](std::wstring_view label, double value)                                                // 합계 줄
             {
-                renderer.DrawString(label, Core::RectF{ content.m_left, y, content.m_right, y + ROW_HEIGHT }, Theme::ACCENT_TEXT_COLOR, TOTAL_LEFT_STYLE);
+                renderer.DrawString(label, Core::RectF{ content.m_left, y, content.m_right, y + ROW_HEIGHT }, Theme::ACCENT_COLOR, TOTAL_LEFT_STYLE);
                 renderer.DrawString(m_summary.m_hasPrices ? std::format(GOLD_FORMAT, Core::NumberFormat::FormatNumber(value, WHOLE_DECIMALS)) : std::wstring{ NO_PRICE_TEXT },
                     Core::RectF{ content.m_left, y, content.m_right, y + ROW_HEIGHT },
                     m_summary.m_hasPrices ? Theme::HIGHLIGHT_TEXT_COLOR : Theme::MUTED_TEXT_COLOR, TOTAL_RIGHT_STYLE);

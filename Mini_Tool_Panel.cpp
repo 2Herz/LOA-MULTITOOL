@@ -82,7 +82,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         renderer.DrawString(PREVIOUS_TEXT, previous, Theme::TEXT_COLOR, CENTER_STYLE);                                     // ◀
         renderer.DrawString(NEXT_TEXT, next, Theme::TEXT_COLOR, CENTER_STYLE);                                             // ▶
         renderer.DrawString(std::format(SWITCHER_FORMAT, GetTool().GetTabTitle(), m_toolIndex + 1, m_tools.size()),
-            Core::RectF{ previous.m_right, switcher.m_top, next.m_left, switcher.m_bottom }, Theme::ACCENT_TEXT_COLOR, CENTER_STYLE);   // 탭 이름
+            Core::RectF{ previous.m_right, switcher.m_top, next.m_left, switcher.m_bottom }, Theme::ACCENT_COLOR, CENTER_STYLE);   // 탭 이름
 
         const Core::RectF toolRect = GetToolRect(content);                                             // 탭 화면
         renderer.FillRect(toolRect, Core::WithAlpha(Theme::BACKGROUND_COLOR, TOOL_BACK_ALPHA));        // 거의 불투명한 바탕 (글자 읽기 쉽게)

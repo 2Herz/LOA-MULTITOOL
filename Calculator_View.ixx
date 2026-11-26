@@ -45,6 +45,7 @@ export namespace LostArkMultiTool::Views
         // ===== 캐릭터 목록 =====
         void SetCharacterItems(std::vector<std::wstring> items, std::optional<std::size_t> selectedIndex);   // 캐릭터가 없으면 nullopt
         [[nodiscard]] std::optional<std::size_t> GetSelectedCharacterIndex() const noexcept;
+        void SelectCharacterIndex(std::size_t index);      // 캐릭터 고르기 (화면 인식이 현재 캐릭터로 바꿀 때, 알림 없음)
 
         // ===== 표 =====
         void ShowPrice(MaterialTier tier, std::size_t materialIndex, double current, double diff);
@@ -123,4 +124,4 @@ export namespace LostArkMultiTool::Views
         std::function<void()> m_onResetInput;
         std::function<void(MaterialTier, std::size_t, double)> m_onQuantityEdited;
     };
-}
+}
