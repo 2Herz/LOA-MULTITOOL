@@ -1117,6 +1117,18 @@
     <ClCompile Include="Transfer_View.cpp">
       <Filter>4. 뷰\14. 이관계산기</Filter>
     </ClCompile>
+    <ClCompile Include="Mini_Tool_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Mini_Tool_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Placeholder_Tool.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Placeholder_Tool.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
     <ClCompile Include="Overlay_Settings.ixx">
       <Filter>4. 뷰\15. 오버레이</Filter>
     </ClCompile>

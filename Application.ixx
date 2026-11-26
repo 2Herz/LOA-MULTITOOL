@@ -13,6 +13,7 @@ import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Models.ServerConfig;
 import LostArkMultiTool.Services.UpdateInstaller;
 import LostArkMultiTool.Views.UI.TextBox;
+import LostArkMultiTool.Views.OverlayPlaceholderTool;   // 오버레이에서 사용 중 안내 탭
 import LostArkMultiTool.Views.APIKeyDialog;
 import LostArkMultiTool.Views.DX11Renderer;
 import LostArkMultiTool.Views.MainWindow;
@@ -105,6 +106,7 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] std::optional<std::size_t> FindTabAt(float x, float y) const noexcept;
         [[nodiscard]] bool IsInHeader(float x, float y) const noexcept;   // 왼쪽 메뉴 · 위 막대 · 페이지 머리말 안인지 (탭 내용 밖)
         [[nodiscard]] Core::ToolManager& GetActiveTool() const noexcept;
+        [[nodiscard]] Core::ToolManager& GetVisibleTool() const noexcept;   // 메인 창에 그릴 탭 (미니 모드로 띄운 탭이면 안내 탭)
 
         std::array<std::reference_wrapper<Core::ToolManager>, TOOL_COUNT> m_tools;   // 탭 순서 (매니저는 싱글톤이 소유)
 
@@ -123,6 +125,7 @@ export namespace LostArkMultiTool::Views
         UI::Button* m_apiKeyButton{};                       // m_headerHost가 소유
         UI::Button* m_reportButton{};                       // [문제 보고] 버튼 (m_headerHost가 소유)
         UI::Button* m_overlayButton{};                      // [인게임 오버레이] 켜기 · 끄기 버튼 (m_headerHost가 소유)
+        mutable OverlayPlaceholderTool m_overlayPlaceholder;   // 미니 모드로 띄운 탭 대신 메인 창에 그리는 안내 탭
         UI::TextBox* m_toolSearchBox{};                     // 왼쪽 메뉴 도구 검색칸 (m_headerHost가 소유)
         std::vector<std::size_t> m_visibleTools;            // 검색어에 맞는 도구 번호 (메뉴에 보이는 순서)
         Core::BackgroundTask<std::filesystem::path> m_updateTask;   // 자동 업데이트 받기 · 검증

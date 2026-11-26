@@ -29,6 +29,10 @@ import LostArkMultiTool.Vision.TooltipDetector;
 import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Views.DX11Renderer;
 import LostArkMultiTool.Views.OverlayWindow;
+import LostArkMultiTool.Views.MiniToolPanel;
+import LostArkMultiTool.Views.OverlayPlaceholderTool;
+import LostArkMultiTool.Core.Input;
+import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Vision.ScreenLayout;
 import LostArkMultiTool.Vision.ScreenWatcher;
 import LostArkMultiTool.Vision.TemplateMatcher;
@@ -660,6 +664,38 @@ namespace LostArkMultiTool::Core::SelfTest
                 reporter.Check(false, "인게임 오버레이 · 투명 창 · 렌더러 만들기", error.what());   // 실패 이유
             }
         }
+
+        // 미니 모드 패널: ◀ 처음 → 끝, ▶ 끝 → 처음 순환 + 안내 탭은 입력을 받지 않음 (창 없이 패널만)
+        void CheckMiniToolPanel(Reporter& reporter)
+        {
+            constexpr float PANEL_WIDTH{ 1000.0f };          // 검사 패널 가로
+            constexpr float PANEL_HEIGHT{ 640.0f };          // 검사 패널 세로
+            constexpr float PREVIOUS_X{ 15.0f };             // ◀ 단추 안 X (안쪽 여백 10 + 5)
+            constexpr float NEXT_X{ PANEL_WIDTH - 15.0f };   // ▶ 단추 안 X
+            constexpr float SWITCHER_Y{ 40.0f };             // 탭 고르기 줄 안 Y (머리말 28 + 여백 5 + 7)
+            constexpr std::size_t TOOL_COUNT{ 3 };           // 검사 탭 수
+            constexpr std::size_t LAST_INDEX{ TOOL_COUNT - 1 };   // 마지막 탭
+
+            std::array<Views::OverlayPlaceholderTool, TOOL_COUNT> tools;                   // 가짜 탭들 (안내 탭 재사용)
+            const std::array<std::reference_wrapper<Core::ToolManager>, TOOL_COUNT> toolRefs{ tools[0], tools[1], tools[2] };   // 탭 목록
+            std::vector<std::size_t> changes;                                              // 바뀐 탭 번호 기록
+            Views::MiniToolPanel panel{ toolRefs, 0, [&changes](std::size_t index) { changes.push_back(index); } };   // 첫 탭부터
+            panel.SetBounds(Core::RectF{ 0.0f, 0.0f, PANEL_WIDTH, PANEL_HEIGHT });         // 위치 · 크기
+
+            const auto click = [&panel](float x, float y)                                  // 왼쪽 누르고 떼기
+                {
+                    (void)panel.HandleInput(Core::MouseButtonEvent{ x, y, Core::MouseButton::MOUSE_BUTTON_LEFT, true, 1 }, true);
+                    (void)panel.HandleInput(Core::MouseButtonEvent{ x, y, Core::MouseButton::MOUSE_BUTTON_LEFT, false, 1 }, true);
+                };
+            click(PREVIOUS_X, SWITCHER_Y);                                                 // ◀ (처음 → 끝)
+            const bool isWrappedBack = panel.GetToolIndex() == LAST_INDEX;                 // 끝으로 갔는지
+            click(NEXT_X, SWITCHER_Y);                                                     // ▶ (끝 → 처음)
+            const bool isWrappedForward = panel.GetToolIndex() == 0;                       // 처음으로 갔는지
+            const bool isNotified = changes == std::vector<std::size_t>{ LAST_INDEX, 0 }; // 바꿀 때마다 알림
+            const bool isPlaceholderPassive = !tools[0].HandleInput(Core::KeyEvent{ Core::Key::KEY_ENTER });   // 안내 탭은 입력을 안 받음
+            reporter.Check(isWrappedBack && isWrappedForward && isNotified && isPlaceholderPassive, "인게임 오버레이 · 미니 모드 탭 순환",
+                std::format("◀ {} · ▶ {} · 알림 {}개", isWrappedBack, isWrappedForward, changes.size()));
+        }
     }
 
     bool IsRequested(std::wstring_view commandLine) noexcept
@@ -681,6 +717,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckVision(reporter);                               // 화면 인식 기반
             CheckVisionSamples(reporter, reportPath);            // 화면 인식 실제 화면 샘플
             CheckOverlay(reporter);                              // 인게임 오버레이 투명 창
+            CheckMiniToolPanel(reporter);                        // 인게임 오버레이 미니 모드
         }
         catch (const std::exception& exception)
         {

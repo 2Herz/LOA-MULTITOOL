@@ -888,7 +888,7 @@ namespace LostArkMultiTool::Views
     // 탭 막대(위) · 탭 내용(아래)으로 입력을 나눠 줌 (키보드 · 글자 입력은 탭 내용으로)
     void Application::RouteInput(const Core::InputEvent& event)
     {
-        Core::ToolManager& tool{ GetActiveTool() };
+        Core::ToolManager& tool{ GetVisibleTool() };
 
         std::visit(Core::Overloaded{
             [&](const Core::MouseMoveEvent& move)
@@ -934,7 +934,7 @@ namespace LostArkMultiTool::Views
 
     void Application::RouteMouseButton(const Core::InputEvent& event, const Core::MouseButtonEvent& button)
     {
-        Core::ToolManager& tool{ GetActiveTool() };
+        Core::ToolManager& tool{ GetVisibleTool() };
         const bool isLeft{ button.m_button == Core::MouseButton::MOUSE_BUTTON_LEFT };
 
         if (button.m_isPressed)
@@ -989,10 +989,10 @@ namespace LostArkMultiTool::Views
     {
         Core::CursorShape shape{ Core::CursorShape::CURSOR_ARROW };
         if (m_isModal) shape = m_notifier->GetCursor();
-        else if (m_pointerOwner == PointerOwner::POINTER_TOOL) shape = GetActiveTool().GetCursor();
+        else if (m_pointerOwner == PointerOwner::POINTER_TOOL) shape = GetVisibleTool().GetCursor();
         else if (m_pointerOwner == PointerOwner::POINTER_HEADER) shape = m_headerHost.GetCursor();
         else if (m_isPointerInHeader) shape = m_hoverIndex.has_value() ? Core::CursorShape::CURSOR_HAND : m_headerHost.GetCursor();
-        else shape = GetActiveTool().GetCursor();
+        else shape = GetVisibleTool().GetCursor();
 
         m_window->SetCursor(shape);
     }
@@ -1044,7 +1044,7 @@ namespace LostArkMultiTool::Views
 
         // 1) 선택한 탭 내용
         const Core::RectF contentRect{ GetContentRect() };   // 왼쪽 메뉴 · 위 막대 · 머리말을 뺀 영역
-        GetActiveTool().Render(*m_renderer, contentRect);    // 탭 화면 그리기
+        GetVisibleTool().Render(*m_renderer, contentRect);   // 탭 화면 그리기 (미니 모드로 띄운 탭이면 안내만)
 
         // 2) 페이지 머리말 (영문 소제목 · 큰 제목 · 설명)
         RenderPageHeader();
@@ -1261,5 +1261,12 @@ namespace LostArkMultiTool::Views
     Core::ToolManager& Application::GetActiveTool() const noexcept
     {
         return m_tools[m_activeIndex].get();   // m_activeIndex는 SelectTool에서 TOOL_COUNT 미만만 허용
+    }
+
+    // 메인 창에 그리고 입력을 넘길 탭 (오버레이 미니 모드로 띄운 탭이면 안내 탭 → 같은 탭을 두 창이 동시에 쓰지 않음)
+    Core::ToolManager& Application::GetVisibleTool() const noexcept
+    {
+        if (OverlayManager::GetInstance().GetMiniToolIndex() == m_activeIndex) return m_overlayPlaceholder;   // 오버레이에서 사용 중
+        return GetActiveTool();                                                                              // 그대로
     }
 }

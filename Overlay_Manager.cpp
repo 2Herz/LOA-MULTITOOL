@@ -10,6 +10,7 @@ import LostArkMultiTool.Vision.GameWindowFinder;  // 게임 창 찾기 가져오
 import LostArkMultiTool.Views.CalculatorManager;  // 재료 요약
 import LostArkMultiTool.Views.DX11Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Views.MaterialPanel;  // 재료 패널
+import LostArkMultiTool.Views.MiniToolPanel;  // 탭 미니 모드 패널
 import LostArkMultiTool.Views.OverlayPanel;  // 패널 기반
 import LostArkMultiTool.Views.OverlaySettings;  // 설정
 import LostArkMultiTool.Views.OverlayWindow;  // 오버레이 창
@@ -51,10 +52,11 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr Core::TextStyle HINT_STYLE{ TOOLBAR_FONT_SIZE, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };    // 안내 글꼴
         constexpr std::wstring_view TOOLBAR_MATERIAL_TEXT{ L"재료 시세" };      // 단추 글자
         constexpr std::wstring_view TOOLBAR_PARADISE_TEXT{ L"낙원력" };
+        constexpr std::wstring_view TOOLBAR_MINI_TEXT{ L"미니 탭" };
         constexpr std::wstring_view TOOLBAR_OPACITY_DOWN_TEXT{ L"투명하게" };
         constexpr std::wstring_view TOOLBAR_OPACITY_UP_TEXT{ L"진하게" };
         constexpr std::wstring_view TOOLBAR_DONE_TEXT{ L"조작 끝" };
-        constexpr std::wstring_view TOOLBAR_HINT_TEXT{ L"조작 모드 · 패널 머리말을 끌어 옮겨요 · Ctrl+Shift+I 조작 끝 · Ctrl+Shift+O 오버레이 끄기" };
+        constexpr std::wstring_view TOOLBAR_HINT_TEXT{ L"조작 모드 · 패널 머리말을 끌어 옮기고, 미니 탭은 오른쪽 아래로 크기를 바꿔요 · Ctrl+Shift+I 조작 끝 · Ctrl+Shift+O 오버레이 끄기" };
         constexpr std::wstring_view HOTKEY_FAILED_TEXT{ L"오버레이 단축키(Ctrl+Shift+O · Ctrl+Shift+I)를 다른 프로그램이 쓰고 있어요. 메뉴의 [인게임 오버레이] 단추로 켜 주세요." };
         constexpr std::wstring_view SAVE_FAILED_TEXT{ L"오버레이 설정을 저장하지 못했어요." };
     }
@@ -78,7 +80,14 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         const bool isInteractKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_INTERACT, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_I);  // Ctrl+Shift+I
         if (!isOverlayKey || !isInteractKey) m_pendingNotice = std::wstring{ HOTKEY_FAILED_TEXT };                              // 등록 실패 안내
 
-        // 패널들 (컴포넌트): 재료 시세 · 총자산, 낙원력 주간 현황
+        // 패널들 (컴포넌트): 탭 미니 모드(큰 패널이라 맨 아래에 그림), 재료 시세 · 총자산, 낙원력 주간 현황
+        if (!m_tools.empty())
+        {
+            auto mini = std::make_unique<MiniToolPanel>(std::span<const std::reference_wrapper<Core::ToolManager>>{ m_tools },
+                m_settings->GetMiniToolIndex(), [this](std::size_t index) { m_settings->SetMiniToolIndex(index); SaveSettings(); });   // 탭을 바꾸면 저장
+            mini->SetVisible(false);                                                     // 처음엔 숨김 (도구 막대로 켬)
+            m_panels.push_back(std::move(mini));                                         // 추가
+        }
         m_panels.push_back(std::make_unique<MaterialPanel>([] { return CalculatorManager::GetInstance().GetOverlaySummary(); }));
         m_panels.push_back(std::make_unique<ParadisePanel>([] { return TrackerManager::GetInstance().GetOverlaySummary(); }));
         LoadPanelStates();                                                               // 저장된 위치 · 표시
@@ -90,6 +99,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_PARADISE_TEXT },
             [this] { if (auto* panel = FindPanel(ParadisePanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
             [this] { const auto* panel = FindPanel(ParadisePanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });  // 낙원력 패널 켜기 · 끄기
+        m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_MINI_TEXT },
+            [this] { if (auto* panel = FindPanel(MiniToolPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
+            [this] { const auto* panel = FindPanel(MiniToolPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });  // 미니 모드 켜기 · 끄기
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_OPACITY_DOWN_TEXT },
             [this] { m_settings->SetOpacity(m_settings->GetOpacity() - OPACITY_STEP); SaveSettings(); }, {} });              // 더 투명하게
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_OPACITY_UP_TEXT },
@@ -129,7 +141,10 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
     std::optional<std::size_t> OverlayManager::GetMiniToolIndex() const noexcept
     {
-        return std::nullopt;   // 미니 모드는 v1.9.1에서
+        if (!m_isVisible) return std::nullopt;                                             // 오버레이가 안 보이면 메인 창에서 그대로 씀
+        const auto* mini = dynamic_cast<const MiniToolPanel*>(FindPanel(MiniToolPanel::PANEL_ID));   // 미니 패널
+        if (mini == nullptr || !mini->IsVisible()) return std::nullopt;                    // 미니 모드 꺼짐
+        return mini->GetToolIndex();                                                       // 띄운 탭
     }
 
     bool OverlayManager::ShowToast(const std::wstring& message, Core::NoticeKind kind)
@@ -291,6 +306,13 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         {
             if (m_settings->FindPanel(panel->GetId())) continue;               // 저장된 위치가 있으면 그대로
             const Core::SizeF size = panel->GetDefaultSize();                  // 기본 크기
+            if (panel->GetId() == MiniToolPanel::PANEL_ID)                     // 미니 모드는 화면 가운데
+            {
+                const float centerLeft = area.m_left + (area.GetWidth() - size.m_width) * HALF;     // 가로 가운데
+                const float centerTop = area.m_top + (area.GetHeight() - size.m_height) * HALF;     // 세로 가운데
+                panel->SetBounds(Core::RectF{ centerLeft, centerTop, centerLeft + size.m_width, centerTop + size.m_height });
+                continue;                                                      // 오른쪽 쌓기에서 뺌
+            }
             const float left = area.m_right - PANEL_MARGIN - size.m_width;     // 오른쪽 정렬
             panel->SetBounds(Core::RectF{ left, top, left + size.m_width, top + size.m_height });   // 위치
             top += size.m_height + PANEL_GAP;                                  // 다음 패널 아래로

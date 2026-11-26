@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.9.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
+      <div class="sub">C++23 모듈 · v1.9.1 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -448,6 +448,7 @@ const MODULES = [
    "LostArkMultiTool.Views.APIKeyDialog",
    "LostArkMultiTool.Views.DX11Renderer",
    "LostArkMultiTool.Views.MainWindow",
+   "LostArkMultiTool.Views.OverlayPlaceholderTool",
    "LostArkMultiTool.Views.UI.Button",
    "LostArkMultiTool.Views.UI.ControlHost",
    "LostArkMultiTool.Views.UI.Dialog",
@@ -478,8 +479,8 @@ const MODULES = [
    "LostArkMultiTool.Views.TrackerManager",
    "LostArkMultiTool.Views.TransferManager"
   ],
-  "lines": 144,
-  "cppLines": 1265,
+  "lines": 147,
+  "cppLines": 1272,
   "hasCpp": true,
   "filter": "소스 파일\\1. 앱",
   "desc": "프로그램 본체 (xmind의 Main)",
@@ -2340,6 +2341,27 @@ const MODULES = [
   ]
  },
  {
+  "file": "Mini_Tool_Panel.ixx",
+  "module": "LostArkMultiTool.Views.MiniToolPanel",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Core.ToolManager",
+   "LostArkMultiTool.Views.OverlayPanel"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 45,
+  "cppLines": 145,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "오버레이 미니 모드: 멀티툴의 탭 하나를 게임 위 패널 안에 그대로 그림 (◀ ▶로 탭 바꾸기, 크기 조절 가능)",
+  "types": [
+   "MiniToolPanel"
+  ]
+ },
+ {
   "file": "Notifier.ixx",
   "module": "LostArkMultiTool.Core.Notifier",
   "imports": [],
@@ -2400,6 +2422,7 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Views.CalculatorManager",
    "LostArkMultiTool.Views.MaterialPanel",
+   "LostArkMultiTool.Views.MiniToolPanel",
    "LostArkMultiTool.Views.ParadisePanel",
    "LostArkMultiTool.Views.Theme",
    "LostArkMultiTool.Views.TrackerManager",
@@ -2407,7 +2430,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.GameWindowFinder"
   ],
   "lines": 89,
-  "cppLines": 367,
+  "cppLines": 389,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이 매니저 (프로그램에 하나 → 싱글톤, 탭이 아니라 Application이 직접 부름)",
@@ -2457,6 +2480,27 @@ const MODULES = [
   "desc": "인게임 오버레이에 띄우는 패널 하나 (컴포넌트 패턴: 오버레이 매니저가 패널들을 모아 그림)",
   "types": [
    "OverlayPanel"
+  ]
+ },
+ {
+  "file": "Overlay_Placeholder_Tool.ixx",
+  "module": "LostArkMultiTool.Views.OverlayPlaceholderTool",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Core.ToolContext",
+   "LostArkMultiTool.Core.ToolManager"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 28,
+  "cppLines": 34,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "인게임 오버레이 미니 모드로 띄운 탭을 메인 창에서 대신하는 빈 탭 (Null Object 패턴)",
+  "types": [
+   "OverlayPlaceholderTool"
   ]
  },
  {
@@ -3146,7 +3190,9 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Core.CombatRegression",
+   "LostArkMultiTool.Core.Input",
    "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Core.ToolManager",
    "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CombatCoefficientData",
    "LostArkMultiTool.Models.RefineData",
@@ -3155,6 +3201,8 @@ const MODULES = [
    "LostArkMultiTool.Services.JSONValue",
    "LostArkMultiTool.Services.TransferCalculator",
    "LostArkMultiTool.Views.DX11Renderer",
+   "LostArkMultiTool.Views.MiniToolPanel",
+   "LostArkMultiTool.Views.OverlayPlaceholderTool",
    "LostArkMultiTool.Views.OverlayWindow",
    "LostArkMultiTool.Vision.DigitReader",
    "LostArkMultiTool.Vision.FrameImage",
@@ -3170,7 +3218,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 696,
+  "cppLines": 733,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
