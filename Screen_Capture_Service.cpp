@@ -51,6 +51,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
     VisionApartment::VisionApartment()
     {
+        ::SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);   // 이 스레드의 창 좌표 · 커서를 물리 픽셀로 (캡처 프레임과 같은 단위)
         try
         {
             winrt::init_apartment(winrt::apartment_type::multi_threaded);   // 다중 스레드 아파트로 초기화

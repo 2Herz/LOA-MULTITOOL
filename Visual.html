@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.8.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-26</div>
+      <div class="sub">C++23 모듈 · v1.8.1 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -387,7 +387,7 @@ const MODULES = [
   "module": "LostArkMultiTool.Core.APPConstants",
   "imports": [],
   "cppImports": [],
-  "lines": 146,
+  "lines": 147,
   "cppLines": 128,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\1. 상수",
@@ -827,7 +827,9 @@ const MODULES = [
    "LostArkMultiTool.Core.ToolManager",
    "LostArkMultiTool.Models.Character",
    "LostArkMultiTool.Models.CharacterInfo",
-   "LostArkMultiTool.Views.CalculatorView"
+   "LostArkMultiTool.Views.CalculatorView",
+   "LostArkMultiTool.Vision.ScreenWatcher",
+   "LostArkMultiTool.Vision.VisionSettings"
   ],
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
@@ -844,10 +846,15 @@ const MODULES = [
    "LostArkMultiTool.Models.UserData",
    "LostArkMultiTool.Services.AssetCalculationService",
    "LostArkMultiTool.Services.JSONDataRepository",
-   "LostArkMultiTool.Views.UI.LineChart"
+   "LostArkMultiTool.Views.TrackerManager",
+   "LostArkMultiTool.Views.UI.LineChart",
+   "LostArkMultiTool.Vision.OCRTextParser",
+   "LostArkMultiTool.Vision.ParadiseDetector",
+   "LostArkMultiTool.Vision.ShardBarDetector",
+   "LostArkMultiTool.Vision.TooltipDetector"
   ],
-  "lines": 88,
-  "cppLines": 645,
+  "lines": 100,
+  "cppLines": 791,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\1. 귀속재료 계산기 매니저",
   "desc": "귀속재료 계산기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
@@ -876,8 +883,8 @@ const MODULES = [
    "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 123,
-  "cppLines": 546,
+  "lines": 127,
+  "cppLines": 566,
   "hasCpp": true,
   "filter": "4. 뷰\\5. 계산기",
   "desc": "재료 등급 (표의 상위 · 하위 행)",
@@ -1554,13 +1561,14 @@ const MODULES = [
   "module": "LostArkMultiTool.Vision.FrameImage",
   "imports": [],
   "cppImports": [],
-  "lines": 82,
+  "lines": 90,
   "cppLines": 292,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "화면 인식에 쓰는 이미지 값 객체",
   "types": [
    "PixelRect",
+   "PixelPoint",
    "GrayImage",
    "FrameImage"
   ]
@@ -1572,8 +1580,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.FrameImage"
   ],
   "cppImports": [],
-  "lines": 30,
-  "cppLines": 125,
+  "lines": 33,
+  "cppLines": 132,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "로스트아크 게임 창 찾기",
@@ -2334,6 +2342,23 @@ const MODULES = [
   "types": []
  },
  {
+  "file": "OCR_Text_Parser.ixx",
+  "module": "LostArkMultiTool.Vision.OCRTextParser",
+  "imports": [
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "cppImports": [],
+  "lines": 53,
+  "cppLines": 211,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "OCR이 읽은 글자에서 필요한 값 꺼내기 (상태 없는 함수 모음)",
+  "types": [
+   "MaterialName",
+   "MaterialMatch"
+  ]
+ },
+ {
   "file": "Overlay_Notifier.ixx",
   "module": "LostArkMultiTool.Views.UI.OverlayNotifier",
   "imports": [
@@ -2373,6 +2398,25 @@ const MODULES = [
   "desc": "새 디자인(피그마) 공통 화면 틀: 가운데 정렬 본문 열 · 카드 · 카드 머리말 · 통계 카드 · 표 아래 줄 · 추이 선",
   "types": [
    "StatCard"
+  ]
+ },
+ {
+  "file": "Paradise_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.ParadiseDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.ScreenWatcher"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.OCRTextParser"
+  ],
+  "lines": 22,
+  "cppLines": 32,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "낙원 콘텐츠 UI의 \"현재 낙원력 29,492,422\" 읽기 (\"권장 낙원력\"은 제외)",
+  "types": [
+   "ParadiseDetector"
   ]
  },
  {
@@ -2882,7 +2926,7 @@ const MODULES = [
   ],
   "cppImports": [],
   "lines": 52,
-  "cppLines": 294,
+  "cppLines": 295,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "게임 창 화면 캡처 (윈도우 공식 API: Windows.Graphics.Capture)",
@@ -2927,11 +2971,11 @@ const MODULES = [
    "LostArkMultiTool.Vision.GameWindowFinder",
    "LostArkMultiTool.Vision.ScreenCaptureService"
   ],
-  "lines": 136,
-  "cppLines": 230,
+  "lines": 144,
+  "cppLines": 290,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
-  "desc": "게임 화면 상시 감시",
+  "desc": "게임 화면 상시 감시 (\"마우스를 올려 두면 읽기\")",
   "types": [
    "ScanValue",
    "ScanResult",
@@ -2975,14 +3019,19 @@ const MODULES = [
    "LostArkMultiTool.Services.TransferCalculator",
    "LostArkMultiTool.Vision.DigitReader",
    "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.ImageFile",
+   "LostArkMultiTool.Vision.OCRTextParser",
+   "LostArkMultiTool.Vision.ParadiseDetector",
    "LostArkMultiTool.Vision.ScreenCaptureService",
    "LostArkMultiTool.Vision.ScreenLayout",
    "LostArkMultiTool.Vision.ScreenWatcher",
+   "LostArkMultiTool.Vision.ShardBarDetector",
    "LostArkMultiTool.Vision.TemplateMatcher",
-   "LostArkMultiTool.Vision.TextRecognizer"
+   "LostArkMultiTool.Vision.TextRecognizer",
+   "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 553,
+  "cppLines": 666,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
@@ -3040,6 +3089,26 @@ const MODULES = [
   "desc": "원격 설정(점검 스위치 + 최신 버전 + 공지) 확인 인터페이스",
   "types": [
    "ServerConfigChecker"
+  ]
+ },
+ {
+  "file": "Shard_Bar_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.ShardBarDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.ScreenWatcher"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.OCRTextParser",
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "lines": 26,
+  "cppLines": 135,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "게임 화면 맨 위 재화 줄에서 운명의 파편 수량 읽기",
+  "types": [
+   "ShardBarDetector"
   ]
  },
  {
@@ -3113,12 +3182,13 @@ const MODULES = [
    "LostArkMultiTool.Vision.FrameImage"
   ],
   "cppImports": [],
-  "lines": 47,
-  "cppLines": 193,
+  "lines": 55,
+  "cppLines": 197,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "윈도우 내장 OCR(Windows.Media.Ocr, 한국어)로 글자 읽기 → 캐릭터 이름 · 툴팁 재료 이름 · 창 제목 확인용",
   "types": [
+   "TextWord",
    "TextLine",
    "TextResult",
    "TextRecognizer",
@@ -3197,6 +3267,26 @@ const MODULES = [
   ]
  },
  {
+  "file": "Tooltip_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.TooltipDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.ScreenWatcher"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.OCRTextParser",
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "lines": 23,
+  "cppLines": 45,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "창고 · 인벤토리 재료에 마우스를 올렸을 때 뜨는 툴팁 읽기",
+  "types": [
+   "TooltipDetector"
+  ]
+ },
+ {
   "file": "Tracker_Manager.ixx",
   "module": "LostArkMultiTool.Views.TrackerManager",
   "imports": [
@@ -3232,11 +3322,11 @@ const MODULES = [
    "LostArkMultiTool.Views.Theme",
    "LostArkMultiTool.Views.UI.LineChart"
   ],
-  "lines": 104,
-  "cppLines": 916,
+  "lines": 117,
+  "cppLines": 938,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\3. 낙원력 트래커 매니저",
-  "desc": "낙원력 트래커 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
+  "desc": "화면 인식으로 읽은 낙원력을 반영한 결과",
   "types": [
    "TrackerManager"
   ]
@@ -3413,6 +3503,25 @@ const MODULES = [
   "desc": "저장 파일 전체 (캐릭터 목록 + 날짜별 원정대 자산 기록)",
   "types": [
    "UserData"
+  ]
+ },
+ {
+  "file": "Vision_Settings.ixx",
+  "module": "LostArkMultiTool.Vision.VisionSettings",
+  "imports": [
+   "LostArkMultiTool.Services.JSONFileStore"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "lines": 24,
+  "cppLines": 44,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "화면 인식 켜기 설정 (사용자 데이터 폴더 VisionSettings.json)",
+  "types": [
+   "VisionSettings"
   ]
  },
  {

@@ -11,14 +11,28 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 {
     namespace  // 이 파일 전용 상수
     {
-        constexpr std::chrono::milliseconds MIN_INTERVAL{ 200 };          // 감시 주기 하한 (CPU 보호)
+        constexpr std::chrono::milliseconds MIN_INTERVAL{ 100 };          // 감시 주기 하한 (CPU 보호)
         constexpr std::chrono::milliseconds CAPTURE_POLL_INTERVAL{ 50 };  // 한 장 캡처 때 프레임 확인 간격
+        constexpr std::chrono::milliseconds REST_BEFORE_SCAN{ 500 };      // 커서가 이만큼 멈춰야 읽기 시작
         constexpr int MIN_REQUIRED_REPEATS{ 1 };                          // 확정 연속 횟수 하한
+        constexpr int SCANS_PER_REST{ ScanConfirmer::DEFAULT_REQUIRED_REPEATS };   // 한 번 멈출 때 읽는 횟수 (확정에 필요한 만큼)
+        constexpr int MOVE_TOLERANCE{ 4 };                                // 이만큼(픽셀) 안에서 흔들리면 멈춘 것으로 봄
+        constexpr int HOVER_HALF_WIDTH{ 700 };                            // 커서 주변 OCR 영역 가로 반폭 (툴팁 너비 + 여유)
+        constexpr int HOVER_UP{ 500 };                                    // 커서 위로 볼 높이 (위로 뜨는 툴팁 · 상단바)
+        constexpr int HOVER_DOWN{ 450 };                                  // 커서 아래로 볼 높이
+        constexpr int OCR_SCALE{ 1 };                                     // OCR 확대 배율 (1080p 글자는 원본 크기가 가장 잘 읽힘)
         constexpr std::string_view NO_GAME_TEXT{ "로스트아크 창을 찾지 못했어요" };                 // 게임 없음 안내
         constexpr std::string_view BACKGROUND_TEXT{ "게임이 맨 앞에 있을 때만 읽어요" };              // 쉬는 중 안내
-        constexpr std::string_view WATCHING_TEXT{ "게임 화면을 보고 있어요" };                        // 감시 중 안내
+        constexpr std::string_view WATCHING_TEXT{ "읽고 싶은 숫자 · 재료에 마우스를 올려 두세요" };   // 감시 중 안내
         constexpr std::string_view UNSUPPORTED_TEXT{ "이 윈도우는 창 캡처를 지원하지 않아요 (윈도우 10 1903 이상 필요)" };   // 미지원 안내
+        constexpr std::string_view NO_OCR_TEXT{ "윈도우 한국어 OCR이 없어요 (설정 → 시간 및 언어 → 언어에서 한국어 설치)" };   // OCR 없음 안내
         constexpr std::string_view NO_FRAME_TEXT{ "게임 화면을 받지 못했어요 (최소화돼 있거나 화면이 멈춰 있어요)" };          // 한 장 캡처 실패 안내
+
+        // 두 점이 흔들림 범위 안인지
+        [[nodiscard]] bool IsNear(PixelPoint a, PixelPoint b) noexcept
+        {
+            return std::abs(a.m_x - b.m_x) <= MOVE_TOLERANCE && std::abs(a.m_y - b.m_y) <= MOVE_TOLERANCE;   // 가로 · 세로 모두 가까움
+        }
     }
 
     // ===== ScanResult =====
@@ -125,9 +139,16 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         m_status.m_message = std::move(message);  // 안내
     }
 
+    PixelRect ScreenWatcher::GetHoverArea(PixelPoint cursor, int frameWidth, int frameHeight) noexcept
+    {
+        const PixelRect area{ cursor.m_x - HOVER_HALF_WIDTH, cursor.m_y - HOVER_UP,
+            HOVER_HALF_WIDTH * 2, HOVER_UP + HOVER_DOWN };          // 커서 주변
+        return ClampRect(area, frameWidth, frameHeight);            // 프레임 안으로
+    }
+
     void ScreenWatcher::Run(std::stop_token stopToken)
     {
-        const VisionApartment apartment;                                           // 이 스레드의 WinRT 준비
+        const VisionApartment apartment;                                           // 이 스레드의 WinRT · DPI 준비
         if (!ScreenCaptureService::IsSupported())                                  // 창 캡처를 못 쓰면
         {
             SetStatus(WatcherState::WATCHER_UNSUPPORTED, std::string{ UNSUPPORTED_TEXT });   // 안내
@@ -137,12 +158,22 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
         auto layouts = std::make_unique<ScreenLayoutStore>();                      // 화면 배치 (이 스레드 전용)
         const TextRecognizer text;                                                 // 글자 인식기 (이 스레드 전용)
+        if (!text.IsAvailable())                                                   // OCR을 못 쓰면
+        {
+            SetStatus(WatcherState::WATCHER_UNSUPPORTED, std::string{ NO_OCR_TEXT });   // 안내
+            m_isRunning = false;                                                   // 끝
+            return;                                                                // 스레드 종료
+        }
         ScreenCaptureService capture;                                              // 캡처 서비스 (이 스레드 전용)
         ScanConfirmer confirmer;                                                   // 연속 확정 도구
         void* gameWindow = nullptr;                                                // 지난번에 찾은 게임 창
+        std::optional<PixelPoint> lastCursor;                                      // 지난 주기 커서 (프레임 기준)
+        std::chrono::milliseconds restTime{};                                      // 커서가 멈춘 시간
+        int scansThisRest = 0;                                                     // 이번 멈춤에서 읽은 횟수
 
         while (!stopToken.stop_requested())                                        // 멈춤 요청 전까지
         {
+            const std::chrono::milliseconds interval{ m_intervalMs.load() };       // 이번 주기
             if (m_isReloadRequested.exchange(false)) layouts = std::make_unique<ScreenLayoutStore>();   // 교정 후 배치 다시 읽기
 
             std::optional<GameWindowInfo> info = gameWindow ? GameWindowFinder::Refresh(gameWindow) : std::nullopt;   // 지난 창 확인
@@ -152,55 +183,84 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             {
                 gameWindow = nullptr;                                              // 기록 지움
                 capture.Stop();                                                    // 캡처 정리
+                lastCursor.reset();                                                // 커서 기록 지움
                 SetStatus(WatcherState::WATCHER_NO_GAME, std::string{ NO_GAME_TEXT });   // 안내
             }
             else if (!info->m_isForeground || info->m_isMinimized)                 // 게임이 뒤에 있거나 최소화
             {
                 gameWindow = info->m_handle;                                       // 창 기록
+                capture.Stop();                                                    // 쉬는 동안 캡처도 멈춤 (자원 절약)
+                lastCursor.reset();                                                // 커서 기록 지움
                 SetStatus(WatcherState::WATCHER_BACKGROUND, std::string{ BACKGROUND_TEXT });   // 쉬는 중
             }
             else if (gameWindow = info->m_handle; !capture.Start(gameWindow))      // 캡처 시작 실패
             {
                 SetStatus(WatcherState::WATCHER_ERROR, capture.GetLastError());    // 오류 안내 (다음 주기에 다시)
             }
-            else if (const auto frame = capture.TakeLatestFrame())                 // 새 프레임이 있으면
+            else                                                                   // 감시 중
             {
-                const auto now = std::chrono::system_clock::now();                 // 캡처 시각
+                SetStatus(WatcherState::WATCHER_WATCHING, std::string{ WATCHING_TEXT });   // 안내
+
+                // 커서가 게임 화면 위에서 멈췄는지 확인
+                const auto screenCursor = GameWindowFinder::GetCursorPosition();  // 화면 좌표 커서
+                std::optional<PixelPoint> cursor;                                  // 게임 화면 기준 커서
+                const PixelRect& client = info->m_clientArea;                      // 게임 화면 영역 (화면 좌표)
+                if (screenCursor && screenCursor->m_x >= client.m_x && screenCursor->m_x < client.GetRight()
+                    && screenCursor->m_y >= client.m_y && screenCursor->m_y < client.GetBottom())   // 게임 화면 안이면
+                    cursor = PixelPoint{ screenCursor->m_x - client.m_x, screenCursor->m_y - client.m_y };   // 게임 화면 기준으로
+
+                if (!cursor || !lastCursor || !IsNear(*cursor, *lastCursor))       // 화면 밖이거나 움직였으면
+                {
+                    restTime = {};                                                 // 멈춤 시간 초기화
+                    scansThisRest = 0;                                             // 읽은 횟수 초기화
+                    lastCursor = cursor;                                           // 새 위치 기록
+                }
+                else restTime += interval;                                         // 멈춘 시간 누적
+
+                auto frame = capture.TakeLatestFrame();                            // 최신 프레임 (쌓인 프레임 비우기 겸)
+                if (frame)                                                         // 받았으면
                 {
                     const std::scoped_lock lock{ m_mutex };                        // 상태 보호
-                    m_status.m_state = WatcherState::WATCHER_WATCHING;             // 감시 중
-                    m_status.m_message = std::string{ WATCHING_TEXT };             // 안내
-                    m_status.m_lastFrameAt = now;                                  // 마지막 프레임 시각
+                    m_status.m_lastFrameAt = std::chrono::system_clock::now();     // 마지막 프레임 시각
                 }
-                const DetectorContext context{ *layouts, text };                   // 인식기 공용 도구
-                for (const auto& detector : m_detectors)                           // 인식기마다
+
+                const bool isReadyToScan = cursor && restTime >= REST_BEFORE_SCAN && scansThisRest < SCANS_PER_REST;   // 읽을 때인지
+                if (isReadyToScan && frame)                                        // 멈춘 커서 + 프레임이 있으면
                 {
-                    try
+                    ++scansThisRest;                                               // 읽은 횟수
+                    const PixelRect hoverArea = GetHoverArea(*cursor, frame->GetWidth(), frame->GetHeight());   // 커서 주변
+                    const auto hoverText = text.Recognize(frame->Crop(hoverArea), OCR_SCALE);   // 커서 주변 OCR
+                    const TextResult emptyText;                                    // OCR 실패 때 넘길 빈 결과
+                    const DetectorContext context{ *layouts, text, hoverText ? *hoverText : emptyText, hoverArea, *cursor };   // 인식기 공용 도구
+                    const auto now = std::chrono::system_clock::now();             // 읽은 시각
+                    for (const auto& detector : m_detectors)                       // 인식기마다
                     {
-                        auto result = detector->Detect(*frame, context);           // 담당 화면 읽기
-                        if (!result)                                               // 화면이 없으면
+                        try
                         {
-                            confirmer.Reset(detector->GetScreenName());            // 연속 횟수 초기화
-                            continue;                                              // 다음 인식기
+                            auto result = detector->Detect(*frame, context);       // 담당 화면 읽기
+                            if (!result)                                           // 화면이 없으면
+                            {
+                                confirmer.Reset(detector->GetScreenName());        // 연속 횟수 초기화
+                                continue;                                          // 다음 인식기
+                            }
+                            result->m_screenName = std::string{ detector->GetScreenName() };   // 화면 이름 보장
+                            result->m_capturedAt = now;                            // 시각 기록
+                            if (auto confirmed = confirmer.Feed(*result))          // 확정되면
+                            {
+                                const std::scoped_lock lock{ m_mutex };            // 큐 보호
+                                m_results.push_back(std::move(*confirmed));        // 큐에 추가
+                            }
                         }
-                        result->m_screenName = std::string{ detector->GetScreenName() };   // 화면 이름 보장
-                        result->m_capturedAt = now;                                // 시각 기록
-                        if (auto confirmed = confirmer.Feed(*result))              // 확정되면
+                        catch (const std::exception& error)
                         {
-                            const std::scoped_lock lock{ m_mutex };                // 큐 보호
-                            m_results.push_back(std::move(*confirmed));            // 큐에 추가
+                            SetStatus(WatcherState::WATCHER_ERROR, error.what());  // 인식기 오류 안내 (다른 인식기는 계속)
                         }
-                    }
-                    catch (const std::exception& error)
-                    {
-                        SetStatus(WatcherState::WATCHER_ERROR, error.what());      // 인식기 오류 안내 (다른 인식기는 계속)
                     }
                 }
             }
 
             std::unique_lock lock{ m_mutex };                                      // 대기용 잠금
-            m_wakeUp.wait_for(lock, stopToken, std::chrono::milliseconds{ m_intervalMs.load() },
-                [] { return false; });                                             // 주기만큼 쉬기 (멈춤 요청이면 바로 깸)
+            m_wakeUp.wait_for(lock, stopToken, interval, [] { return false; });    // 주기만큼 쉬기 (멈춤 요청이면 바로 깸)
         }
         m_isRunning = false;   // 감시 끝
     }
@@ -210,7 +270,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         std::optional<FrameImage> result;   // 결과
         std::thread worker{ [&]                                                    // WinRT 아파트를 따로 쓰는 일꾼 스레드
             {
-                const VisionApartment apartment;                                   // 이 스레드의 WinRT 준비
+                const VisionApartment apartment;                                   // 이 스레드의 WinRT · DPI 준비
                 const auto info = GameWindowFinder::Find();                        // 게임 창 찾기
                 if (!info) { error = NO_GAME_TEXT; return; }                       // 게임 없음
                 ScreenCaptureService capture;                                      // 캡처 서비스

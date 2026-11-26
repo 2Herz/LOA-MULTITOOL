@@ -22,6 +22,14 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] bool operator==(const PixelRect&) const = default;   // 값 비교
     };
 
+    // 픽셀 단위 점
+    struct PixelPoint
+    {
+        int m_x{};   // X
+        int m_y{};   // Y
+        [[nodiscard]] bool operator==(const PixelPoint&) const = default;   // 값 비교
+    };
+
     // 사각형을 이미지 크기 안으로 자름 (밖으로 나간 부분 제거, 전부 밖이면 빈 사각형)
     [[nodiscard]] PixelRect ClampRect(const PixelRect& rect, int width, int height) noexcept;
 

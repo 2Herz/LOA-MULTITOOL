@@ -25,5 +25,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
 
         // 이미 찾은 창 핸들의 최신 정보 (창이 사라졌으면 nullopt)
         [[nodiscard]] static std::optional<GameWindowInfo> Refresh(void* handle);
+
+        // 마우스 커서 위치 (화면 좌표, 물리 픽셀, 못 읽으면 nullopt) — 커서를 읽기만 하고 움직이지 않음
+        [[nodiscard]] static std::optional<PixelPoint> GetCursorPosition() noexcept;
     };
 }

@@ -167,9 +167,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 double top = std::numeric_limits<double>::max();                       // 줄 위쪽
                 double right = 0.0;                                                    // 줄 오른쪽
                 double bottom = 0.0;                                                   // 줄 아래쪽
+                std::vector<TextWord> words;                                           // 단어 목록
                 for (const auto& word : line.Words())                                  // 단어마다
                 {
                     const auto box = word.BoundingRect();                              // 단어 위치
+                    words.push_back(TextWord{ std::wstring{ word.Text() },
+                        PixelRect{ static_cast<int>(box.X / appliedScale), static_cast<int>(box.Y / appliedScale),
+                            static_cast<int>(box.Width / appliedScale), static_cast<int>(box.Height / appliedScale) } });   // 원래 배율 위치로 저장
                     left = std::min(left, static_cast<double>(box.X));                 // 왼쪽 갱신
                     top = std::min(top, static_cast<double>(box.Y));                   // 위쪽 갱신
                     right = std::max(right, static_cast<double>(box.X + box.Width));   // 오른쪽 갱신
@@ -180,7 +184,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                     ? PixelRect{ static_cast<int>(left / appliedScale), static_cast<int>(top / appliedScale),
                         static_cast<int>((right - left) / appliedScale), static_cast<int>((bottom - top) / appliedScale) }   // 원래 배율 위치
                     : PixelRect{};                                                     // 위치 없음
-                text.m_lines.push_back(TextLine{ std::wstring{ line.Text() }, bounds });   // 줄 추가
+                text.m_lines.push_back(TextLine{ std::wstring{ line.Text() }, bounds, std::move(words) });   // 줄 추가
             }
             return text;   // 결과
         }

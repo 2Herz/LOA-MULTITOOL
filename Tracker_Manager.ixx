@@ -17,6 +17,16 @@ import LostArkMultiTool.Views.TrackerView;
 
 export namespace LostArkMultiTool::Views
 {
+    // 화면 인식으로 읽은 낙원력을 반영한 결과
+    enum class ScanApplyResult
+    {
+        SCAN_APPLIED,        // 이번 주차에 기록함
+        SCAN_UNCHANGED,      // 이미 같은 값
+        SCAN_NO_CHARACTER,   // 트래커에 없는 캐릭터
+        SCAN_NO_WEEK,        // 기록할 이번 주차가 없음 (고른 시즌 기간 밖 등)
+        SCAN_DECREASED       // 기록보다 작은 값 → 오인식으로 보고 무시
+    };
+
     // 낙원력 트래커 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)
     // ToolManager(탭으로 동작) + Singleton(프로그램에 하나만 존재) 다중 상속
     // 화면구성 · 렌더링 = TrackerView, 모델 = GrowthDataRepository(저장 파일) + GrowthCalculator(통계) + RosterService(닉네임 변경 · 원정대 제외)
@@ -37,6 +47,9 @@ export namespace LostArkMultiTool::Views
 
         [[nodiscard]] bool HandleInput(const Core::InputEvent& event) override;
         [[nodiscard]] Core::CursorShape GetCursor() const noexcept override;
+
+        // 화면 인식으로 읽은 낙원력을 이번 주차에 기록 (귀속재료 계산기의 화면 인식이 부름)
+        [[nodiscard]] ScanApplyResult ApplyScannedScore(const std::string& characterName, double score);
 
     private:
         friend class Core::Singleton<TrackerManager>;   // GetInstance만 생성 · 소멸할 수 있게

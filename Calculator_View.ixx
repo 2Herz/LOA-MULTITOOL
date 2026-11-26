@@ -63,6 +63,8 @@ export namespace LostArkMultiTool::Views
         void SetRefreshBusy(bool isBusy);
         void SetSyncBusy(bool isBusy);
         void SetAutoRefreshChecked(bool isChecked) noexcept;
+        void SetOnVisionChanged(std::function<void(bool isEnabled)> onVisionChanged);   // [화면 인식] 켜기 · 끄기 알림
+        void SetVisionChecked(bool isChecked) noexcept;                                  // [화면 인식] 표시 (알림 없음)
         void SetSyncStatus(std::wstring text);             // 상단 카드 오른쪽 상태 글자 (예: "마지막 동기화 11:42", 비우면 숨김)
         void SetTotalAsset(std::optional<double> total);   // 총자산 변동 카드 오른쪽 "총자산 N G" (nullopt = 기록 없음)
 
@@ -92,6 +94,7 @@ export namespace LostArkMultiTool::Views
         UI::TextBox& m_nameBox;
         UI::Button& m_syncButton;
         UI::ComboBox& m_characterBox;
+        UI::CheckBox& m_visionBox;     // [화면 인식] (게임 화면에서 수량 · 낙원력 읽기)
         UI::CheckBox& m_autoRefreshBox;
         UI::Button& m_refreshButton;
         UI::Button& m_resetButton;     // [입력 초기화]
@@ -115,6 +118,7 @@ export namespace LostArkMultiTool::Views
         std::function<void(const std::wstring&)> m_onSyncRoster;
         std::function<void()> m_onRefresh;
         std::function<void(bool)> m_onAutoRefreshChanged;
+        std::function<void(bool)> m_onVisionChanged;   // 화면 인식 켜기 · 끄기 알림
         std::function<void()> m_onCharacterSelected;
         std::function<void()> m_onResetInput;
         std::function<void(MaterialTier, std::size_t, double)> m_onQuantityEdited;

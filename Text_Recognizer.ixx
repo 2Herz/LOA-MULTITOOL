@@ -8,11 +8,19 @@ import LostArkMultiTool.Vision.FrameImage;  // 이미지 값 객체 가져오기
 // 스레드: 감시 스레드(VisionApartment를 만든 스레드)에서만 부를 것 (화면 스레드에서 부르면 기다리다 멈출 수 있음)
 export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 내보내기 시작
 {
+    // 읽은 단어 하나
+    struct TextWord
+    {
+        std::wstring m_text;     // 단어 글자
+        PixelRect m_bounds;      // 단어 위치 (넘긴 이미지 기준)
+    };
+
     // 읽은 글자 한 줄
     struct TextLine
     {
-        std::wstring m_text;     // 줄 글자 (단어 사이 띄어쓰기 포함)
-        PixelRect m_bounds;      // 줄 위치 (넘긴 이미지 기준)
+        std::wstring m_text;            // 줄 글자 (단어 사이 띄어쓰기 포함)
+        PixelRect m_bounds;             // 줄 위치 (넘긴 이미지 기준)
+        std::vector<TextWord> m_words;  // 단어들 (왼쪽부터)
     };
 
     // 글자 인식 결과

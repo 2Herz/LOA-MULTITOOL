@@ -86,6 +86,8 @@ namespace LostArkMultiTool::Views
         constexpr float NAME_BOX_MIN_WIDTH{ 140.0f };
         constexpr float CHARACTER_BOX_MIN_WIDTH{ 160.0f };
         constexpr float AUTO_REFRESH_WIDTH{ 150.0f };
+        constexpr float VISION_BOX_WIDTH{ 110.0f };      // [화면 인식] 체크 칸 너비
+        constexpr std::wstring_view VISION_TEXT{ L"화면 인식" };   // [화면 인식] 글자
         constexpr float REFRESH_BUTTON_WIDTH{ 110.0f };
         constexpr float RESET_BUTTON_WIDTH{ 96.0f };
         constexpr float CHIP_WIDTH{ 84.0f };             // "자동 저장됨" 칩
@@ -160,6 +162,11 @@ namespace LostArkMultiTool::Views
         : m_nameBox{ m_host.Emplace<UI::TextBox>(platform, std::wstring{ NAME_PLACEHOLDER }) }
         , m_syncButton{ m_host.Emplace<UI::Button>(std::wstring{ SYNC_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY, nullptr) }
         , m_characterBox{ m_host.Emplace<UI::ComboBox>() }
+        , m_visionBox{ m_host.Emplace<UI::CheckBox>(std::wstring{ VISION_TEXT },
+            [this](bool isChecked)
+            {
+                if (const auto onVisionChanged{ m_onVisionChanged }) onVisionChanged(isChecked);   // 매니저에 알림
+            }) }
         , m_autoRefreshBox{ m_host.Emplace<UI::CheckBox>(std::format(L"{}분마다 자동 갱신", Core::APPConstants::AUTO_REFRESH_MINUTES),
             [this](bool isChecked)
             {
@@ -215,6 +222,16 @@ namespace LostArkMultiTool::Views
     void CalculatorView::SetOnAutoRefreshChanged(std::function<void(bool isEnabled)> onAutoRefreshChanged)
     {
         m_onAutoRefreshChanged = std::move(onAutoRefreshChanged);
+    }
+
+    void CalculatorView::SetOnVisionChanged(std::function<void(bool isEnabled)> onVisionChanged)
+    {
+        m_onVisionChanged = std::move(onVisionChanged);   // 화면 인식 알림 연결
+    }
+
+    void CalculatorView::SetVisionChecked(bool isChecked) noexcept
+    {
+        m_visionBox.SetChecked(isChecked);   // 표시만 바꿈 (알림 없음)
     }
 
     void CalculatorView::SetOnCharacterSelected(std::function<void()> onCharacterSelected)
@@ -491,7 +508,8 @@ namespace LostArkMultiTool::Views
 
         // 상태 글자 칸은 오른쪽 끝, 남는 너비를 이름 입력칸 · 캐릭터 선택이 나눔
         m_statusRect = Core::RectF{ innerRight - STATUS_WIDTH, controlTop, innerRight, controlBottom };
-        const float flexWidth{ std::max(0.0f, m_statusRect.m_left - CONTROL_GAP - innerLeft - SYNC_BUTTON_WIDTH - CONTROL_GAP - GROUP_GAP - CONTROL_GAP) };
+        const float flexWidth{ std::max(0.0f, m_statusRect.m_left - CONTROL_GAP - innerLeft - SYNC_BUTTON_WIDTH - CONTROL_GAP - GROUP_GAP - CONTROL_GAP
+            - VISION_BOX_WIDTH - CONTROL_GAP) };   // [화면 인식] 자리도 뺌
         const float nameWidth{ std::max(NAME_BOX_MIN_WIDTH, flexWidth * NAME_BOX_RATIO) };
         const float characterWidth{ std::max(CHARACTER_BOX_MIN_WIDTH, flexWidth - nameWidth) };
 
@@ -503,6 +521,8 @@ namespace LostArkMultiTool::Views
         x += SYNC_BUTTON_WIDTH + GROUP_GAP;
         m_characterBox.SetBounds(Core::RectF{ x, controlTop, x + characterWidth, controlBottom });
         m_characterLabelRect = Core::RectF{ x, y + TOP_LABEL_TOP, x + characterWidth, y + TOP_LABEL_TOP + TOP_LABEL_HEIGHT };
+        x += characterWidth + CONTROL_GAP;
+        m_visionBox.SetBounds(Core::RectF{ x, controlTop, x + VISION_BOX_WIDTH, controlBottom });   // 캐릭터 선택 바로 오른쪽 (인식 결과가 이 캐릭터에 들어감)
         y += TOP_CARD_HEIGHT + PageLayout::CARD_GAP;
 
         // ===== 재료 수량 입력 카드: 머리말 오른쪽(자동 갱신 · 시세 갱신 · 입력 초기화 · 자동 저장됨 칩) + 표 =====

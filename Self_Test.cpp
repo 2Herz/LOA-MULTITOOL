@@ -20,7 +20,12 @@ import LostArkMultiTool.Services.JSONValue;
 import LostArkMultiTool.Services.TransferCalculator;
 import LostArkMultiTool.Vision.DigitReader;
 import LostArkMultiTool.Vision.FrameImage;
+import LostArkMultiTool.Vision.ImageFile;
+import LostArkMultiTool.Vision.OCRTextParser;
+import LostArkMultiTool.Vision.ParadiseDetector;
 import LostArkMultiTool.Vision.ScreenCaptureService;
+import LostArkMultiTool.Vision.ShardBarDetector;
+import LostArkMultiTool.Vision.TooltipDetector;
 import LostArkMultiTool.Vision.ScreenLayout;
 import LostArkMultiTool.Vision.ScreenWatcher;
 import LostArkMultiTool.Vision.TemplateMatcher;
@@ -505,7 +510,29 @@ namespace LostArkMultiTool::Core::SelfTest
             reporter.Check(isSame && pixels == EXPECTED_REGION_PIXELS, "화면 인식 · 배치 저장 형식 · 비율 변환",
                 std::format("({}, {}, {}, {})", pixels.m_x, pixels.m_y, pixels.m_width, pixels.m_height));
 
-            // 5) 운영체제 기능 (안내만: 실행하는 PC 환경에 따라 다름)
+            // 5) OCR 글자 해석: 숫자 묶음 · 재료 이름 (OCR이 흔히 틀리는 모양 포함)
+            namespace Parser = Vision::OCRTextParser;                                    // 해석 함수 묶음
+            constexpr std::int64_t EXPECTED_DEST{ 163439 };                              // 파괴석 결정 수량
+            constexpr std::int64_t EXPECTED_PARADISE{ 29492422 };                        // 낙원력
+            const bool isNumberParsed = Parser::ParseGroupedNumber(L"163.439개") == EXPECTED_DEST     // 쉼표 → 마침표
+                && Parser::ParseGroupedNumber(L"29,492 422") == EXPECTED_PARADISE                       // 쉼표 → 띄어쓰기
+                && Parser::ParseGroupedNumber(L"29,492, 422") == EXPECTED_PARADISE                      // 구분자 두 글자
+                && !Parser::ParseGroupedNumber(L"29,4922").has_value();                                 // 묶음이 이상하면 버림
+            reporter.Check(isNumberParsed, "화면 인식 · 숫자 묶음 해석 (163.439 · 29,492 422 · 29,4922)");
+            const auto matchKey = [](std::wstring_view line) -> std::string                             // 줄 → "키/구분"
+                {
+                    const auto match = Parser::MatchMaterial(line);                                     // 재료 맞추기
+                    return match ? Parser::MakeMaterialValueKey(match->m_material->m_key, match->m_material->m_tier) : std::string{ "-" };
+                };
+            const bool isNameMatched = matchKey(L"운명의 피괴석 결정 (귀속) [X 1634391") == "Dest/top"      // 한 글자 오인식 + 결정
+                && matchKey(L"운명의 파괴석 (귀속)") == "Dest/bottom"                                    // 하위
+                && matchKey(L"위대한 운명의 돌파석 (귀속)") == "Leap/top"                                // 위대한
+                && matchKey(L"아비도스 융화 재료 (귀속)") == "Fusion/bottom"                              // 상급 아님
+                && matchKey(L"용암의 숨결 (귀속)") == "Yong/level"                                       // 레벨로 정함
+                && matchKey(L"캐릭터 귀속됨") == "-";                                                   // 재료 아님
+            reporter.Check(isNameMatched, "화면 인식 · 재료 이름 맞추기 (결정 · 위대한 · 상급 구분, 한 글자 오인식)");
+
+            // 6) 운영체제 기능 (안내만: 실행하는 PC 환경에 따라 다름)
             reporter.Note(std::format("화면 인식 · 창 캡처 지원: {}", Vision::ScreenCaptureService::IsSupported() ? "예" : "아니오"));
             std::string ocrNote;                                                          // OCR 안내
             std::thread ocrWorker{ [&ocrNote]                                             // WinRT 아파트를 따로 쓰는 일꾼
@@ -518,6 +545,91 @@ namespace LostArkMultiTool::Core::SelfTest
                 } };
             ocrWorker.join();                                                             // 끝날 때까지 기다림
             reporter.Note(ocrNote);                                                       // 안내 기록
+        }
+    }
+
+    namespace  // 실제 게임 화면 샘플 검사 (Verify/screens, 개발 PC에만 있음)
+    {
+        constexpr std::wstring_view SAMPLE_FOLDER{ L"Verify/screens" };   // 샘플 폴더 (실행 파일 위쪽에서 찾음)
+        constexpr int MAX_PARENT_SEARCH{ 6 };                             // 위로 올라가며 찾을 최대 단계
+
+        // 샘플 하나: 파일 · 커서 위치(이미지 기준 비율) · 기대 결과
+        struct VisionSample
+        {
+            std::wstring_view m_file;        // 파일 이름
+            double m_cursorX;                // 커서 가로 비율 (0 ~ 1)
+            double m_cursorY;                // 커서 세로 비율
+            std::string_view m_valueKey;     // 기대 값 이름
+            std::int64_t m_expected;         // 기대 값
+        };
+
+        constexpr std::array VISION_SAMPLES{
+            VisionSample{ L"tooltip_dest_top.png", 0.5, 0.5, "Dest/top", 163439 },      // 파괴석 결정 툴팁
+            VisionSample{ L"tooltip_guard_top.png", 0.5, 0.5, "Guard/top", 363321 },    // 수호석 결정 툴팁
+            VisionSample{ L"tooltip_leap_top.png", 0.5, 0.5, "Leap/top", 12501 },       // 위대한 돌파석 툴팁
+            VisionSample{ L"paradise.webp", 0.85, 0.1, "paradise", 29492422 },          // 낙원 UI (현재 낙원력 숫자 근처)
+            VisionSample{ L"topbar_shard.webp", 0.55, 0.3, "Shard/level", 24615414 } }; // 상단바 운명의 파편
+
+        // 실행 파일 위쪽 폴더에서 샘플 폴더 찾기
+        [[nodiscard]] std::optional<std::filesystem::path> FindSampleFolder(const std::filesystem::path& start)
+        {
+            std::filesystem::path folder = start;                                 // 지금 폴더
+            for (int step = 0; step < MAX_PARENT_SEARCH; ++step)                  // 위로 올라가며
+            {
+                std::error_code error;                                            // 예외 없는 검사용
+                if (std::filesystem::is_directory(folder / SAMPLE_FOLDER, error)) return folder / SAMPLE_FOLDER;   // 찾음
+                if (!folder.has_parent_path() || folder.parent_path() == folder) break;   // 맨 위
+                folder = folder.parent_path();                                    // 한 단계 위
+            }
+            return std::nullopt;   // 없음
+        }
+
+        // 샘플 하나를 인식기들로 읽어 결과 값 찾기 (OCR은 이 함수를 부르는 스레드에서)
+        [[nodiscard]] std::optional<std::int64_t> ReadSample(const Vision::FrameImage& frame, const VisionSample& sample,
+            const Vision::TextRecognizer& recognizer, const Vision::ScreenLayoutStore& layouts)
+        {
+            const Vision::PixelPoint cursor{ static_cast<int>(frame.GetWidth() * sample.m_cursorX), static_cast<int>(frame.GetHeight() * sample.m_cursorY) };   // 커서
+            const Vision::PixelRect hoverArea = Vision::ScreenWatcher::GetHoverArea(cursor, frame.GetWidth(), frame.GetHeight());   // 커서 주변
+            const auto text = recognizer.Recognize(frame.Crop(hoverArea));                // OCR
+            if (!text) return std::nullopt;                                                // OCR 실패
+            const Vision::DetectorContext context{ layouts, recognizer, *text, hoverArea, cursor };   // 인식기 공용 도구
+            Vision::TooltipDetector tooltip;                                               // 툴팁 인식기
+            Vision::ParadiseDetector paradise;                                             // 낙원 인식기
+            Vision::ShardBarDetector shard;                                                // 상단바 인식기
+            for (Vision::ScreenDetector* detector : std::array<Vision::ScreenDetector*, 3>{ &tooltip, &paradise, &shard })   // 인식기마다
+            {
+                const auto result = detector->Detect(frame, context);                      // 읽기
+                if (!result) continue;                                                     // 이 화면이 아님
+                for (const Vision::ScanValue& value : result->m_values)                    // 값마다
+                    if (value.m_key == sample.m_valueKey) return value.m_value;            // 기대한 값 이름
+            }
+            return std::nullopt;   // 못 읽음
+        }
+
+        // 실제 화면 샘플 검사 (샘플이 없으면 건너뜀)
+        void CheckVisionSamples(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            const auto folder = FindSampleFolder(reportPath.parent_path());               // 샘플 폴더
+            if (!folder) { reporter.Note("화면 인식 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }   // 개발 PC가 아님
+
+            std::vector<std::pair<std::string, bool>> outcomes;                           // (이름, 통과) 목록
+            std::thread worker{ [&]                                                       // OCR 일꾼 스레드
+                {
+                    const Vision::VisionApartment apartment;                              // WinRT · DPI 준비
+                    const Vision::TextRecognizer recognizer;                              // OCR 엔진
+                    const Vision::ScreenLayoutStore layouts;                              // 화면 배치 (지금은 안 씀)
+                    for (const VisionSample& sample : VISION_SAMPLES)                     // 샘플마다
+                    {
+                        const auto frame = Vision::ImageFile::Load(*folder / sample.m_file);   // 이미지 읽기
+                        const std::string name = std::string(sample.m_file.begin(), sample.m_file.end());   // 파일 이름 (영문)
+                        if (!frame) { outcomes.emplace_back(name + " : 파일을 못 읽음", false); continue; }   // 실패
+                        const auto value = ReadSample(*frame, sample, recognizer, layouts);   // 읽기
+                        outcomes.emplace_back(std::format("{} : {} = {} (기대 {})", name, sample.m_valueKey,
+                            value ? std::to_string(*value) : std::string{ "못 읽음" }, sample.m_expected), value == sample.m_expected);   // 결과
+                    }
+                } };
+            worker.join();                                                                // 끝날 때까지 기다림
+            for (const auto& [text, isPassed] : outcomes) reporter.Check(isPassed, "화면 인식 샘플", text);   // 기록
         }
     }
 
@@ -538,6 +650,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckTransferArmories(reporter, reportPath);         // 2부 이관 계산 (저장된 무기고)
             CheckLopecRegression(reporter, reportPath);          // lopec 회귀
             CheckVision(reporter);                               // 화면 인식 기반
+            CheckVisionSamples(reporter, reportPath);            // 화면 인식 실제 화면 샘플
         }
         catch (const std::exception& exception)
         {

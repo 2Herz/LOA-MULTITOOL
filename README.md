@@ -266,6 +266,13 @@
 3. 입력하면 바로 저장되고, 캐릭터마다 따로 기록돼요!
 4. **[시세 갱신]**을 누르거나 **[5분마다 자동 갱신]**을 켜면 시세를 불러와서 다시 계산해요!
 
+- 화면 인식으로 자동 입력 (v1.8.1~)
+1. 캐릭터 선택 옆의 **[화면 인식]**을 켜요! (게임은 창 모드 또는 전체 창 모드)
+2. 게임에서 창고 · 인벤토리의 **귀속 재료에 마우스를 0.5초쯤 올려 두면** 툴팁의 "전체 보유 수량"이 **지금 고른 캐릭터**에 들어가요! ("9999+" 재료도 정확한 수량)
+3. 운명의 파편은 **화면 위쪽 재화 줄 근처**에 마우스를 올려 두면 보라색 아이콘 숫자를 읽어요!
+4. 낙원 화면의 **"현재 낙원력"** 근처에 마우스를 올려 두면 낙원력 트래커의 이번 주차에 기록돼요!
+5. 반영할 때마다 알림이 떠요. 게임 안 캐릭터를 바꾸면 계산기의 캐릭터 선택도 같이 바꿔 주세요!
+
 ---
 
 ### 3-2. 보석 최저가 검색기
@@ -436,6 +443,7 @@
 | `ServerConfigCache.json` | 마지막으로 받은 원격 설정 (버전 · 공지 안내용) |
 | `LastTool.txt` | 마지막으로 사용한 도구 |
 | `ScreenLayouts.json` | 화면 인식 : 게임 화면별로 읽을 영역 (v1.8.0~) |
+| `VisionSettings.json` | 화면 인식 : [화면 인식] 켜기 설정 (v1.8.1~) |
 | `Vision\` | 화면 인식 : 앵커 · 아이콘 · 숫자 글자 템플릿, `Captures\`에 저장한 게임 화면 |
 | `Logs\` | `app.log` 진단 로그 (1MB마다 순환) · `crash_*.dmp` 크래시 덤프 · `update.log` |
 | `*.json.bak` | 직전 저장본 (자동 백업, 지우지 마세요) |
@@ -457,7 +465,7 @@
 	- 게임 프로세스에 DLL을 넣거나 메모리 · 패킷을 읽지 않고, 게임에 키 · 마우스 입력도 보내지 않아요. 윈도우가 합성한 창 화면만 받아 와요.
 	- 게임 화면 한 장 저장 : `LOA-MULTITOOL.exe --capture-game` → `%LocalAppData%\LostArkMultiTool\Vision\Captures\` (인식 영역 · 템플릿 만들기용)
 - [로스트아크 Open API](https://developer-lostark.game.onstove.com/)
-- 자체 검사 : `LOA-MULTITOOL.exe --self-test` (build_all이 빌드 직후 실행) → 계수 · 재련 표 검사 + 2부 이관 표 검사(방송 예시 · 저장된 무기고 전체) + lopec 회귀 검사 + 화면 인식 검사(템플릿 매칭 · 숫자 읽기 · 2프레임 확정)
+- 자체 검사 : `LOA-MULTITOOL.exe --self-test` (build_all이 빌드 직후 실행) → 계수 · 재련 표 검사 + 2부 이관 표 검사(방송 예시 · 저장된 무기고 전체) + lopec 회귀 검사 + 화면 인식 검사(템플릿 매칭 · 숫자 읽기 · 2프레임 확정 · OCR 숫자 묶음 · 재료 이름, `Verify\screens` 실제 화면 샘플이 있으면 툴팁 · 낙원력 · 상단바 파편까지)
 	- lopec 회귀는 `Verify\lopec_results\lopec_all.csv`(모든 측정을 모은 한 파일, 저장소에 안 올림 · 캐릭터마다 가장 최근 측정 회차)와 `python tools/Fetch-RegressionArmory.py`로 받은 무기고를 앱 엔진으로 다시 계산해요. 데이터가 없는 PC면 건너뛰어요.
 	- 줄마다 결과는 `Verify\lopec_results\regression\last_result.csv`에 남아요.
 	- 측정 도구 : `tools/Pick-LopecSamples.py`(로펙 랭킹에서 직업 · 각인 · 레벨별 샘플 고르기) → `tools/Crawl-LopecSimulator.py --names-file …`(측정을 lopec_all.csv에 이어 씀) · `tools/Merge-LopecResults.py`(예전 캐릭터별 CSV를 합치고 archive/로 옮김)

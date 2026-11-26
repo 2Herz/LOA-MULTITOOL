@@ -900,6 +900,28 @@ namespace LostArkMultiTool::Views
         if (currentWeek.has_value() && (isFocusRequested || isWeekChanged)) m_view->FocusWeek(*currentWeek);
     }
 
+    // 화면 인식 낙원력 → 이번 주차 칸 (줄어든 값은 오인식으로 보고 무시, 기록은 손 입력과 같은 EditScore 흐름)
+    ScanApplyResult TrackerManager::ApplyScannedScore(const std::string& characterName, double score)
+    {
+        if (!m_repository) return ScanApplyResult::SCAN_NO_WEEK;                                   // 아직 초기화 전
+        const auto column = std::ranges::find(m_columnCharacterNames, characterName);              // 캐릭터 열
+        if (column == m_columnCharacterNames.end()) return ScanApplyResult::SCAN_NO_CHARACTER;     // 트래커에 없는 캐릭터
+        const std::size_t characterIndex = static_cast<std::size_t>(column - m_columnCharacterNames.begin());   // 열 번호
+
+        Models::Season& season{ GetCurrentSeason() };                                              // 고른 시즌
+        std::vector<Models::WeeklyRecord>& records{ season.GetRecords() };                         // 주차 기록
+        std::optional<std::size_t> weekIndex;                                                      // 이번 주차
+        if (season.HasPeriod()) weekIndex = season.FindWeekIndex(Core::LocalTime::GetGameToday()); // 기간 시즌: 오늘이 든 주차
+        else if (!records.empty()) weekIndex = records.size() - 1;                                 // 기간 없는 시즌: 마지막 주차
+        if (!weekIndex || *weekIndex >= records.size() || !IsWeekEditable(*weekIndex)) return ScanApplyResult::SCAN_NO_WEEK;   // 기록할 주차 없음 (경계 검사)
+
+        const double recorded{ records[*weekIndex].GetScore(characterName) };                      // 지금 기록
+        if (recorded == score) return ScanApplyResult::SCAN_UNCHANGED;                             // 같은 값
+        if (recorded > 0.0 && score < recorded) return ScanApplyResult::SCAN_DECREASED;            // 줄어든 값 (낙원력은 주중에 줄지 않음)
+        EditScore(*weekIndex, characterIndex, score);                                              // 기록 · 통계 · 저장
+        return ScanApplyResult::SCAN_APPLIED;                                                      // 반영함
+    }
+
     bool TrackerManager::IsWeekEditable(std::size_t weekIndex) const
     {
         const Models::Season& season{ m_repository->GetData().GetCurrentSeason() };

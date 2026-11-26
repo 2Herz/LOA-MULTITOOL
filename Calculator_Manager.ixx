@@ -13,6 +13,8 @@ import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Models.Character;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Views.CalculatorView;
+import LostArkMultiTool.Vision.ScreenWatcher;    // 화면 인식 감시기
+import LostArkMultiTool.Vision.VisionSettings;   // 화면 인식 켜기 설정
 
 export namespace LostArkMultiTool::Views
 {
@@ -52,6 +54,13 @@ export namespace LostArkMultiTool::Views
         void ResetInput();   // [입력 초기화] (고른 캐릭터의 수량을 확인 후 모두 0으로)
         void EditQuantity(MaterialTier tier, std::size_t materialIndex, double quantity);
 
+        // ===== 화면 인식 (게임 화면 툴팁 · 상단바 · 낙원 UI → 고른 캐릭터에 반영) =====
+        void SetVision(bool isEnabled);                       // [화면 인식] 켜기 · 끄기 (설정 저장)
+        void StartVision();                                   // 감시기 만들고 인식기 등록 후 시작
+        void ApplyScanResults();                              // 확정된 인식 결과 반영 (화면 스레드에서)
+        void ApplyMaterialScan(const std::string& valueKey, double quantity);   // 재료 수량 → 계산기 칸
+        void ApplyParadiseScan(double score);                 // 낙원력 → 낙원력 트래커 이번 주차
+
         // ===== 백그라운드 작업이 끝났을 때 (화면 스레드에서) =====
         void FinishRefresh();
         void FinishRosterSync();
@@ -83,5 +92,8 @@ export namespace LostArkMultiTool::Views
         Core::IntervalTimer m_autoRefreshTimer;
         bool m_isAutoRefreshEnabled{};
         bool m_isAutoRefreshRun{};   // 지금 진행 중인 시세 갱신이 자동 갱신인지 (완료 · 오류 알림 방식이 다름)
+
+        std::unique_ptr<Vision::VisionSettings> m_visionSettings;   // 화면 인식 켜기 설정
+        std::unique_ptr<Vision::ScreenWatcher> m_screenWatcher;     // 화면 인식 감시기 (켜져 있을 때만)
     };
 }

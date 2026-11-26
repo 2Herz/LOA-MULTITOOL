@@ -8,7 +8,7 @@ import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 // 스레드: 한 객체는 한 스레드(감시 스레드)에서만 씀. 그 스레드는 먼저 VisionApartment를 만들어 둘 것
 export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 내보내기 시작
 {
-    // 지금 스레드를 WinRT 다중 스레드 아파트로 준비 (범위가 끝나면 정리, RAII)
+    // 지금 스레드를 화면 인식용으로 준비: WinRT 다중 스레드 아파트 + 물리 픽셀 좌표(DPI 인식) (범위가 끝나면 아파트 정리, RAII)
     class VisionApartment
     {
     public:

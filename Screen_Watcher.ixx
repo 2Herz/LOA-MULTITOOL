@@ -5,8 +5,10 @@ import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.ScreenLayout;  // 화면 배치 가져오기
 import LostArkMultiTool.Vision.TextRecognizer;  // 글자 인식 가져오기
 
-// 게임 화면 상시 감시
-// - 감시 스레드가 약 1초마다 게임 창을 찾아 캡처하고, 등록된 화면 인식기(전략 패턴)에 프레임을 넘김
+// 게임 화면 상시 감시 ("마우스를 올려 두면 읽기")
+// - 감시 스레드가 짧은 주기로 게임 창 · 커서를 보고, 커서가 게임 화면 위에서 잠깐 멈추면 그때만 캡처
+// - 커서 주변을 한 번 OCR해서 등록된 화면 인식기(전략 패턴)에 넘김 → 툴팁 · 상단바 · 낙원 UI를 같은 방식으로 읽음
+// - 커서가 멈춰 있는 동안 확정에 필요한 횟수만 읽고 쉼 (가만히 둬도 계속 OCR하지 않음 → CPU 절약)
 // - 같은 결과가 연속으로 나와야 확정 (깜빡임 · 애니메이션 중간 장면 오인식 방지)
 // - 확정 결과는 잠금으로 보호된 큐에 쌓이고, 화면 스레드가 TakeResults로 가져감 (데이터는 화면 스레드에서만 바꿈 → 데이터 레이스 없음)
 export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 내보내기 시작
@@ -36,6 +38,9 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
     {
         const ScreenLayoutStore& m_layouts;   // 화면 배치
         const TextRecognizer& m_text;         // 글자 인식기 (감시 스레드에서만 씀)
+        const TextResult& m_hoverText;        // 커서 주변을 OCR한 결과 (위치는 m_hoverArea 기준)
+        PixelRect m_hoverArea;                // OCR한 커서 주변 영역 (프레임 기준)
+        PixelPoint m_cursor;                  // 커서 위치 (프레임 기준)
     };
 
     // 화면 인식기 (전략 인터페이스: 화면 종류마다 하나씩 구현)
@@ -96,7 +101,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
     class ScreenWatcher
     {
     public:
-        static constexpr std::chrono::milliseconds DEFAULT_INTERVAL{ 1000 };   // 기본 감시 주기
+        static constexpr std::chrono::milliseconds DEFAULT_INTERVAL{ 200 };    // 기본 감시 주기 (커서 멈춤 확인)
 
         ScreenWatcher();    // 생성자
         ~ScreenWatcher();   // 소멸자 (감시 스레드를 멈추고 기다림 → RAII)
@@ -114,6 +119,9 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
 
         [[nodiscard]] std::vector<ScanResult> TakeResults();   // 확정된 결과 가져가기 (가져간 것은 큐에서 빠짐)
         [[nodiscard]] WatcherStatus GetStatus() const;         // 지금 상태
+
+        // 커서 주변 OCR 영역 (툴팁이 커서 왼쪽 · 오른쪽 · 위 어디에 떠도 들어오게, 프레임 안으로 자름)
+        [[nodiscard]] static PixelRect GetHoverArea(PixelPoint cursor, int frameWidth, int frameHeight) noexcept;
 
         // 게임 화면 한 장 캡처 (교정 · 샘플 저장용, 별도 스레드에서 최대 timeout 동안 기다림, 실패하면 nullopt + error)
         [[nodiscard]] static std::optional<FrameImage> CaptureOnce(std::chrono::milliseconds timeout, std::string& error);

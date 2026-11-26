@@ -121,4 +121,11 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         if (!IsGameWindow(window, gameProcessIds)) return std::nullopt;   // 더 이상 게임 창이 아님
         return ReadInfo(window);                                          // 최신 정보
     }
+
+    std::optional<PixelPoint> GameWindowFinder::GetCursorPosition() noexcept
+    {
+        POINT cursor{};                                           // 커서 위치
+        if (!::GetPhysicalCursorPos(&cursor)) return std::nullopt;// 물리 픽셀 좌표로 읽기 (캡처 · 창 영역과 같은 단위)
+        return PixelPoint{ cursor.x, cursor.y };                  // 위치
+    }
 }

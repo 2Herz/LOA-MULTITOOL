@@ -1114,6 +1114,36 @@
     <ClCompile Include="Transfer_View.cpp">
       <Filter>4. 뷰\14. 이관계산기</Filter>
     </ClCompile>
+    <ClCompile Include="Vision_Settings.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Vision_Settings.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="OCR_Text_Parser.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="OCR_Text_Parser.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Tooltip_Detector.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Tooltip_Detector.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Paradise_Detector.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Paradise_Detector.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Shard_Bar_Detector.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Shard_Bar_Detector.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
     <ClCompile Include="Text_Recognizer.ixx">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>

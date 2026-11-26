@@ -26,6 +26,13 @@ import LostArkMultiTool.Services.AssetCalculationService;
 import LostArkMultiTool.Services.JSONDataRepository;
 import LostArkMultiTool.Views.CalculatorView;
 import LostArkMultiTool.Views.UI.LineChart;
+import LostArkMultiTool.Views.TrackerManager;          // 낙원력을 기록할 트래커
+import LostArkMultiTool.Vision.OCRTextParser;          // 인식 값 이름 해석 ("Dest/top")
+import LostArkMultiTool.Vision.ParadiseDetector;       // 낙원력 인식기
+import LostArkMultiTool.Vision.ScreenWatcher;          // 화면 인식 감시기
+import LostArkMultiTool.Vision.ShardBarDetector;       // 상단바 파편 인식기
+import LostArkMultiTool.Vision.TooltipDetector;        // 재료 툴팁 인식기
+import LostArkMultiTool.Vision.VisionSettings;         // 화면 인식 켜기 설정
 
 namespace LostArkMultiTool::Views
 {
@@ -70,6 +77,22 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view ROSTER_DONE_FORMAT{ L"총 {}개의 캐릭터 연동 완료!" };
         constexpr std::wstring_view UNKNOWN_ERROR_TEXT{ L"(알 수 없는 오류)" };
         constexpr std::wstring_view TRIM_CHARACTERS{ L" \u3000" };   // 일반 공백 · 전각 공백
+
+        // ===== 화면 인식 안내 =====
+        constexpr std::wstring_view VISION_ON_TEXT{ L"화면 인식을 켰어요. 게임에서 재료 툴팁 · 상단바 파편 · 현재 낙원력 위에 마우스를 잠깐 올려 두면, 고른 캐릭터에 반영돼요." };
+        constexpr std::wstring_view VISION_OFF_TEXT{ L"화면 인식을 껐어요." };
+        constexpr std::wstring_view VISION_NO_CHARACTER_TEXT{ L"화면 인식: 먼저 캐릭터를 골라 주세요." };
+        constexpr std::wstring_view VISION_SAVE_FAILED_TEXT{ L"화면 인식 설정을 저장하지 못했어요." };
+        constexpr std::wstring_view SCAN_MATERIAL_FORMAT{ L"{} · {}{} {}개 반영" };          // 캐릭터 · 재료 · (상/하) · 수량
+        constexpr std::wstring_view SCAN_PARADISE_FORMAT{ L"{} · 낙원력 {} 기록" };           // 캐릭터 · 낙원력
+        constexpr std::wstring_view SCAN_PARADISE_NO_CHARACTER_FORMAT{ L"낙원력 트래커에 '{}' 캐릭터가 없어서 기록하지 못했어요." };
+        constexpr std::wstring_view SCAN_PARADISE_NO_WEEK_TEXT{ L"낙원력 트래커에 이번 주차가 없어서 기록하지 못했어요." };
+        constexpr std::wstring_view SCAN_PARADISE_DECREASED_FORMAT{ L"읽은 낙원력 {}이 기록보다 작아서 건너뛰었어요." };
+        constexpr std::wstring_view TIER_TOP_LABEL{ L"(상)" };        // 상위 재료 표시
+        constexpr std::wstring_view TIER_BOTTOM_LABEL{ L"(하)" };     // 하위 재료 표시
+        constexpr int SCAN_NUMBER_DECIMALS{ 0 };                       // 안내 숫자 소수 자리
+        constexpr std::array<std::wstring_view, Core::APPConstants::MAT_COLUMN_COUNT> MATERIAL_LABELS{
+            L"", L"운명의 파편", L"파괴석", L"수호석", L"돌파석", L"융화 재료", L"용암의 숨결", L"빙하의 숨결" };   // MAT_KEYS 순서의 안내 이름
 
         // 예외 메시지(UTF-8) → 화면 문구 (변환할 수 없으면 기본 문구)
         [[nodiscard]] std::wstring ToWideMessage(const char* message)
@@ -140,6 +163,12 @@ namespace LostArkMultiTool::Views
         m_view->SetOnCharacterSelected([this] { SelectCharacter(); });
         m_view->SetOnResetInput([this] { ResetInput(); });
         m_view->SetOnQuantityEdited([this](MaterialTier tier, std::size_t materialIndex, double quantity) { EditQuantity(tier, materialIndex, quantity); });
+        m_view->SetOnVisionChanged([this](bool isEnabled) { SetVision(isEnabled); });
+
+        // 화면 인식: 지난번에 켜 두었으면 바로 시작
+        m_visionSettings = std::make_unique<Vision::VisionSettings>();
+        m_view->SetVisionChecked(m_visionSettings->IsEnabled());
+        if (m_visionSettings->IsEnabled()) StartVision();
 
         // 저장 파일이 손상돼 복구했으면 알림 (원본 Form1_Load)
         if (const std::optional<std::string>& warning{ m_repository->GetLoadWarning() }; warning.has_value())
@@ -158,6 +187,8 @@ namespace LostArkMultiTool::Views
         m_isAutoRefreshEnabled = false;
         m_refreshTask.Wait();
         m_rosterTask.Wait();
+        m_screenWatcher.reset();     // 감시 스레드를 멈추고 기다림 (저장소를 지우기 전에)
+        m_visionSettings.reset();
 
         m_view.reset();
         m_calculator.reset();
@@ -185,6 +216,121 @@ namespace LostArkMultiTool::Views
         if (m_refreshTask.IsReady()) FinishRefresh();
         if (m_rosterTask.IsReady()) FinishRosterSync();
         if (m_autoRefreshTimer.Poll()) StartRefresh(true);
+        if (m_screenWatcher) ApplyScanResults();   // 화면 인식 결과 반영
+    }
+
+    // [화면 인식] 켜기 · 끄기 → 감시 시작 · 멈춤 + 설정 저장
+    void CalculatorManager::SetVision(bool isEnabled)
+    {
+        if (!m_visionSettings) return;                                      // 초기화 전
+        m_visionSettings->SetEnabled(isEnabled);                            // 설정 바꾸기
+        try
+        {
+            m_visionSettings->Save();                                       // 저장
+        }
+        catch (const std::exception&)
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ VISION_SAVE_FAILED_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 저장 실패 안내 (켜기 · 끄기는 그대로)
+        }
+
+        if (isEnabled) StartVision();                                       // 감시 시작
+        else m_screenWatcher.reset();                                       // 감시 멈춤 (스레드 정리)
+        m_context->m_notifier.ShowToast(std::wstring{ isEnabled ? VISION_ON_TEXT : VISION_OFF_TEXT }, Core::NoticeKind::NOTICE_INFO);   // 안내
+    }
+
+    // 감시기를 만들고 인식기(툴팁 · 상단바 파편 · 낙원력)를 등록해 시작
+    void CalculatorManager::StartVision()
+    {
+        if (m_screenWatcher) return;                                        // 이미 감시 중
+        m_screenWatcher = std::make_unique<Vision::ScreenWatcher>();        // 감시기
+        m_screenWatcher->AddDetector(std::make_unique<Vision::TooltipDetector>());    // 재료 툴팁
+        m_screenWatcher->AddDetector(std::make_unique<Vision::ShardBarDetector>());   // 상단바 운명의 파편
+        m_screenWatcher->AddDetector(std::make_unique<Vision::ParadiseDetector>());   // 현재 낙원력
+        m_screenWatcher->Start();                                           // 감시 스레드 시작
+    }
+
+    // 확정된 인식 결과를 화면 스레드에서 반영 (모델은 이 스레드에서만 바뀜)
+    void CalculatorManager::ApplyScanResults()
+    {
+        const Vision::WatcherStatus status{ m_screenWatcher->GetStatus() };   // 감시 상태
+        if (status.m_state == Vision::WatcherState::WATCHER_UNSUPPORTED)      // 이 PC에서 못 씀 (창 캡처 · OCR 없음)
+        {
+            m_context->m_notifier.ShowToast(ToWideMessage(status.m_message.c_str()), Core::NoticeKind::NOTICE_WARNING);   // 이유 안내
+            m_screenWatcher.reset();                                          // 감시 정리
+            m_view->SetVisionChecked(false);                                  // 체크 해제 (설정은 그대로 → 환경을 고치면 다음 실행에 다시 시도)
+            return;                                                           // 끝
+        }
+
+        for (const Vision::ScanResult& result : m_screenWatcher->TakeResults())   // 확정 결과마다
+        {
+            for (const Vision::ScanValue& value : result.m_values)                // 값마다
+            {
+                if (value.m_key == Vision::ParadiseDetector::VALUE_KEY) ApplyParadiseScan(static_cast<double>(value.m_value));   // 낙원력
+                else ApplyMaterialScan(value.m_key, static_cast<double>(value.m_value));                                         // 재료 수량
+            }
+        }
+    }
+
+    // 재료 수량 → 고른 캐릭터의 계산기 칸 (손 입력과 같은 EditQuantity 흐름 → 증감 표시 · 저장 · 재계산)
+    void CalculatorManager::ApplyMaterialScan(const std::string& valueKey, double quantity)
+    {
+        const auto parsed{ Vision::OCRTextParser::SplitMaterialValueKey(valueKey) };   // "Dest/top" → 키 · 구분
+        if (!parsed.has_value()) return;                                               // 모르는 값
+        const auto keyIt{ std::ranges::find(Core::APPConstants::MAT_KEYS, std::string_view{ parsed->first }) };   // 재료 열
+        if (keyIt == Core::APPConstants::MAT_KEYS.end() || parsed->first.empty()) return;                        // 모르는 재료
+        const std::size_t materialIndex{ static_cast<std::size_t>(keyIt - Core::APPConstants::MAT_KEYS.begin()) };   // 열 번호
+
+        const std::optional<std::string> name{ GetSelectedCharacterName() };           // 고른 캐릭터
+        const Models::Character* character{ name.has_value() ? m_repository->GetData().FindCharacter(*name) : nullptr };   // 캐릭터 데이터
+        if (character == nullptr)                                                      // 캐릭터를 안 골랐음
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ VISION_NO_CHARACTER_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 안내
+            return;                                                                    // 반영 안 함
+        }
+
+        // 상위 · 하위: 이름으로 정해진 재료는 그대로, 숨결 · 파편은 캐릭터 레벨로 (레벨을 모르면 상위)
+        const bool isLevelTop{ character->GetItemLevel() <= 0.0 || character->GetItemLevel() >= Core::APPConstants::TOP_MATERIAL_MIN_LEVEL };
+        const bool isTop{ parsed->second == Vision::OCRTextParser::MaterialTierHint::TIER_TOP
+            || (parsed->second == Vision::OCRTextParser::MaterialTierHint::TIER_BY_LEVEL && isLevelTop) };
+        const Models::ItemData& item{ character->GetMaterial(Core::APPConstants::MAT_KEYS[materialIndex]) };     // 지금 수량
+        if ((isTop ? item.GetTopQty() : item.GetBottomQty()) == quantity) return;                               // 같은 수량이면 조용히 넘어감 (같은 재료를 다시 올려 봄)
+        EditQuantity(isTop ? MaterialTier::TIER_TOP : MaterialTier::TIER_BOTTOM, materialIndex, quantity);   // 반영
+
+        const std::wstring_view tierLabel{ parsed->second == Vision::OCRTextParser::MaterialTierHint::TIER_BY_LEVEL ? std::wstring_view{}
+            : (isTop ? TIER_TOP_LABEL : TIER_BOTTOM_LABEL) };                          // (상) · (하) (숨결 · 파편은 생략)
+        m_context->m_notifier.ShowToast(std::format(SCAN_MATERIAL_FORMAT, Core::TextEncoding::UTF8ToWide(*name), MATERIAL_LABELS[materialIndex],
+            tierLabel, Core::NumberFormat::FormatNumber(quantity, SCAN_NUMBER_DECIMALS)), Core::NoticeKind::NOTICE_SUCCESS);   // 반영 안내
+    }
+
+    // 낙원력 → 낙원력 트래커의 고른 캐릭터 이번 주차
+    void CalculatorManager::ApplyParadiseScan(double score)
+    {
+        const std::optional<std::string> name{ GetSelectedCharacterName() };           // 고른 캐릭터
+        if (!name.has_value())                                                         // 캐릭터를 안 골랐음
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ VISION_NO_CHARACTER_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 안내
+            return;                                                                    // 반영 안 함
+        }
+
+        const std::wstring wideName{ Core::TextEncoding::UTF8ToWide(*name) };          // 안내용 이름
+        const std::wstring scoreText{ Core::NumberFormat::FormatNumber(score, SCAN_NUMBER_DECIMALS) };   // 안내용 점수
+        switch (TrackerManager::GetInstance().ApplyScannedScore(*name, score))         // 트래커에 기록
+        {
+        case ScanApplyResult::SCAN_APPLIED:                                            // 기록함
+            m_context->m_notifier.ShowToast(std::format(SCAN_PARADISE_FORMAT, wideName, scoreText), Core::NoticeKind::NOTICE_SUCCESS);
+            break;
+        case ScanApplyResult::SCAN_NO_CHARACTER:                                       // 트래커에 없는 캐릭터
+            m_context->m_notifier.ShowToast(std::format(SCAN_PARADISE_NO_CHARACTER_FORMAT, wideName), Core::NoticeKind::NOTICE_WARNING);
+            break;
+        case ScanApplyResult::SCAN_NO_WEEK:                                            // 이번 주차 없음
+            m_context->m_notifier.ShowToast(std::wstring{ SCAN_PARADISE_NO_WEEK_TEXT }, Core::NoticeKind::NOTICE_WARNING);
+            break;
+        case ScanApplyResult::SCAN_DECREASED:                                          // 줄어든 값 (오인식으로 봄)
+            m_context->m_notifier.ShowToast(std::format(SCAN_PARADISE_DECREASED_FORMAT, scoreText), Core::NoticeKind::NOTICE_WARNING);
+            break;
+        case ScanApplyResult::SCAN_UNCHANGED:                                          // 같은 값 → 조용히 넘어감
+            break;
+        }
     }
 
     void CalculatorManager::Render(Core::Renderer& renderer, const Core::RectF& contentArea)
