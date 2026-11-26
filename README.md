@@ -435,6 +435,8 @@
 | `ArkGemFinderData.json` | 젬 시세 검색기 : 젬별 일별 최저가 기록 (365일) |
 | `ServerConfigCache.json` | 마지막으로 받은 원격 설정 (버전 · 공지 안내용) |
 | `LastTool.txt` | 마지막으로 사용한 도구 |
+| `ScreenLayouts.json` | 화면 인식 : 게임 화면별로 읽을 영역 (v1.8.0~) |
+| `Vision\` | 화면 인식 : 앵커 · 아이콘 · 숫자 글자 템플릿, `Captures\`에 저장한 게임 화면 |
 | `Logs\` | `app.log` 진단 로그 (1MB마다 순환) · `crash_*.dmp` 크래시 덤프 · `update.log` |
 | `*.json.bak` | 직전 저장본 (자동 백업, 지우지 마세요) |
 | `*.json.corrupt_*` | 손상되어 보관된 파일 (복구가 끝났으면 지워도 돼요) |
@@ -451,8 +453,11 @@
 - C++23 (모듈 `import std;`) / MSVC (Visual Studio)
 - Win32 + Direct3D 11 · Direct2D · DirectWrite (표 · 그래프 · 입력칸 등 UI를 직접 그림)
 - WinHTTP (API 통신) · DPAPI (API 키 암호화)
+- 화면 인식 (v1.8.0~) : Windows.Graphics.Capture (게임 창 캡처) · 템플릿 매칭 숫자 읽기 · Windows.Media.Ocr (한국어 글자)
+	- 게임 프로세스에 DLL을 넣거나 메모리 · 패킷을 읽지 않고, 게임에 키 · 마우스 입력도 보내지 않아요. 윈도우가 합성한 창 화면만 받아 와요.
+	- 게임 화면 한 장 저장 : `LOA-MULTITOOL.exe --capture-game` → `%LocalAppData%\LostArkMultiTool\Vision\Captures\` (인식 영역 · 템플릿 만들기용)
 - [로스트아크 Open API](https://developer-lostark.game.onstove.com/)
-- 자체 검사 : `LOA-MULTITOOL.exe --self-test` (build_all이 빌드 직후 실행) → 계수 · 재련 표 검사 + 2부 이관 표 검사(방송 예시 · 저장된 무기고 전체) + lopec 회귀 검사
+- 자체 검사 : `LOA-MULTITOOL.exe --self-test` (build_all이 빌드 직후 실행) → 계수 · 재련 표 검사 + 2부 이관 표 검사(방송 예시 · 저장된 무기고 전체) + lopec 회귀 검사 + 화면 인식 검사(템플릿 매칭 · 숫자 읽기 · 2프레임 확정)
 	- lopec 회귀는 `Verify\lopec_results\lopec_all.csv`(모든 측정을 모은 한 파일, 저장소에 안 올림 · 캐릭터마다 가장 최근 측정 회차)와 `python tools/Fetch-RegressionArmory.py`로 받은 무기고를 앱 엔진으로 다시 계산해요. 데이터가 없는 PC면 건너뛰어요.
 	- 줄마다 결과는 `Verify\lopec_results\regression\last_result.csv`에 남아요.
 	- 측정 도구 : `tools/Pick-LopecSamples.py`(로펙 랭킹에서 직업 · 각인 · 레벨별 샘플 고르기) → `tools/Crawl-LopecSimulator.py --names-file …`(측정을 lopec_all.csv에 이어 씀) · `tools/Merge-LopecResults.py`(예전 캐릭터별 CSV를 합치고 archive/로 옮김)

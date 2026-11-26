@@ -4,6 +4,7 @@
 #include <Windows.h>									// GetModuleFileNameW, GetFileVersionInfoW, VerQueryValueW
 
 #pragma comment(lib, "version.lib")					// 버전 정보 API
+#pragma comment(lib, "gdi32.lib")					// 숫자 읽기 검사용 글자 그리기 (GDI)
 
 module LostArkMultiTool.Core.SelfTest;
 
@@ -17,6 +18,13 @@ import LostArkMultiTool.Models.TransferData;
 import LostArkMultiTool.Services.ArmoryParser;
 import LostArkMultiTool.Services.JSONValue;
 import LostArkMultiTool.Services.TransferCalculator;
+import LostArkMultiTool.Vision.DigitReader;
+import LostArkMultiTool.Vision.FrameImage;
+import LostArkMultiTool.Vision.ScreenCaptureService;
+import LostArkMultiTool.Vision.ScreenLayout;
+import LostArkMultiTool.Vision.ScreenWatcher;
+import LostArkMultiTool.Vision.TemplateMatcher;
+import LostArkMultiTool.Vision.TextRecognizer;
 
 namespace LostArkMultiTool::Core::SelfTest
 {
@@ -344,6 +352,175 @@ namespace LostArkMultiTool::Core::SelfTest
         }
     }
 
+    namespace  // 화면 인식 검사 전용 상수 · 도우미
+    {
+        constexpr int VISION_CANVAS_WIDTH{ 320 };          // 글자를 그릴 캔버스 가로
+        constexpr int VISION_CANVAS_HEIGHT{ 48 };          // 글자를 그릴 캔버스 세로
+        constexpr int VISION_FONT_HEIGHT{ 28 };            // 글자 크기 (픽셀)
+        constexpr int VISION_TEXT_MARGIN{ 6 };             // 글자 시작 여백
+        constexpr COLORREF VISION_TEXT_COLOR{ RGB(255, 255, 255) };   // 흰 글자 (게임 수량 숫자처럼 밝은 글자)
+        constexpr std::wstring_view VISION_FONT_NAME{ L"Arial" };     // 검사용 글꼴
+        constexpr std::wstring_view TRAINING_LINE{ L"0123456789,+" }; // 템플릿을 만들 줄
+        constexpr std::string_view TRAINING_SYMBOLS{ "0123456789,+" };// 그 줄의 답
+        constexpr double MATCH_PASS_SCORE{ 0.99 };         // 같은 그림을 찾았을 때 점수 하한
+        constexpr int SMALL_PATTERN_SIZE{ 12 };            // 작은 템플릿 크기 (바로 훑기)
+        constexpr int LARGE_PATTERN_SIZE{ 40 };            // 큰 템플릿 크기 (축소 단계 사용)
+        constexpr int SCENE_WIDTH{ 400 };                  // 검사 장면 가로
+        constexpr int SCENE_HEIGHT{ 300 };                 // 검사 장면 세로
+        constexpr int SMALL_PATTERN_X{ 37 };               // 작은 템플릿을 둔 X
+        constexpr int SMALL_PATTERN_Y{ 21 };               // 작은 템플릿을 둔 Y
+        constexpr int LARGE_PATTERN_X{ 251 };              // 큰 템플릿을 둔 X
+        constexpr int LARGE_PATTERN_Y{ 173 };              // 큰 템플릿을 둔 Y
+        constexpr int NOISE_MODULUS{ 251 };                // 바탕 무늬를 만들 나머지 값 (소수)
+        constexpr int NOISE_X_FACTOR{ 31 };                // 바탕 무늬 가로 계수
+        constexpr int NOISE_Y_FACTOR{ 17 };                // 바탕 무늬 세로 계수
+        constexpr std::int64_t EXPECTED_SHARD_VALUE{ 12345 };   // "12,345" 기대값
+        constexpr std::int64_t EXPECTED_OVERFLOW_VALUE{ 9999 }; // "9999+" 기대값
+        constexpr int SMALL_CHECKER_CELL{ 3 };             // 작은 체크무늬 칸 크기
+        constexpr int LARGE_CHECKER_CELL{ 5 };             // 큰 체크무늬 칸 크기
+        constexpr int SAMPLE_SCREEN_WIDTH{ 1920 };         // 비율 변환 검사 화면 가로
+        constexpr int SAMPLE_SCREEN_HEIGHT{ 1080 };        // 비율 변환 검사 화면 세로
+        constexpr Vision::PixelRect EXPECTED_REGION_PIXELS{ 480, 540, 96, 22 };   // (0.25, 0.5, 0.05, 0.02) → 1920x1080 픽셀
+
+        // GDI로 흰 글자를 검은 바탕에 그려 BGRA 프레임으로 (안티앨리어싱 없이 → 게임 비트맵 글꼴과 비슷)
+        [[nodiscard]] Vision::FrameImage RenderText(std::wstring_view text)
+        {
+            BITMAPINFO info{};                                                // 비트맵 설명
+            info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);                 // 머리말 크기
+            info.bmiHeader.biWidth = VISION_CANVAS_WIDTH;                     // 가로
+            info.bmiHeader.biHeight = -VISION_CANVAS_HEIGHT;                  // 음수 = 위에서 아래로
+            info.bmiHeader.biPlanes = 1;                                      // 평면 1장
+            info.bmiHeader.biBitCount = 32;                                   // BGRA 32비트
+            info.bmiHeader.biCompression = BI_RGB;                            // 압축 없음
+            void* bits = nullptr;                                             // 픽셀 메모리
+            HDC screen = ::GetDC(nullptr);                                    // 화면 DC (호환 DC를 만들 기준)
+            HDC memory = ::CreateCompatibleDC(screen);                        // 메모리 DC
+            ::ReleaseDC(nullptr, screen);                                     // 화면 DC는 바로 돌려줌
+            HBITMAP bitmap = ::CreateDIBSection(memory, &info, DIB_RGB_COLORS, &bits, nullptr, 0);   // 픽셀 직접 접근 비트맵
+            HGDIOBJ oldBitmap = ::SelectObject(memory, bitmap);               // 비트맵 연결
+            HFONT font = ::CreateFontW(VISION_FONT_HEIGHT, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, NONANTIALIASED_QUALITY, DEFAULT_PITCH, VISION_FONT_NAME.data());   // 검사용 글꼴
+            HGDIOBJ oldFont = ::SelectObject(memory, font);                   // 글꼴 연결
+            ::SetBkColor(memory, RGB(0, 0, 0));                               // 검은 바탕
+            ::SetTextColor(memory, VISION_TEXT_COLOR);                        // 흰 글자
+            RECT area{ 0, 0, VISION_CANVAS_WIDTH, VISION_CANVAS_HEIGHT };     // 그릴 영역
+            ::ExtTextOutW(memory, VISION_TEXT_MARGIN, VISION_TEXT_MARGIN, ETO_OPAQUE, &area,
+                text.data(), static_cast<UINT>(text.size()), nullptr);        // 바탕을 채우며 글자 그리기
+            ::GdiFlush();                                                     // 그리기 끝내기 (픽셀 읽기 전)
+
+            const std::size_t byteCount = static_cast<std::size_t>(VISION_CANVAS_WIDTH) * VISION_CANVAS_HEIGHT * Vision::FrameImage::BYTES_PER_PIXEL;   // 픽셀 바이트
+            const std::span<const std::uint8_t> source{ static_cast<const std::uint8_t*>(bits), byteCount };   // 경계가 있는 span
+            Vision::FrameImage frame = Vision::FrameImage::FromRows(VISION_CANVAS_WIDTH, VISION_CANVAS_HEIGHT, source,
+                VISION_CANVAS_WIDTH * Vision::FrameImage::BYTES_PER_PIXEL);   // 프레임으로 복사
+
+            ::SelectObject(memory, oldFont);      // 글꼴 원래대로
+            ::DeleteObject(font);                 // 글꼴 해제
+            ::SelectObject(memory, oldBitmap);    // 비트맵 원래대로
+            ::DeleteObject(bitmap);               // 비트맵 해제
+            ::DeleteDC(memory);                   // 메모리 DC 해제
+            return frame;                         // 그린 프레임
+        }
+
+        // 무늬가 있는 바탕에 템플릿을 박은 장면 만들기
+        [[nodiscard]] Vision::GrayImage MakeScene(const Vision::GrayImage& smallPattern, const Vision::GrayImage& largePattern)
+        {
+            Vision::GrayImage scene{ SCENE_WIDTH, SCENE_HEIGHT };                     // 장면
+            for (int y = 0; y < SCENE_HEIGHT; ++y)                                    // 줄마다
+                for (int x = 0; x < SCENE_WIDTH; ++x)                                 // 칸마다
+                    scene.Set(x, y, static_cast<std::uint8_t>((x * NOISE_X_FACTOR + y * NOISE_Y_FACTOR) % NOISE_MODULUS));   // 반복 없는 바탕 무늬
+            for (int y = 0; y < smallPattern.GetHeight(); ++y)                               // 작은 템플릿 박기
+                for (int x = 0; x < smallPattern.GetWidth(); ++x)
+                    scene.Set(SMALL_PATTERN_X + x, SMALL_PATTERN_Y + y, smallPattern.At(x, y));
+            for (int y = 0; y < largePattern.GetHeight(); ++y)                               // 큰 템플릿 박기
+                for (int x = 0; x < largePattern.GetWidth(); ++x)
+                    scene.Set(LARGE_PATTERN_X + x, LARGE_PATTERN_Y + y, largePattern.At(x, y));
+            return scene;                                                             // 장면
+        }
+
+        // 체크무늬 템플릿 (크기 · 칸 크기)
+        [[nodiscard]] Vision::GrayImage MakeChecker(int size, int cell)
+        {
+            constexpr std::uint8_t DARK{ 20 };      // 어두운 칸
+            constexpr std::uint8_t BRIGHT{ 235 };   // 밝은 칸
+            Vision::GrayImage image{ size, size };  // 템플릿
+            for (int y = 0; y < size; ++y)
+                for (int x = 0; x < size; ++x)
+                    image.Set(x, y, ((x / cell + y / cell + x * y / (cell * cell * 3)) % 2 == 0) ? BRIGHT : DARK);   // 불규칙한 체크무늬
+            return image;   // 템플릿
+        }
+
+        // 화면 인식 기반 검사 (게임 없이: 매칭 · 숫자 읽기 · 확정 규칙 · 배치 저장 형식)
+        void CheckVision(Reporter& reporter)
+        {
+            // 1) 템플릿 매칭: 작은 것 · 큰 것(축소 단계) 모두 정확한 자리를 찾는지
+            const Vision::GrayImage smallPattern = MakeChecker(SMALL_PATTERN_SIZE, SMALL_CHECKER_CELL);   // 작은 템플릿
+            const Vision::GrayImage largePattern = MakeChecker(LARGE_PATTERN_SIZE, LARGE_CHECKER_CELL);   // 큰 템플릿
+            const Vision::GrayImage scene = MakeScene(smallPattern, largePattern);                      // 장면
+            const Vision::PixelRect whole{ 0, 0, SCENE_WIDTH, SCENE_HEIGHT };             // 전체 검색
+            const auto smallMatch = Vision::TemplateMatcher::FindBest(scene, smallPattern, whole, MATCH_PASS_SCORE);   // 작은 템플릿 찾기
+            const auto largeMatch = Vision::TemplateMatcher::FindBest(scene, largePattern, whole, MATCH_PASS_SCORE);   // 큰 템플릿 찾기
+            reporter.Check(smallMatch && smallMatch->m_x == SMALL_PATTERN_X && smallMatch->m_y == SMALL_PATTERN_Y,
+                "화면 인식 · 템플릿 매칭 (작은 그림)", smallMatch ? std::format("({}, {}) {:.3f}", smallMatch->m_x, smallMatch->m_y, smallMatch->m_score) : "못 찾음");
+            reporter.Check(largeMatch && largeMatch->m_x == LARGE_PATTERN_X && largeMatch->m_y == LARGE_PATTERN_Y,
+                "화면 인식 · 템플릿 매칭 (큰 그림, 축소 단계)", largeMatch ? std::format("({}, {}) {:.3f}", largeMatch->m_x, largeMatch->m_y, largeMatch->m_score) : "못 찾음");
+
+            // 2) 숫자 읽기: 글꼴 줄로 템플릿을 만들고 다른 줄을 읽음
+            const Vision::DigitReadOptions options;                                       // 밝은 글자 · 오츠 자동
+            const auto glyphs = Vision::DigitReader::MakeGlyphsFromLine(RenderText(TRAINING_LINE).ToGray(), TRAINING_SYMBOLS, options);   // 템플릿 만들기
+            reporter.Check(glyphs && glyphs->size() == TRAINING_SYMBOLS.size(), "화면 인식 · 숫자 템플릿 만들기",
+                glyphs ? std::format("{}글자", glyphs->size()) : "글자 수 불일치");
+            if (glyphs)
+            {
+                const Vision::DigitReader reader{ *glyphs };                              // 숫자 읽기 도구
+                const auto shard = reader.Read(RenderText(L"12,345").ToGray(), options);  // 쉼표 숫자
+                reporter.Check(shard.m_value == EXPECTED_SHARD_VALUE && !shard.m_isOverflow, "화면 인식 · 숫자 읽기 (12,345)",
+                    std::format("'{}' 최저 {:.3f}", shard.m_text, shard.m_lowestScore));
+                const auto overflow = reader.Read(RenderText(L"9999+").ToGray(), options);// 넘침 표시
+                reporter.Check(overflow.m_isOverflow && overflow.m_value == EXPECTED_OVERFLOW_VALUE, "화면 인식 · 넘침 표시 (9999+ → 툴팁 대기)",
+                    std::format("'{}'", overflow.m_text));
+                const auto empty = reader.Read(Vision::GrayImage{ VISION_CANVAS_WIDTH, VISION_CANVAS_HEIGHT }, options);   // 빈 칸
+                reporter.Check(!empty.m_value, "화면 인식 · 빈 칸은 값 없음");
+            }
+
+            // 3) 확정 규칙: 같은 결과 2번 연속이어야 확정, 이미 낸 결과는 다시 안 냄
+            Vision::ScanConfirmer confirmer;                                              // 기본 2프레임
+            Vision::ScanResult first{ "storage", "본캐", { { "dest_top", 100 } } };         // 결과 A
+            Vision::ScanResult second{ "storage", "본캐", { { "dest_top", 120 } } };        // 결과 B
+            const bool isFirstHeld = !confirmer.Feed(first);                              // 1번째 A → 보류
+            const bool isFirstConfirmed = confirmer.Feed(first).has_value();              // 2번째 A → 확정
+            const bool isRepeatSkipped = !confirmer.Feed(first);                          // 3번째 A → 중복이라 안 냄
+            const bool isChangeHeld = !confirmer.Feed(second);                            // B 1번째 → 보류
+            const bool isChangeConfirmed = confirmer.Feed(second).has_value();            // B 2번째 → 확정
+            reporter.Check(isFirstHeld && isFirstConfirmed && isRepeatSkipped && isChangeHeld && isChangeConfirmed,
+                "화면 인식 · 2프레임 확정 규칙");
+
+            // 4) 화면 배치 저장 형식: 쓰고 다시 읽으면 같은지 · 비율 → 픽셀
+            Vision::ScreenLayout layout{ "storage", "storage_anchor.png", { 0.1, 0.1, 0.3, 0.05 }, 0.85,
+                { { "dest_top", { 0.25, 0.5, 0.05, 0.02 } } } };                          // 예시 배치
+            const auto readBack = Vision::ScreenLayoutStore::ReadText(Vision::ScreenLayoutStore::WriteText(std::span{ &layout, 1 }));   // 왕복
+            const bool isSame = readBack.size() == 1 && readBack[0].m_screenName == layout.m_screenName
+                && readBack[0].m_regions.size() == 1 && readBack[0].FindRegion("dest_top") != nullptr
+                && readBack[0].m_anchorMinScore == layout.m_anchorMinScore;               // 내용 비교
+            const Vision::PixelRect pixels = layout.m_regions.front().m_rect.ToPixels(SAMPLE_SCREEN_WIDTH, SAMPLE_SCREEN_HEIGHT);   // 1920x1080 기준 픽셀
+            reporter.Check(isSame && pixels == EXPECTED_REGION_PIXELS, "화면 인식 · 배치 저장 형식 · 비율 변환",
+                std::format("({}, {}, {}, {})", pixels.m_x, pixels.m_y, pixels.m_width, pixels.m_height));
+
+            // 5) 운영체제 기능 (안내만: 실행하는 PC 환경에 따라 다름)
+            reporter.Note(std::format("화면 인식 · 창 캡처 지원: {}", Vision::ScreenCaptureService::IsSupported() ? "예" : "아니오"));
+            std::string ocrNote;                                                          // OCR 안내
+            std::thread ocrWorker{ [&ocrNote]                                             // WinRT 아파트를 따로 쓰는 일꾼
+                {
+                    const Vision::VisionApartment apartment;                              // 이 스레드의 WinRT 준비
+                    const Vision::TextRecognizer recognizer;                              // OCR 엔진
+                    ocrNote = recognizer.IsAvailable()
+                        ? std::format("화면 인식 · OCR 엔진: 사용 가능 (언어 {})", std::string(recognizer.GetLanguageTag().begin(), recognizer.GetLanguageTag().end()))
+                        : std::string{ "화면 인식 · OCR 엔진: 없음 (윈도우 설정 → 언어에서 한국어 OCR 설치 필요)" };   // 결과
+                } };
+            ocrWorker.join();                                                             // 끝날 때까지 기다림
+            reporter.Note(ocrNote);                                                       // 안내 기록
+        }
+    }
+
     bool IsRequested(std::wstring_view commandLine) noexcept
     {
         return commandLine.find(SELF_TEST_ARGUMENT) != std::wstring_view::npos;   // 인자 포함 여부
@@ -360,6 +537,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckTransferRules(reporter);                        // 2부 이관 표 규칙
             CheckTransferArmories(reporter, reportPath);         // 2부 이관 계산 (저장된 무기고)
             CheckLopecRegression(reporter, reportPath);          // lopec 회귀
+            CheckVision(reporter);                               // 화면 인식 기반
         }
         catch (const std::exception& exception)
         {

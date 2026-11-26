@@ -287,6 +287,9 @@
     <Filter Include="4. 뷰\14. 이관계산기">
       <UniqueIdentifier>{7d204e3c-9165-4fa0-bc83-4e5f6a7b8c93}</UniqueIdentifier>
     </Filter>
+    <Filter Include="3. 서비스\17. 화면인식">
+      <UniqueIdentifier>{9bce6fb9-7f4a-4cd1-9a25-fb876d7db7c2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 매니저">
       <UniqueIdentifier>{8e315f4d-a276-40b1-cd94-5f6a7b8c9da4}</UniqueIdentifier>
     </Filter>
@@ -1110,6 +1113,60 @@
     </ClCompile>
     <ClCompile Include="Transfer_View.cpp">
       <Filter>4. 뷰\14. 이관계산기</Filter>
+    </ClCompile>
+    <ClCompile Include="Text_Recognizer.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Text_Recognizer.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Screen_Layout.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Screen_Layout.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Screen_Watcher.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Screen_Watcher.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Frame_Image.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Frame_Image.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Template_Matcher.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Template_Matcher.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Image_File.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Image_File.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Digit_Reader.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Digit_Reader.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Game_Window_Finder.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Game_Window_Finder.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Screen_Capture_Service.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Screen_Capture_Service.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
     <ClCompile Include="Transfer_Manager.ixx">
       <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 매니저</Filter>

@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.7.5 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-25</div>
+      <div class="sub">C++23 모듈 · v1.8.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-26</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -387,7 +387,7 @@ const MODULES = [
   "module": "LostArkMultiTool.Core.APPConstants",
   "imports": [],
   "cppImports": [],
-  "lines": 142,
+  "lines": 146,
   "cppLines": 128,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\1. 상수",
@@ -1385,6 +1385,28 @@ const MODULES = [
   ]
  },
  {
+  "file": "Digit_Reader.ixx",
+  "module": "LostArkMultiTool.Vision.DigitReader",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.ImageFile",
+   "LostArkMultiTool.Vision.TemplateMatcher"
+  ],
+  "lines": 65,
+  "cppLines": 218,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "게임 숫자 글꼴 템플릿으로 수량 숫자 읽기 (\"12,345\" · \"9999+\")",
+  "types": [
+   "GlyphTemplate",
+   "DigitReadOptions",
+   "DigitReadResult",
+   "DigitReader"
+  ]
+ },
+ {
   "file": "DPAPI_Key_Store.ixx",
   "module": "LostArkMultiTool.Services.DPAPIKeyStore",
   "imports": [
@@ -1525,6 +1547,39 @@ const MODULES = [
   "desc": "유물 각인서 하나의 시세 (거래소 조회 결과 + 직전 갱신 때의 최저가)",
   "types": [
    "EngravingQuote"
+  ]
+ },
+ {
+  "file": "Frame_Image.ixx",
+  "module": "LostArkMultiTool.Vision.FrameImage",
+  "imports": [],
+  "cppImports": [],
+  "lines": 82,
+  "cppLines": 292,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "화면 인식에 쓰는 이미지 값 객체",
+  "types": [
+   "PixelRect",
+   "GrayImage",
+   "FrameImage"
+  ]
+ },
+ {
+  "file": "Game_Window_Finder.ixx",
+  "module": "LostArkMultiTool.Vision.GameWindowFinder",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [],
+  "lines": 30,
+  "cppLines": 125,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "로스트아크 게임 창 찾기",
+  "types": [
+   "GameWindowInfo",
+   "GameWindowFinder"
   ]
  },
  {
@@ -1811,6 +1866,20 @@ const MODULES = [
   "types": [
    "GrowthDataRepository"
   ]
+ },
+ {
+  "file": "Image_File.ixx",
+  "module": "LostArkMultiTool.Vision.ImageFile",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [],
+  "lines": 16,
+  "cppLines": 139,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "PNG · BMP · JPG 파일 ↔ FrameImage (윈도우 이미지 구성 요소 WIC 사용)",
+  "types": []
  },
  {
   "file": "Input.ixx",
@@ -2806,6 +2875,75 @@ const MODULES = [
   ]
  },
  {
+  "file": "Screen_Capture_Service.ixx",
+  "module": "LostArkMultiTool.Vision.ScreenCaptureService",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [],
+  "lines": 52,
+  "cppLines": 294,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "게임 창 화면 캡처 (윈도우 공식 API: Windows.Graphics.Capture)",
+  "types": [
+   "VisionApartment",
+   "ScreenCaptureService",
+   "Impl"
+  ]
+ },
+ {
+  "file": "Screen_Layout.ixx",
+  "module": "LostArkMultiTool.Vision.ScreenLayout",
+  "imports": [
+   "LostArkMultiTool.Services.JSONFileStore",
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "lines": 68,
+  "cppLines": 192,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "게임 화면별 \"어디를 읽을지\" 정의 (창고 · 상단바 · 낙원 UI · 툴팁)",
+  "types": [
+   "NormalizedRect",
+   "ScreenRegion",
+   "ScreenLayout",
+   "ScreenLayoutStore"
+  ]
+ },
+ {
+  "file": "Screen_Watcher.ixx",
+  "module": "LostArkMultiTool.Vision.ScreenWatcher",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.ScreenLayout",
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.GameWindowFinder",
+   "LostArkMultiTool.Vision.ScreenCaptureService"
+  ],
+  "lines": 136,
+  "cppLines": 230,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "게임 화면 상시 감시",
+  "types": [
+   "ScanValue",
+   "ScanResult",
+   "DetectorContext",
+   "ScreenDetector",
+   "ScanConfirmer",
+   "State",
+   "WatcherStatus",
+   "ScreenWatcher"
+  ]
+ },
+ {
   "file": "Season.ixx",
   "module": "LostArkMultiTool.Models.Season",
   "imports": [
@@ -2834,10 +2972,17 @@ const MODULES = [
    "LostArkMultiTool.Models.TransferData",
    "LostArkMultiTool.Services.ArmoryParser",
    "LostArkMultiTool.Services.JSONValue",
-   "LostArkMultiTool.Services.TransferCalculator"
+   "LostArkMultiTool.Services.TransferCalculator",
+   "LostArkMultiTool.Vision.DigitReader",
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.ScreenCaptureService",
+   "LostArkMultiTool.Vision.ScreenLayout",
+   "LostArkMultiTool.Vision.ScreenWatcher",
+   "LostArkMultiTool.Vision.TemplateMatcher",
+   "LostArkMultiTool.Vision.TextRecognizer"
   ],
   "lines": 15,
-  "cppLines": 375,
+  "cppLines": 553,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
@@ -2912,6 +3057,23 @@ const MODULES = [
   ]
  },
  {
+  "file": "Template_Matcher.ixx",
+  "module": "LostArkMultiTool.Vision.TemplateMatcher",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [],
+  "lines": 35,
+  "cppLines": 184,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "흑백 이미지 안에서 작은 그림(템플릿: 창 제목 · 재료 아이콘 · 숫자 글자)이 어디 있는지 찾는 도구",
+  "types": [
+   "MatchResult",
+   "TemplateMatcher"
+  ]
+ },
+ {
   "file": "Text_Box.ixx",
   "module": "LostArkMultiTool.Views.UI.TextBox",
   "imports": [
@@ -2943,6 +3105,25 @@ const MODULES = [
   "filter": "1. 코어\\1. 기반\\7. 매니저\\1. 최상위",
   "desc": "문자열 인코딩 변환 (프로그램 안 문자열은 UTF-8, Windows API는 UTF-16)",
   "types": []
+ },
+ {
+  "file": "Text_Recognizer.ixx",
+  "module": "LostArkMultiTool.Vision.TextRecognizer",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [],
+  "lines": 47,
+  "cppLines": 193,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "윈도우 내장 OCR(Windows.Media.Ocr, 한국어)로 글자 읽기 → 캐릭터 이름 · 툴팁 재료 이름 · 창 제목 확인용",
+  "types": [
+   "TextLine",
+   "TextResult",
+   "TextRecognizer",
+   "Impl"
+  ]
  },
  {
   "file": "Theme.ixx",
