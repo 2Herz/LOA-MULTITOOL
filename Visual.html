@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.8.2 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
+      <div class="sub">C++23 모듈 · v1.9.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -387,7 +387,7 @@ const MODULES = [
   "module": "LostArkMultiTool.Core.APPConstants",
   "imports": [],
   "cppImports": [],
-  "lines": 147,
+  "lines": 150,
   "cppLines": 128,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\1. 상수",
@@ -469,6 +469,7 @@ const MODULES = [
    "LostArkMultiTool.Views.CombatSimulatorManager",
    "LostArkMultiTool.Views.EngravingFinderManager",
    "LostArkMultiTool.Views.GemFinderManager",
+   "LostArkMultiTool.Views.OverlayManager",
    "LostArkMultiTool.Views.PageLayout",
    "LostArkMultiTool.Views.RefineBookFinderManager",
    "LostArkMultiTool.Views.RefineSimulatorManager",
@@ -477,8 +478,8 @@ const MODULES = [
    "LostArkMultiTool.Views.TrackerManager",
    "LostArkMultiTool.Views.TransferManager"
   ],
-  "lines": 142,
-  "cppLines": 1211,
+  "lines": 144,
+  "cppLines": 1265,
   "hasCpp": true,
   "filter": "소스 파일\\1. 앱",
   "desc": "프로그램 본체 (xmind의 Main)",
@@ -853,12 +854,14 @@ const MODULES = [
    "LostArkMultiTool.Vision.ShardBarDetector",
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
-  "lines": 100,
-  "cppLines": 791,
+  "lines": 123,
+  "cppLines": 826,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\1. 귀속재료 계산기 매니저",
-  "desc": "귀속재료 계산기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
+  "desc": "인게임 오버레이 재료 패널 한 줄",
   "types": [
+   "CalculatorOverlayRow",
+   "CalculatorOverlaySummary",
    "CalculatorManager"
   ]
  },
@@ -1440,11 +1443,11 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 58,
-  "cppLines": 819,
+  "lines": 65,
+  "cppLines": 855,
   "hasCpp": true,
   "filter": "4. 뷰\\1. DX11",
-  "desc": "Direct3D 11 장치 + DXGI 스왑체인 위에 Direct2D · DirectWrite로 2D 화면(탭 · 표 · 그래프 · 글자)을 그림",
+  "desc": "그리기 표면 방식",
   "types": [
    "DX11Renderer"
   ]
@@ -2294,6 +2297,27 @@ const MODULES = [
   ]
  },
  {
+  "file": "Material_Panel.ixx",
+  "module": "LostArkMultiTool.Views.MaterialPanel",
+  "imports": [
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.CalculatorManager",
+   "LostArkMultiTool.Views.OverlayPanel"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.NumberFormat",
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 32,
+  "cppLines": 136,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "오버레이 재료 패널: 귀속재료 계산기에서 고른 캐릭터의 재료 수량 · 단가 · 재료값 + 캐릭터 · 원정대 자산 (읽기 전용)",
+  "types": [
+   "MaterialPanel"
+  ]
+ },
+ {
   "file": "Message_Dialog.ixx",
   "module": "LostArkMultiTool.Views.UI.MessageDialog",
   "imports": [
@@ -2359,6 +2383,40 @@ const MODULES = [
   ]
  },
  {
+  "file": "Overlay_Manager.ixx",
+  "module": "LostArkMultiTool.Views.OverlayManager",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Notifier",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Core.Singleton",
+   "LostArkMultiTool.Core.ToolManager",
+   "LostArkMultiTool.Views.DX11Renderer",
+   "LostArkMultiTool.Views.OverlayPanel",
+   "LostArkMultiTool.Views.OverlaySettings",
+   "LostArkMultiTool.Views.OverlayWindow",
+   "LostArkMultiTool.Views.UI.ToastHost"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.CalculatorManager",
+   "LostArkMultiTool.Views.MaterialPanel",
+   "LostArkMultiTool.Views.ParadisePanel",
+   "LostArkMultiTool.Views.Theme",
+   "LostArkMultiTool.Views.TrackerManager",
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.GameWindowFinder"
+  ],
+  "lines": 89,
+  "cppLines": 367,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "인게임 오버레이 매니저 (프로그램에 하나 → 싱글톤, 탭이 아니라 Application이 직접 부름)",
+  "types": [
+   "OverlayManager",
+   "ToolbarButton"
+  ]
+ },
+ {
   "file": "Overlay_Notifier.ixx",
   "module": "LostArkMultiTool.Views.UI.OverlayNotifier",
   "imports": [
@@ -2373,13 +2431,70 @@ const MODULES = [
    "LostArkMultiTool.Views.UI.DateRangeDialog",
    "LostArkMultiTool.Views.UI.MessageDialog"
   ],
-  "lines": 51,
-  "cppLines": 125,
+  "lines": 55,
+  "cppLines": 133,
   "hasCpp": true,
   "filter": "4. 뷰\\4. UI\\6. 알림창",
   "desc": "화면 맨 위에 그리는 알림 층 (Core::Notifier 구현)",
   "types": [
    "OverlayNotifier"
+  ]
+ },
+ {
+  "file": "Overlay_Panel.ixx",
+  "module": "LostArkMultiTool.Views.OverlayPanel",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Renderer"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 62,
+  "cppLines": 197,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "인게임 오버레이에 띄우는 패널 하나 (컴포넌트 패턴: 오버레이 매니저가 패널들을 모아 그림)",
+  "types": [
+   "OverlayPanel"
+  ]
+ },
+ {
+  "file": "Overlay_Settings.ixx",
+  "module": "LostArkMultiTool.Views.OverlaySettings",
+  "imports": [
+   "LostArkMultiTool.Services.JSONFileStore"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.APPConstants",
+   "LostArkMultiTool.Services.JSONValue"
+  ],
+  "lines": 49,
+  "cppLines": 124,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "인게임 오버레이 설정 (사용자 데이터 폴더 OverlaySettings.json)",
+  "types": [
+   "OverlayPanelState",
+   "OverlaySettings"
+  ]
+ },
+ {
+  "file": "Overlay_Window.ixx",
+  "module": "LostArkMultiTool.Views.OverlayWindow",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Vision.FrameImage"
+  ],
+  "cppImports": [],
+  "lines": 52,
+  "cppLines": 374,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "게임 화면 위에 띄우는 투명 최상위 창 (게임 프로세스와는 무관한 내 프로그램의 창)",
+  "types": [
+   "OverlayWindow",
+   "Impl"
   ]
  },
  {
@@ -2417,6 +2532,27 @@ const MODULES = [
   "desc": "낙원 콘텐츠 UI의 \"현재 낙원력 29,492,422\" 읽기 (\"권장 낙원력\"은 제외)",
   "types": [
    "ParadiseDetector"
+  ]
+ },
+ {
+  "file": "Paradise_Panel.ixx",
+  "module": "LostArkMultiTool.Views.ParadisePanel",
+  "imports": [
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.OverlayPanel",
+   "LostArkMultiTool.Views.TrackerManager"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Core.NumberFormat",
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 32,
+  "cppLines": 70,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "오버레이 낙원력 패널: 이번 주차 캐릭터별 낙원력 (기록 높은 순, 미기록 캐릭터는 강조)",
+  "types": [
+   "ParadisePanel"
   ]
  },
  {
@@ -3010,6 +3146,7 @@ const MODULES = [
   "cppImports": [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Core.CombatRegression",
+   "LostArkMultiTool.Core.Renderer",
    "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CombatCoefficientData",
    "LostArkMultiTool.Models.RefineData",
@@ -3017,6 +3154,8 @@ const MODULES = [
    "LostArkMultiTool.Services.ArmoryParser",
    "LostArkMultiTool.Services.JSONValue",
    "LostArkMultiTool.Services.TransferCalculator",
+   "LostArkMultiTool.Views.DX11Renderer",
+   "LostArkMultiTool.Views.OverlayWindow",
    "LostArkMultiTool.Vision.DigitReader",
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.ImageFile",
@@ -3031,7 +3170,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 666,
+  "cppLines": 696,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
@@ -3322,12 +3461,14 @@ const MODULES = [
    "LostArkMultiTool.Views.Theme",
    "LostArkMultiTool.Views.UI.LineChart"
   ],
-  "lines": 117,
-  "cppLines": 938,
+  "lines": 134,
+  "cppLines": 964,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\3. 낙원력 트래커 매니저",
-  "desc": "화면 인식으로 읽은 낙원력을 반영한 결과",
+  "desc": "인게임 오버레이 낙원력 패널 한 줄",
   "types": [
+   "TrackerOverlayRow",
+   "TrackerOverlaySummary",
    "TrackerManager"
   ]
  },

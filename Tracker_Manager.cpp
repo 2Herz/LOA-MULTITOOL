@@ -43,6 +43,7 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view CHART_LABEL_FORMAT{ L"{}주" };               // 그래프 x축
         constexpr std::wstring_view CHARACTER_HEADER_FORMAT{ L"{}\n(Lv.{})" };   // 현재 원정대 열: 직업 + 레벨 (원본과 같음)
         constexpr std::wstring_view PAST_CHARACTER_HEADER_FORMAT{ L"{}\n(원정대 제외)" };   // 원정대에서 빠졌지만 기록이 있는 캐릭터
+        constexpr std::wstring_view OVERLAY_WEEK_FORMAT{ L"{}주차" };   // 인게임 오버레이 낙원력 패널 주차 이름
         constexpr std::wstring_view CHART_TITLE_FORMAT{ L"{} · 주차별 평균 낙원력" };
 
         // ===== 통계 카드 · 목록 (새 디자인) =====
@@ -920,6 +921,31 @@ namespace LostArkMultiTool::Views
         if (recorded > 0.0 && score < recorded) return ScanApplyResult::SCAN_DECREASED;            // 줄어든 값 (낙원력은 주중에 줄지 않음)
         EditScore(*weekIndex, characterIndex, score);                                              // 기록 · 통계 · 저장
         return ScanApplyResult::SCAN_APPLIED;                                                      // 반영함
+    }
+
+    // 인게임 오버레이 낙원력 패널: 이번 주차의 지금 원정대 기록 (높은 순, 미기록은 뒤)
+    TrackerOverlaySummary TrackerManager::GetOverlaySummary()
+    {
+        TrackerOverlaySummary summary;                                                          // 결과
+        if (!m_repository) return summary;                                                      // 초기화 전
+        Models::Season& season{ GetCurrentSeason() };                                          // 고른 시즌
+        const std::vector<Models::WeeklyRecord>& records{ season.GetRecords() };                // 주차 기록
+        std::optional<std::size_t> weekIndex;                                                   // 이번 주차
+        if (season.HasPeriod()) weekIndex = season.FindWeekIndex(Core::LocalTime::GetGameToday());   // 오늘이 든 주차
+        else if (!records.empty()) weekIndex = records.size() - 1;                              // 마지막 주차
+        if (!weekIndex || *weekIndex >= records.size()) return summary;                         // 이번 주차 없음 (경계 검사)
+
+        summary.m_weekLabel = std::format(OVERLAY_WEEK_FORMAT, *weekIndex + 1);                 // "N주차"
+        for (const Models::CharacterInfo& character : m_repository->GetData().GetCharacters())  // 지금 원정대
+        {
+            const double score{ records[*weekIndex].GetScore(character.GetCharacterName()) };  // 이번 주 기록
+            TrackerOverlayRow row{ ToWide(character.GetCharacterName()) };                      // 이름
+            if (score > 0.0) { row.m_score = score; ++summary.m_recordedCount; }                // 기록 있음
+            summary.m_rows.push_back(std::move(row));                                           // 추가
+        }
+        std::ranges::stable_sort(summary.m_rows, std::ranges::greater{},
+            [](const TrackerOverlayRow& row) { return row.m_score.value_or(-1.0); });           // 높은 순 (미기록은 뒤)
+        return summary;   // 요약
     }
 
     bool TrackerManager::IsWeekEditable(std::size_t weekIndex) const

@@ -41,6 +41,7 @@ import LostArkMultiTool.Views.UI.ControlHost;
 import LostArkMultiTool.Views.UI.Dialog;
 import LostArkMultiTool.Views.UI.OverlayNotifier;
 import LostArkMultiTool.Views.UI.TextBox;
+import LostArkMultiTool.Views.OverlayManager;   // 인게임 오버레이
 
 namespace LostArkMultiTool::Views
 {
@@ -116,6 +117,11 @@ namespace LostArkMultiTool::Views
         constexpr float NO_FADE{ 0.0f };
         constexpr double MAX_FRAME_SECONDS{ 0.1 };      // 창을 끌거나 멈췄다 돌아왔을 때 애니메이션이 튀지 않게
         constexpr int BACKGROUND_TICK_MS{ 250 };        // 트레이에 숨은 동안 백그라운드 작업 · 자동 갱신을 확인하는 간격
+        constexpr int OVERLAY_TICK_MS{ 33 };            // 트레이에 숨어 있어도 인게임 오버레이가 보이면 이 간격으로 갱신 (초당 약 30번)
+        constexpr std::wstring_view OVERLAY_ON_BUTTON_TEXT{ L"🖥  오버레이 켜짐" };     // 오버레이 켜짐 버튼 글자
+        constexpr std::wstring_view OVERLAY_OFF_BUTTON_TEXT{ L"🖥  오버레이 꺼짐" };    // 오버레이 꺼짐 버튼 글자
+        constexpr std::wstring_view OVERLAY_ON_TOAST_TEXT{ L"인게임 오버레이를 켰어요. 게임이 맨 앞일 때 보이고, Ctrl+Shift+I로 패널을 옮길 수 있어요. (게임은 창 모드 · 전체 창 모드)" };
+        constexpr std::wstring_view OVERLAY_OFF_TOAST_TEXT{ L"인게임 오버레이를 껐어요. (Ctrl+Shift+O로 다시 켜요)" };
 
         // ===== 프레임 간격 측정 =====
         using Clock = std::chrono::steady_clock;        // 시스템 시간을 바꿔도 거꾸로 가지 않는 시계
@@ -328,6 +334,11 @@ namespace LostArkMultiTool::Views
         m_reportButton = &m_headerHost.Emplace<UI::Button>(std::wstring{ REPORT_BUTTON_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY,
             [this] { OpenProblemReport(); });
         m_reportButton->SetFocusable(false);   // 탭 화면 입력칸 포커스 유지
+
+        // 인게임 오버레이 켜기 · 끄기 (문제 보고 버튼 위, 포커스는 가져가지 않음)
+        m_overlayButton = &m_headerHost.Emplace<UI::Button>(std::wstring{ OVERLAY_OFF_BUTTON_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY,
+            [] { OverlayManager::GetInstance().SetEnabled(!OverlayManager::GetInstance().IsEnabled()); });   // 누르면 반대로
+        m_overlayButton->SetFocusable(false);   // 탭 화면 입력칸 포커스 유지
     }
 
     Application::~Application()
@@ -355,6 +366,7 @@ namespace LostArkMultiTool::Views
     int Application::Run(int showCommand)
     {
         InitializeTools();
+        InitializeOverlay();             // 인게임 오버레이 (탭이 다 준비된 뒤: 미니 모드 · 패널이 탭 매니저를 씀)
         LoadLastTool();                  // 마지막으로 쓴 도구부터 (없으면 첫 탭)
         GetActiveTool().OnActivated();
         SyncWindowTitle();               // 제목 표시줄에 탭 이름
@@ -375,11 +387,15 @@ namespace LostArkMultiTool::Views
 
             if (m_window->IsMinimized())
             {
-                // 그리지 않고 잠깐씩만 깨어남 (메시지가 오면 바로 깨어남 → CPU · GPU 사용 0에 가깝게)
-                m_window->WaitForMessage(BACKGROUND_TICK_MS);
+                // 메인 창은 그리지 않고 잠깐씩만 깨어남 (메시지가 오면 바로 깨어남 → CPU · GPU 사용 0에 가깝게)
+                // 게임 위 오버레이가 보이면 오버레이만 그리면서 조금 더 자주 깨어남
+                const bool isOverlayVisible{ OverlayManager::GetInstance().IsVisible() };
+                if (isOverlayVisible) OverlayManager::GetInstance().Render();
+                m_window->WaitForMessage(isOverlayVisible ? OVERLAY_TICK_MS : BACKGROUND_TICK_MS);
                 continue;
             }
             Render();   // EndFrame의 수직 동기화가 프레임 속도를 모니터 주사율로 맞춤
+            OverlayManager::GetInstance().Render();   // 인게임 오버레이 (보일 때만, 초당 20번까지)
         }
 
         if (!m_isModal) GetActiveTool().OnDeactivated();   // 대화상자가 열려 있었다면 이미 내려놓은 상태
@@ -630,8 +646,38 @@ namespace LostArkMultiTool::Views
         }
     }
 
+    // 인게임 오버레이 준비: 탭 목록 넘기기 · 메뉴 버튼 글자 · 토스트를 게임 위에도
+    void Application::InitializeOverlay()
+    {
+        OverlayManager& overlay{ OverlayManager::GetInstance() };
+        try
+        {
+            overlay.Initialize(m_tools);   // 투명 창 · 렌더러 · 단축키 · 패널
+        }
+        catch (const std::exception& error)
+        {
+            Core::AppLogger::GetInstance().Error(std::format("오버레이 준비 실패: {}", error.what()));   // 오버레이 없이 계속 (메인 기능은 그대로)
+            overlay.Shutdown();
+            m_overlayButton->SetEnabled(false);
+            return;
+        }
+
+        m_overlayButton->SetText(std::wstring{ overlay.IsEnabled() ? OVERLAY_ON_BUTTON_TEXT : OVERLAY_OFF_BUTTON_TEXT });   // 지금 상태
+        overlay.SetOnEnabledChanged([this](bool isEnabled)
+        {
+            m_overlayButton->SetText(std::wstring{ isEnabled ? OVERLAY_ON_BUTTON_TEXT : OVERLAY_OFF_BUTTON_TEXT });   // 버튼 글자
+            if (m_notifier) m_notifier->ShowToast(std::wstring{ isEnabled ? OVERLAY_ON_TOAST_TEXT : OVERLAY_OFF_TOAST_TEXT }, Core::NoticeKind::NOTICE_INFO);   // 안내
+        });
+        m_notifier->SetToastListener([](const std::wstring& message, Core::NoticeKind kind)
+        {
+            return OverlayManager::GetInstance().ShowToast(message, kind);   // 게임 위에 보이면 거기에도 띄움
+        });
+    }
+
     void Application::ShutdownTools()
     {
+        OverlayManager::GetInstance().Shutdown();   // 오버레이 먼저 (미니 모드가 탭 매니저를 그리고 있을 수 있음)
+
         // 초기화한 역순으로 정리, 하나가 실패해도 나머지는 끝까지 저장하고 첫 예외만 다시 던짐
         std::exception_ptr firstError;
         while (m_initializedToolCount > 0)
@@ -977,6 +1023,11 @@ namespace LostArkMultiTool::Views
 
         m_headerHost.Update(deltaSeconds);
 
+        // 인게임 오버레이: 게임 창 따라가기 · 패널 갱신, 안내(단축키 등록 실패 등)는 메인 창 토스트로
+        OverlayManager::GetInstance().Update(deltaSeconds);
+        if (const std::optional<std::wstring> overlayNotice{ OverlayManager::GetInstance().TakeNotice() }; overlayNotice.has_value())
+            m_notifier->ShowToast(*overlayNotice, Core::NoticeKind::NOTICE_WARNING);
+
         // 모든 탭을 갱신 (다른 탭을 보거나 대화상자가 떠 있어도 백그라운드 작업 결과 · 자동 갱신 진행), 점검 중이면 멈춤
         if (!m_isMaintenanceLocked)
         {
@@ -1090,7 +1141,8 @@ namespace LostArkMultiTool::Views
         const float statusTop{ height - SIDEBAR_BOTTOM_PADDING - API_STATUS_HEIGHT };   // 상태 줄 위쪽
         const float buttonTop{ statusTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 버튼 위쪽
         const float reportTop{ buttonTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 문제 보고 버튼 위쪽
-        const float dividerY{ reportTop - API_BUTTON_GAP };   // 아래 구역 경계선 위치 (버튼 두 개 위)
+        const float overlayTop{ reportTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };  // 인게임 오버레이 버튼 위쪽
+        const float dividerY{ overlayTop - API_BUTTON_GAP };   // 아래 구역 경계선 위치 (버튼 세 개 위)
         m_renderer->DrawLine(0.0f, dividerY, SIDEBAR_WIDTH, dividerY, Theme::CARD_BORDER_COLOR, LINE_WIDTH);   // 아래 구역 경계선
 
         LayoutHeader();                     // 창 높이가 바뀌면 버튼이 따라 움직임
@@ -1166,6 +1218,8 @@ namespace LostArkMultiTool::Views
         m_apiKeyButton->SetBounds(Core::RectF{ SIDEBAR_PADDING, buttonTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, buttonTop + API_BUTTON_HEIGHT });   // 메뉴 너비에 맞춤
         const float reportTop{ buttonTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 문제 보고 버튼은 API 키 버튼 바로 위
         m_reportButton->SetBounds(Core::RectF{ SIDEBAR_PADDING, reportTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, reportTop + API_BUTTON_HEIGHT });   // 같은 너비
+        const float overlayTop{ reportTop - API_BUTTON_GAP - API_BUTTON_HEIGHT };   // 인게임 오버레이 버튼은 문제 보고 버튼 바로 위
+        m_overlayButton->SetBounds(Core::RectF{ SIDEBAR_PADDING, overlayTop, SIDEBAR_WIDTH - SIDEBAR_PADDING, overlayTop + API_BUTTON_HEIGHT });   // 같은 너비
     }
 
     // 왼쪽 메뉴의 탭 항목 하나 (세로로 차례대로 쌓임)

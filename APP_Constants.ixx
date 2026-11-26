@@ -6,7 +6,7 @@ import std;
 export namespace LostArkMultiTool::Core::APPConstants
 {
 	//	프로그램 버전 (원격 설정의 LatestVersion과 비교 → 패치노트 버전을 올릴 때 같이 올릴 것)
-	inline constexpr std::string_view APP_VERSION{ "1.8.2" };
+	inline constexpr std::string_view APP_VERSION{ "1.9.0" };
 
 	//	툴별 저장 파일 이름 (툴마다 파일을 따로 씀, 전체 경로는 GetUserDataFilePath가 사용자 데이터 폴더 기준으로 계산)
 	//	예전 버전은 실행 파일 폴더에 저장했음 → 처음 실행할 때 한 번만 사용자 데이터 폴더로 가져옴 (예전 파일은 그대로 둠)
@@ -135,6 +135,9 @@ export namespace LostArkMultiTool::Core::APPConstants
 	inline constexpr std::string_view SCREEN_LAYOUT_FILE_NAME{ "ScreenLayouts.json" };	//	화면별 읽을 영역 (교정 결과, 멀티툴 전용 새 파일)
 	inline constexpr std::string_view VISION_TEMPLATE_FOLDER_NAME{ "Vision" };			//	앵커 · 아이콘 · 숫자 글자 템플릿 폴더 (사용자 데이터 폴더 아래)
 	inline constexpr std::string_view VISION_SETTINGS_FILE_NAME{ "VisionSettings.json" };	//	화면 인식 켜기 설정 (멀티툴 전용 새 파일)
+
+	//	===== 인게임 오버레이 =====
+	inline constexpr std::string_view OVERLAY_SETTINGS_FILE_NAME{ "OverlaySettings.json" };	//	켜기 · 패널 위치 · 미니 탭 · 불투명도 (멀티툴 전용 새 파일)
 
 	//	실행 파일이 있는 폴더 기준 데이터 파일 전체 경로 (실행 파일 폴더는 처음 한 번만 계산해 캐싱, 예전 저장 위치를 찾을 때 사용)
 	std::filesystem::path GetDataFilePath(std::string_view fileName);

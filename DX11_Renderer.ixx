@@ -5,6 +5,13 @@ import LostArkMultiTool.Core.Renderer;
 
 export namespace LostArkMultiTool::Views
 {
+    // 그리기 표면 방식
+    enum class SurfaceMode
+    {
+        SURFACE_OPAQUE,        // 일반 창 (메인 창, 배경을 꽉 채움)
+        SURFACE_TRANSPARENT    // 투명 창 (인게임 오버레이, DirectComposition + 미리 곱한 알파 → 그리지 않은 곳은 게임이 비침)
+    };
+
     // Direct3D 11 장치 + DXGI 스왑체인 위에 Direct2D · DirectWrite로 2D 화면(탭 · 표 · 그래프 · 글자)을 그림
     // D3D11 장치를 기반으로 두어 나중에 3D 화면을 같은 창에 함께 그릴 수 있음
     // COM 객체(DirectX 타입)는 구현 파일 안에만 둠 → 다른 모듈은 Windows·DirectX 헤더를 몰라도 됨
@@ -12,7 +19,7 @@ export namespace LostArkMultiTool::Views
     {
     public:
         // windowHandle: MainWindow::GetNativeHandle(), dpi: 창이 놓인 모니터 배율
-        DX11Renderer(void* windowHandle, float dpi);
+        DX11Renderer(void* windowHandle, float dpi, SurfaceMode mode = SurfaceMode::SURFACE_OPAQUE);   // mode: 일반 · 투명 창
         ~DX11Renderer() override;
 
         DX11Renderer(const DX11Renderer&) = delete;

@@ -17,6 +17,21 @@ import LostArkMultiTool.Views.TrackerView;
 
 export namespace LostArkMultiTool::Views
 {
+    // 인게임 오버레이 낙원력 패널 한 줄
+    struct TrackerOverlayRow
+    {
+        std::wstring m_name;              // 캐릭터 이름
+        std::optional<double> m_score;    // 이번 주 낙원력 (미기록이면 nullopt)
+    };
+
+    // 인게임 오버레이 낙원력 패널 내용
+    struct TrackerOverlaySummary
+    {
+        std::wstring m_weekLabel;                 // "N주차" (이번 주차가 없으면 빈 글자)
+        std::vector<TrackerOverlayRow> m_rows;    // 지금 원정대 캐릭터 (기록 높은 순, 미기록은 뒤)
+        std::size_t m_recordedCount{};            // 기록한 캐릭터 수
+    };
+
     // 화면 인식으로 읽은 낙원력을 반영한 결과
     enum class ScanApplyResult
     {
@@ -50,6 +65,8 @@ export namespace LostArkMultiTool::Views
 
         // 화면 인식으로 읽은 낙원력을 이번 주차에 기록 (귀속재료 계산기의 화면 인식이 부름)
         [[nodiscard]] ScanApplyResult ApplyScannedScore(const std::string& characterName, double score);
+
+        [[nodiscard]] TrackerOverlaySummary GetOverlaySummary();   // 인게임 오버레이 낙원력 패널용 이번 주 현황 (화면 스레드에서)
 
     private:
         friend class Core::Singleton<TrackerManager>;   // GetInstance만 생성 · 소멸할 수 있게

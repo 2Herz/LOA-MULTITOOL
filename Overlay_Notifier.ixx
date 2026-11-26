@@ -30,6 +30,9 @@ export namespace LostArkMultiTool::Views::UI
             std::function<std::optional<std::wstring>(const std::chrono::year_month_day& startDate, const std::chrono::year_month_day& endDate)> onConfirm) override;
         void ShowToast(std::wstring message, Core::NoticeKind kind) override;
 
+        // 토스트를 다른 곳(인게임 오버레이)에도 띄우는 함수 연결 (true를 돌려주면 거기에 띄운 것 → 창이 숨어 있어도 트레이 풍선은 생략)
+        void SetToastListener(std::function<bool(const std::wstring& message, Core::NoticeKind kind)> listener);
+
         // 직접 만든 대화상자 열기 (API 키 입력 등)
         void OpenDialog(std::unique_ptr<Dialog> dialog);
 
@@ -46,6 +49,7 @@ export namespace LostArkMultiTool::Views::UI
         Core::Platform& m_platform;
         std::vector<std::unique_ptr<Dialog>> m_dialogs;   // 뒤쪽이 맨 위
         Dialog* m_activeDialog{};                         // 지금 입력을 받는 대화상자 (m_dialogs가 소유, 지우기 전에 비움 → 댕글링 없음)
+        std::function<bool(const std::wstring&, Core::NoticeKind)> m_toastListener;   // 인게임 오버레이 토스트 (없으면 비어 있음)
         ToastHost m_toastHost;
     };
 }

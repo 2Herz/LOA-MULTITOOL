@@ -6,7 +6,9 @@
 #include <dxgi1_2.h>
 #include <d2d1_1.h>
 #include <dwrite.h>
+#include <dcomp.h>       // DirectComposition (투명 오버레이 창)
 
+#pragma comment(lib, "dcomp.lib")   // DirectComposition
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
@@ -34,6 +36,7 @@ namespace LostArkMultiTool::Views
         constexpr UINT32 GRADIENT_STOP_COUNT{ 2 };            // 위 색 → 아래 색
         constexpr float GRADIENT_START{ 0.0f };
         constexpr float GRADIENT_END{ 1.0f };
+        constexpr int MIN_SURFACE_SIZE{ 1 };                  // 투명 스왑체인 최소 크기 (0이면 만들 수 없음)
 
         // 그래픽 카드가 지원하는 기능 수준 (높은 것부터 시도)
         constexpr std::array FEATURE_LEVELS{
@@ -177,7 +180,7 @@ namespace LostArkMultiTool::Views
     class DX11Renderer::Impl
     {
     public:
-        Impl(HWND window, float dpi);
+        Impl(HWND window, float dpi, SurfaceMode mode);
 
         Impl(const Impl&) = delete;
         Impl& operator=(const Impl&) = delete;
@@ -233,6 +236,7 @@ namespace LostArkMultiTool::Views
             bool isClosedToBaseline, float baselineY);
 
         HWND m_window{};
+        SurfaceMode m_mode{ SurfaceMode::SURFACE_OPAQUE };   // 일반 · 투명 창
         float m_dpi{ DEFAULT_DPI };
         int m_pixelWidth{};
         int m_pixelHeight{};
@@ -248,14 +252,18 @@ namespace LostArkMultiTool::Views
         COMPtr<ID3D11Device> m_d3dDevice;
         COMPtr<ID3D11DeviceContext> m_d3dContext;
         COMPtr<IDXGISwapChain1> m_swapChain;
+        COMPtr<IDCompositionDevice> m_compositionDevice;   // 투명 창: 합성 장치
+        COMPtr<IDCompositionTarget> m_compositionTarget;   // 투명 창: 창에 붙인 합성 대상
+        COMPtr<IDCompositionVisual> m_compositionVisual;   // 투명 창: 스왑체인을 담는 화면 요소
         COMPtr<ID2D1Device> m_d2dDevice;
         COMPtr<ID2D1DeviceContext> m_d2dContext;
         COMPtr<ID2D1SolidColorBrush> m_brush;     // 색만 바꿔 가며 재사용
         COMPtr<ID2D1Bitmap1> m_targetBitmap;
     };
 
-    DX11Renderer::Impl::Impl(HWND window, float dpi)
+    DX11Renderer::Impl::Impl(HWND window, float dpi, SurfaceMode mode)
         : m_window{ window }
+        , m_mode{ mode }
         , m_dpi{ dpi }
     {
         const D2D1_FACTORY_OPTIONS factoryOptions{};
@@ -316,8 +324,32 @@ namespace LostArkMultiTool::Views
         swapChainDesc.Scaling = DXGI_SCALING_NONE;                 // 크기를 바꾸는 동안 화면이 늘어나 보이지 않게
         swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 
-        ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(m_d3dDevice.Get(), m_window, &swapChainDesc, nullptr, nullptr,
-            m_swapChain.ReleaseAndGetAddressOf()), "스왑체인 생성");
+        if (m_mode == SurfaceMode::SURFACE_TRANSPARENT)
+        {
+            // 투명 창: 합성용 스왑체인은 크기를 직접 정해야 하고, 늘이기 · 미리 곱한 알파만 됨
+            RECT client{};
+            ::GetClientRect(m_window, &client);
+            swapChainDesc.Width = static_cast<UINT>(std::max(client.right - client.left, static_cast<LONG>(MIN_SURFACE_SIZE)));    // 0이면 안 됨
+            swapChainDesc.Height = static_cast<UINT>(std::max(client.bottom - client.top, static_cast<LONG>(MIN_SURFACE_SIZE)));
+            swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+            swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+            ThrowIfFailed(dxgiFactory->CreateSwapChainForComposition(m_d3dDevice.Get(), &swapChainDesc, nullptr,
+                m_swapChain.ReleaseAndGetAddressOf()), "투명 스왑체인 생성");
+
+            // DirectComposition: 창 → 대상 → 화면 요소 → 스왑체인 (그리지 않은 곳은 뒤의 게임 화면이 비침)
+            ThrowIfFailed(::DCompositionCreateDevice(dxgiDevice.Get(), __uuidof(IDCompositionDevice),
+                reinterpret_cast<void**>(m_compositionDevice.ReleaseAndGetAddressOf())), "합성 장치 생성");
+            ThrowIfFailed(m_compositionDevice->CreateTargetForHwnd(m_window, TRUE, m_compositionTarget.ReleaseAndGetAddressOf()), "합성 대상 생성");
+            ThrowIfFailed(m_compositionDevice->CreateVisual(m_compositionVisual.ReleaseAndGetAddressOf()), "합성 화면 요소 생성");
+            ThrowIfFailed(m_compositionVisual->SetContent(m_swapChain.Get()), "합성 내용 연결");
+            ThrowIfFailed(m_compositionTarget->SetRoot(m_compositionVisual.Get()), "합성 뿌리 연결");
+            ThrowIfFailed(m_compositionDevice->Commit(), "합성 확정");
+        }
+        else
+        {
+            ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(m_d3dDevice.Get(), m_window, &swapChainDesc, nullptr, nullptr,
+                m_swapChain.ReleaseAndGetAddressOf()), "스왑체인 생성");
+        }
 
         // 도구 프로그램이라 Alt+Enter 전체 화면 전환은 막음
         dxgiFactory->MakeWindowAssociation(m_window, DXGI_MWA_NO_ALT_ENTER);
@@ -339,6 +371,9 @@ namespace LostArkMultiTool::Views
         m_brush.Reset();
         m_d2dContext.Reset();
         m_d2dDevice.Reset();
+        m_compositionVisual.Reset();    // 합성 객체는 스왑체인보다 먼저 놓음
+        m_compositionTarget.Reset();
+        m_compositionDevice.Reset();
         m_swapChain.Reset();
         m_d3dContext.Reset();
         m_d3dDevice.Reset();
@@ -358,7 +393,8 @@ namespace LostArkMultiTool::Views
             "뒷버퍼 얻기");
 
         D2D1_BITMAP_PROPERTIES1 bitmapProperties{};
-        bitmapProperties.pixelFormat = D2D1_PIXEL_FORMAT{ DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE };
+        bitmapProperties.pixelFormat = D2D1_PIXEL_FORMAT{ DXGI_FORMAT_B8G8R8A8_UNORM,
+            m_mode == SurfaceMode::SURFACE_TRANSPARENT ? D2D1_ALPHA_MODE_PREMULTIPLIED : D2D1_ALPHA_MODE_IGNORE };   // 투명 창은 알파를 씀
         bitmapProperties.dpiX = m_dpi;
         bitmapProperties.dpiY = m_dpi;
         bitmapProperties.bitmapOptions = static_cast<D2D1_BITMAP_OPTIONS>(D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW);
@@ -690,8 +726,8 @@ namespace LostArkMultiTool::Views
     }
 
     // ===== 공개 인터페이스 (구현은 Impl에 위임) =====
-    DX11Renderer::DX11Renderer(void* windowHandle, float dpi)
-        : m_impl{ std::make_unique<Impl>(static_cast<HWND>(windowHandle), dpi) }
+    DX11Renderer::DX11Renderer(void* windowHandle, float dpi, SurfaceMode mode)
+        : m_impl{ std::make_unique<Impl>(static_cast<HWND>(windowHandle), dpi, mode) }
     {}
 
     DX11Renderer::~DX11Renderer() = default;

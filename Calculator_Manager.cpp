@@ -219,6 +219,41 @@ namespace LostArkMultiTool::Views
         if (m_screenWatcher) ApplyScanResults();   // 화면 인식 결과 반영
     }
 
+    // 인게임 오버레이 재료 패널용 요약 (고른 캐릭터의 레벨에 맞는 재료 줄 + 캐릭터 · 원정대 자산)
+    CalculatorOverlaySummary CalculatorManager::GetOverlaySummary() const
+    {
+        CalculatorOverlaySummary summary;                                                       // 결과
+        if (!m_repository || !m_calculator) return summary;                                     // 초기화 전
+        summary.m_hasPrices = m_calculator->HasPrices();                                        // 시세 여부
+        summary.m_isVisionOn = m_screenWatcher != nullptr;                                      // 화면 인식 여부
+        summary.m_rosterTotal = CalculateRosterTotal();                                         // 원정대 자산
+
+        const std::optional<std::string> name{ GetSelectedCharacterName() };                    // 고른 캐릭터
+        const Models::Character* character{ name.has_value() ? m_repository->GetData().FindCharacter(*name) : nullptr };
+        if (character == nullptr) return summary;                                               // 캐릭터 없음
+        summary.m_characterName = Core::TextEncoding::UTF8ToWide(*name);                        // 이름
+
+        const bool isTop{ character->GetItemLevel() <= 0.0 || character->GetItemLevel() >= Core::APPConstants::TOP_MATERIAL_MIN_LEVEL };   // 레벨에 맞는 구분
+        const auto prices{ isTop ? m_calculator->GetTopPrices() : m_calculator->GetBotPrices() };   // 단가 표
+        for (std::size_t index{ FIRST_MATERIAL_INDEX }; index < Core::APPConstants::MAT_KEYS.size(); ++index)   // 재료마다
+        {
+            const std::string key{ Core::APPConstants::MAT_KEYS[index] };                      // 재료 키
+            const Models::ItemData& item{ character->GetMaterial(key) };                        // 보유 정보
+            CalculatorOverlayRow row;                                                           // 한 줄
+            row.m_label = std::wstring{ MATERIAL_LABELS[index] };                               // 이름
+            row.m_quantity = isTop ? item.GetTopQty() : item.GetBottomQty();                    // 수량
+            row.m_value = item.GetCalculatedTopValue() + item.GetCalculatedBotValue();          // 재료값
+            if (const auto price{ prices.find(key) }; price != prices.end())                    // 단가가 있으면
+            {
+                row.m_unitPrice = price->second.GetCurrent();                                   // 단가
+                row.m_priceDiff = price->second.GetDiff();                                      // 변동
+            }
+            summary.m_characterTotal += row.m_value;                                            // 캐릭터 자산 누적
+            summary.m_rows.push_back(std::move(row));                                           // 추가
+        }
+        return summary;   // 요약
+    }
+
     // [화면 인식] 켜기 · 끄기 → 감시 시작 · 멈춤 + 설정 저장
     void CalculatorManager::SetVision(bool isEnabled)
     {

@@ -58,6 +58,7 @@ export namespace LostArkMultiTool::Views
 
         // ===== 매니저 =====
         void InitializeTools();
+        void InitializeOverlay();   // 인게임 오버레이 준비 (실패해도 메인 기능은 계속)
         void ShutdownTools();
         void SelectTool(std::size_t index);
         void SelectAdjacentTool(bool isNext);           // Alt+↑/↓: 보이는 도구 목록에서 위 · 아래로 이동
@@ -121,6 +122,7 @@ export namespace LostArkMultiTool::Views
         UI::ControlHost m_headerHost;                       // 왼쪽 메뉴 아래 버튼 (API 키 설정)
         UI::Button* m_apiKeyButton{};                       // m_headerHost가 소유
         UI::Button* m_reportButton{};                       // [문제 보고] 버튼 (m_headerHost가 소유)
+        UI::Button* m_overlayButton{};                      // [인게임 오버레이] 켜기 · 끄기 버튼 (m_headerHost가 소유)
         UI::TextBox* m_toolSearchBox{};                     // 왼쪽 메뉴 도구 검색칸 (m_headerHost가 소유)
         std::vector<std::size_t> m_visibleTools;            // 검색어에 맞는 도구 번호 (메뉴에 보이는 순서)
         Core::BackgroundTask<std::filesystem::path> m_updateTask;   // 자동 업데이트 받기 · 검증

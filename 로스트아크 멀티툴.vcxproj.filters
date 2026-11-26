@@ -287,6 +287,9 @@
     <Filter Include="4. 뷰\14. 이관계산기">
       <UniqueIdentifier>{7d204e3c-9165-4fa0-bc83-4e5f6a7b8c93}</UniqueIdentifier>
     </Filter>
+    <Filter Include="4. 뷰\15. 오버레이">
+      <UniqueIdentifier>{2bc4abbd-2dcd-45ae-9b53-62d46a21bb7b}</UniqueIdentifier>
+    </Filter>
     <Filter Include="3. 서비스\17. 화면인식">
       <UniqueIdentifier>{9bce6fb9-7f4a-4cd1-9a25-fb876d7db7c2}</UniqueIdentifier>
     </Filter>
@@ -1113,6 +1116,42 @@
     </ClCompile>
     <ClCompile Include="Transfer_View.cpp">
       <Filter>4. 뷰\14. 이관계산기</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Settings.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Settings.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Material_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Material_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Paradise_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Paradise_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Manager.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Manager.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Window.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Window.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
     </ClCompile>
     <ClCompile Include="Vision_Settings.ixx">
       <Filter>3. 서비스\17. 화면인식</Filter>

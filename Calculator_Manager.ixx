@@ -18,6 +18,27 @@ import LostArkMultiTool.Vision.VisionSettings;   // 화면 인식 켜기 설정
 
 export namespace LostArkMultiTool::Views
 {
+    // 인게임 오버레이 재료 패널 한 줄
+    struct CalculatorOverlayRow
+    {
+        std::wstring m_label;    // 재료 이름 ("파괴석")
+        double m_quantity{};     // 고른 캐릭터 보유 수량 (레벨에 맞는 상위 · 하위)
+        double m_unitPrice{};    // 단가 (골드, 시세가 없으면 0)
+        double m_priceDiff{};    // 단가 변동 (지난 갱신 대비)
+        double m_value{};        // 재료값 (골드)
+    };
+
+    // 인게임 오버레이 재료 패널 내용
+    struct CalculatorOverlaySummary
+    {
+        std::wstring m_characterName;               // 고른 캐릭터 (없으면 빈 글자)
+        std::vector<CalculatorOverlayRow> m_rows;   // 재료 줄 (MAT_KEYS 순서)
+        double m_characterTotal{};                  // 캐릭터 자산 (골드)
+        double m_rosterTotal{};                     // 원정대 자산 (골드)
+        bool m_hasPrices{};                         // 시세를 받아 왔는지
+        bool m_isVisionOn{};                        // 화면 인식이 켜져 있는지
+    };
+
     // 귀속재료 계산기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)
     // ToolManager(탭으로 동작) + Singleton(프로그램에 하나만 존재) 다중 상속
     // 화면구성 · 렌더링 = CalculatorView, 모델 = DataRepository(저장 파일) + AssetCalculator(시세 · 계산)
@@ -39,6 +60,8 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] bool HandleInput(const Core::InputEvent& event) override;
         [[nodiscard]] Core::CursorShape GetCursor() const noexcept override;
         [[nodiscard]] std::optional<std::wstring> GetBackgroundStatus() const override;
+
+        [[nodiscard]] CalculatorOverlaySummary GetOverlaySummary() const;   // 인게임 오버레이 재료 패널용 요약 (화면 스레드에서)
 
     private:
         friend class Core::Singleton<CalculatorManager>;   // GetInstance만 생성 · 소멸할 수 있게

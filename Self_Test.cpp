@@ -26,6 +26,9 @@ import LostArkMultiTool.Vision.ParadiseDetector;
 import LostArkMultiTool.Vision.ScreenCaptureService;
 import LostArkMultiTool.Vision.ShardBarDetector;
 import LostArkMultiTool.Vision.TooltipDetector;
+import LostArkMultiTool.Core.Renderer;
+import LostArkMultiTool.Views.DX11Renderer;
+import LostArkMultiTool.Views.OverlayWindow;
 import LostArkMultiTool.Vision.ScreenLayout;
 import LostArkMultiTool.Vision.ScreenWatcher;
 import LostArkMultiTool.Vision.TemplateMatcher;
@@ -633,6 +636,32 @@ namespace LostArkMultiTool::Core::SelfTest
         }
     }
 
+    namespace  // 인게임 오버레이 검사
+    {
+        constexpr Core::Color OVERLAY_TEST_CLEAR{ 0.0f, 0.0f, 0.0f, 0.0f };   // 투명 지우기 색
+
+        // 숨은 오버레이 창 + 투명 렌더러를 만들어 한 프레임 그려 봄 (DirectComposition · 미리 곱한 알파 스왑체인)
+        void CheckOverlay(Reporter& reporter)
+        {
+            try
+            {
+                Views::OverlayWindow window;                                                   // 숨은 투명 창
+                Views::DX11Renderer renderer{ window.GetNativeHandle(), window.GetDPI(), Views::SurfaceMode::SURFACE_TRANSPARENT };   // 투명 렌더러
+                const bool isBegun = renderer.BeginFrame();                                    // 그리기 시작
+                if (isBegun)
+                {
+                    renderer.Clear(OVERLAY_TEST_CLEAR);                                        // 투명으로
+                    renderer.EndFrame();                                                       // 내보내기
+                }
+                reporter.Check(isBegun, "인게임 오버레이 · 투명 창 · 렌더러 만들기");          // 결과
+            }
+            catch (const std::exception& error)
+            {
+                reporter.Check(false, "인게임 오버레이 · 투명 창 · 렌더러 만들기", error.what());   // 실패 이유
+            }
+        }
+    }
+
     bool IsRequested(std::wstring_view commandLine) noexcept
     {
         return commandLine.find(SELF_TEST_ARGUMENT) != std::wstring_view::npos;   // 인자 포함 여부
@@ -651,6 +680,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckLopecRegression(reporter, reportPath);          // lopec 회귀
             CheckVision(reporter);                               // 화면 인식 기반
             CheckVisionSamples(reporter, reportPath);            // 화면 인식 실제 화면 샘플
+            CheckOverlay(reporter);                              // 인게임 오버레이 투명 창
         }
         catch (const std::exception& exception)
         {

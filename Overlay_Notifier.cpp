@@ -45,9 +45,17 @@ namespace LostArkMultiTool::Views::UI
         OpenDialog(std::make_unique<DateRangeDialog>(m_platform, std::move(title), std::move(message), initialStart, initialEnd, std::move(onConfirm)));
     }
 
+    void OverlayNotifier::SetToastListener(std::function<bool(const std::wstring& message, Core::NoticeKind kind)> listener)
+    {
+        m_toastListener = std::move(listener);   // 인게임 오버레이 연결
+    }
+
     void OverlayNotifier::ShowToast(std::wstring message, Core::NoticeKind kind)
     {
-        // 창이 숨어 있으면 화면 안 토스트는 아무도 못 보므로 트레이 풍선 알림으로
+        const bool isShownOnOverlay{ m_toastListener && m_toastListener(message, kind) };   // 게임 위 오버레이에도 띄움
+
+        // 창이 숨어 있으면 화면 안 토스트는 아무도 못 보므로 트레이 풍선 알림으로 (오버레이에 띄웠으면 생략)
+        if (!m_platform.IsWindowShown() && isShownOnOverlay) return;
         if (!m_platform.IsWindowShown())
         {
             m_platform.ShowTrayBalloon(TRAY_BALLOON_TITLE, message, kind);
