@@ -568,7 +568,7 @@ namespace LostArkMultiTool::Core::SelfTest
             VisionSample{ L"tooltip_guard_top.png", 0.5, 0.5, "Guard/top", 363321 },    // 수호석 결정 툴팁
             VisionSample{ L"tooltip_leap_top.png", 0.5, 0.5, "Leap/top", 12501 },       // 위대한 돌파석 툴팁
             VisionSample{ L"paradise.webp", 0.85, 0.1, "paradise", 29492422 },          // 낙원 UI (현재 낙원력 숫자 근처)
-            VisionSample{ L"topbar_shard.webp", 0.55, 0.3, "Shard/level", 24615414 } }; // 상단바 운명의 파편
+            VisionSample{ L"topbar_shard.webp", 0.5, 0.9, "Shard/level", 24615414 } };  // 상단바 운명의 파편 (커서가 화면 아래쪽이어도 읽어야 함)
 
         // 실행 파일 위쪽 폴더에서 샘플 폴더 찾기
         [[nodiscard]] std::optional<std::filesystem::path> FindSampleFolder(const std::filesystem::path& start)

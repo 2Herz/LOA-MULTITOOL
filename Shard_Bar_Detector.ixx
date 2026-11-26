@@ -6,7 +6,7 @@ import LostArkMultiTool.Vision.ScreenWatcher;  // 인식기 인터페이스 가�
 
 // 게임 화면 맨 위 재화 줄에서 운명의 파편 수량 읽기
 // - 재화 줄에는 실링 · 골드 · 파편 등 숫자가 여러 개 → 숫자 오른쪽 아이콘이 보라색인 것을 파편으로 봄
-// - 커서 주변 OCR 영역에 맨 위 줄이 들어와야 읽힘 (화면 위쪽에 마우스를 올려 두면 됨)
+// - 커서가 게임 화면 어디서 멈추든 맨 위 재화 줄만 따로 잘라 2배로 키워 OCR (작은 숫자)
 // 결과 값 이름: OCRTextParser::MakeMaterialValueKey("Shard", TIER_BY_LEVEL) ("Shard/level")
 export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 내보내기 시작
 {

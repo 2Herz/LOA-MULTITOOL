@@ -11,7 +11,10 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
     namespace  // 이 파일 전용 상수 · 도우미
     {
         constexpr double TOP_BAR_HEIGHT_RATIO{ 0.06 };     // 화면 위에서 이 비율 안쪽만 재화 줄로 봄
-        constexpr double MERGE_GAP_RATIO{ 0.8 };           // 숫자 단어 사이가 글자 높이 * 이 값 이하면 한 숫자 (쉼표를 띄어쓰기로 읽은 경우)
+        constexpr double MERGE_GAP_RATIO{ 1.2 };           // 숫자 단어 사이가 글자 높이 * 이 값 이하면 한 숫자 (쉼표를 띄어쓰기로 읽은 경우)
+        constexpr int STRIP_OCR_SCALE{ 2 };                // 재화 줄 OCR 확대 배율 (작은 숫자)
+        constexpr int MAX_DIGITS{ 12 };                    // 재화 숫자 최대 자릿수 (이보다 길면 오인식)
+        constexpr int DECIMAL_BASE{ 10 };                  // 십진수
         constexpr int ICON_GAP{ 2 };                       // 숫자 오른쪽 끝과 아이콘 사이 여백
         constexpr double ICON_WIDTH_RATIO{ 1.5 };          // 아이콘 영역 가로 = 글자 높이 * 이 값
         constexpr int MIN_ICON_BRIGHTNESS{ 80 };           // 이보다 어두운 픽셀(바탕)은 색 평균에서 뺌
@@ -33,6 +36,21 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 if (value != L',' && value != L'.') return false;            // 다른 글자가 섞임
             }
             return hasDigit;                                                  // 숫자가 하나라도 있어야 함
+        }
+
+        // 덩어리 안 숫자만 이어 붙이기 ("24 615414" · "24,615 414" → 24615414, 재화 사이에는 아이콘이 있어 다른 재화와 붙지 않음)
+        [[nodiscard]] std::optional<std::int64_t> ParseTokenDigits(std::wstring_view text) noexcept
+        {
+            std::int64_t value = 0;                                           // 결과
+            int digitCount = 0;                                               // 자릿수
+            for (wchar_t character : text)                                    // 글자마다
+            {
+                if (character < L'0' || character > L'9') continue;          // 숫자만
+                if (++digitCount > MAX_DIGITS) return std::nullopt;          // 너무 긺 → 오인식
+                value = value * DECIMAL_BASE + (character - L'0');           // 자릿수 추가
+            }
+            if (digitCount == 0) return std::nullopt;                         // 숫자가 없음
+            return value;                                                     // 숫자
         }
 
         // 숫자 덩어리 (가까운 숫자 단어를 이은 것)
@@ -92,14 +110,15 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
     {
         const int barBottom = static_cast<int>(frame.GetHeight() * TOP_BAR_HEIGHT_RATIO);              // 재화 줄 아래 끝
         std::vector<NumberToken> words;                                                                // 재화 줄의 숫자 단어들
-        for (const TextLine& line : context.m_hoverText.m_lines)                                       // 줄마다
+        const PixelRect strip = ClampRect(PixelRect{ 0, 0, frame.GetWidth(), barBottom }, frame.GetWidth(), frame.GetHeight());   // 맨 위 재화 줄 (커서 위치와 상관없이)
+        const auto stripText = context.m_text.Recognize(frame.Crop(strip), STRIP_OCR_SCALE);           // 작은 글자라 키워서 OCR
+        if (!stripText) return std::nullopt;                                                           // OCR 실패
+        for (const TextLine& line : stripText->m_lines)                                                // 줄마다
         {
             for (const TextWord& word : line.m_words)                                                  // 단어마다
             {
-                const PixelRect bounds{ word.m_bounds.m_x + context.m_hoverArea.m_x, word.m_bounds.m_y + context.m_hoverArea.m_y,
-                    word.m_bounds.m_width, word.m_bounds.m_height };                                   // 프레임 기준 위치
-                if (bounds.GetBottom() > barBottom || !IsNumberWord(word.m_text)) continue;            // 재화 줄의 숫자만
-                words.push_back(NumberToken{ word.m_text, bounds });                                   // 모음
+                if (!IsNumberWord(word.m_text)) continue;                                              // 숫자만
+                words.push_back(NumberToken{ word.m_text, word.m_bounds });                            // 모음 (재화 줄은 프레임 왼쪽 위에서 시작 → 위치 그대로 프레임 기준)
             }
         }
         std::ranges::sort(words, {}, [](const NumberToken& token) { return token.m_bounds.m_x; });     // 왼쪽부터
@@ -122,8 +141,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         for (const NumberToken& token : tokens)                                                        // 덩어리마다
         {
             if (!IsPurpleIcon(frame, token.m_bounds)) continue;                                        // 파편 아이콘이 아님
-            const auto value = OCRTextParser::ParseGroupedNumber(token.m_text);                       // 숫자
-            if (!value) continue;                                                                      // 묶음이 이상하면 버림
+            const auto value = ParseTokenDigits(token.m_text);                                        // 숫자 (OCR이 쉼표 자리를 엉뚱하게 끊어도 숫자만 이음)
+            if (!value) continue;                                                                      // 숫자가 없거나 너무 긺
             ScanResult result;                                                                         // 결과
             result.m_values.push_back(ScanValue{
                 OCRTextParser::MakeMaterialValueKey(SHARD_KEY, OCRTextParser::MaterialTierHint::TIER_BY_LEVEL), *value });   // "Shard/level"
