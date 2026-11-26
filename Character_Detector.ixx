@@ -40,6 +40,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::optional<double> m_itemLevel;                          // 캐릭터 정보 창의 장착 아이템 레벨 (창이 없거나 못 읽으면 nullopt)
         std::wstring m_unknownName;                                 // 이름 자리에서 읽었지만 원정대와 안 맞은 글자 (직접 고를 때 별칭으로 기억)
         bool m_hasUnknownPlate{};                                   // 내 이름표는 보이지만 누군지 모름 (모양은 기억 대기 → 직접 고르면 기억)
+        std::optional<PixelRect> m_plateBounds;                     // 찾은 내 이름표 위치 (설정 탭 미리 보기용)
     };
 
     // 별칭 하나 (OCR이 읽은 글자 → 원정대 캐릭터 이름)
@@ -65,8 +66,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
 
         [[nodiscard]] bool HasNames() const noexcept;                  // 비교할 이름이 있는지
 
-        // 프레임 한 장 읽기 (화면 전체 OCR, 감시 스레드에서만)
-        [[nodiscard]] CharacterReading Detect(const FrameImage& frame, const TextRecognizer& text) const;
+        // 프레임 한 장 읽기 (감시 스레드에서만), isFullScanAllowed가 false면 화면 전체 OCR(정보 창 찾기)을 건너뜀 (무거워서 가끔만)
+        [[nodiscard]] CharacterReading Detect(const FrameImage& frame, const TextRecognizer& text, bool isFullScanAllowed = true) const;
 
         // OCR 결과 해석 (위치는 프레임 기준, frame이 있으면 이름표 글자색도 봄, 자체 검사용으로도 공개)
         [[nodiscard]] CharacterReading Parse(const TextResult& text, int frameWidth, int frameHeight, const FrameImage* frame = nullptr) const;

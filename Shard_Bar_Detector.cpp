@@ -76,6 +76,11 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return SCREEN_NAME;   // "shard_bar"
     }
 
+    PixelRect ShardBarDetector::GetBarArea(int frameWidth, int frameHeight) noexcept
+    {
+        return ClampRect(PixelRect{ 0, 0, frameWidth, static_cast<int>(frameHeight * TOP_BAR_HEIGHT_RATIO) }, frameWidth, frameHeight);   // 맨 위 재화 줄
+    }
+
     bool ShardBarDetector::IsPurpleIcon(const FrameImage& frame, const PixelRect& numberBounds) noexcept
     {
         const int iconWidth = static_cast<int>(numberBounds.m_height * ICON_WIDTH_RATIO);             // 아이콘 가로
@@ -108,9 +113,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
     std::optional<ScanResult> ShardBarDetector::Detect(const FrameImage& frame, const DetectorContext& context)
     {
-        const int barBottom = static_cast<int>(frame.GetHeight() * TOP_BAR_HEIGHT_RATIO);              // 재화 줄 아래 끝
         std::vector<NumberToken> words;                                                                // 재화 줄의 숫자 단어들
-        const PixelRect strip = ClampRect(PixelRect{ 0, 0, frame.GetWidth(), barBottom }, frame.GetWidth(), frame.GetHeight());   // 맨 위 재화 줄 (커서 위치와 상관없이)
+        const PixelRect strip = GetBarArea(frame.GetWidth(), frame.GetHeight());                       // 맨 위 재화 줄 (커서 위치와 상관없이)
         const auto stripText = context.m_text.Recognize(frame.Crop(strip), STRIP_OCR_SCALE);           // 작은 글자라 키워서 OCR
         if (!stripText) return std::nullopt;                                                           // OCR 실패
         for (const TextLine& line : stripText->m_lines)                                                // 줄마다

@@ -175,6 +175,79 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_onEnabledChanged = std::move(onEnabledChanged);   // 알림 연결
     }
 
+    std::vector<OverlayElementInfo> OverlayManager::GetElements() const
+    {
+        std::vector<OverlayElementInfo> elements;                              // 결과
+        elements.reserve(m_panels.size());                                     // 자리 확보
+        for (const auto& panel : m_panels)                                     // 패널마다
+            elements.push_back(OverlayElementInfo{ panel->GetId(), panel->GetTitle(), panel->IsVisible(), panel->GetAlpha(), panel->GetBounds() });
+        return elements;                                                       // 목록
+    }
+
+    void OverlayManager::SetElementVisible(std::string_view id, bool isVisible)
+    {
+        OverlayPanel* panel = FindPanel(id);                                   // 패널
+        if (panel == nullptr || panel->IsVisible() == isVisible) return;       // 없거나 그대로
+        panel->SetVisible(isVisible);                                          // 바꾸기
+        SavePanelStates();                                                     // 저장
+    }
+
+    void OverlayManager::SetElementAlpha(std::string_view id, float alpha, bool isCommit)
+    {
+        OverlayPanel* panel = FindPanel(id);                                   // 패널
+        if (panel == nullptr) return;                                          // 없음
+        panel->SetAlpha(alpha);                                                // 바꾸기 (범위는 패널이 맞춤)
+        m_isDirty = true;                                                      // 다시 그리기
+        if (isCommit) SavePanelStates();                                       // 놓을 때 저장
+    }
+
+    void OverlayManager::ResetElementPosition(std::string_view id)
+    {
+        OverlayPanel* panel = FindPanel(id);                                   // 패널
+        if (panel == nullptr || !m_settings) return;                           // 없음
+        const float alpha = panel->GetAlpha();                                 // 투명도는 그대로 둠
+        const bool isVisible = panel->IsVisible();                             // 표시도 그대로
+        m_settings->RemovePanel(id);                                           // 저장된 위치 지움
+        m_isPlaced = false;                                                    // 다음에 보일 때 기본 위치로 놓음
+        if (GetOverlayArea().GetWidth() > 0.0f) PlaceDefaultPanels();          // 지금 크기를 알면 바로 놓음 (저장 포함)
+        panel->SetAlpha(alpha);                                                // 그대로
+        panel->SetVisible(isVisible);
+        if (m_isPlaced) SavePanelStates();                                     // 놓았으면 저장
+        m_isDirty = true;                                                      // 다시 그리기
+    }
+
+    float OverlayManager::GetBackOpacity() const noexcept
+    {
+        return m_settings ? m_settings->GetOpacity() : OverlaySettings::DEFAULT_OPACITY;   // 바탕 진하기
+    }
+
+    void OverlayManager::SetBackOpacity(float opacity, bool isCommit)
+    {
+        if (!m_settings) return;                                               // 초기화 전
+        m_settings->SetOpacity(opacity);                                       // 바꾸기 (범위는 설정이 맞춤)
+        m_isDirty = true;                                                      // 다시 그리기
+        if (isCommit) SaveSettings();                                          // 놓을 때 저장
+    }
+
+    bool OverlayManager::IsEditing() const noexcept
+    {
+        return m_window && m_window->IsInteractive();                          // 조작 모드
+    }
+
+    bool OverlayManager::SetEditing(bool isEditing)
+    {
+        if (!m_window) return false;                                           // 초기화 전
+        if (!isEditing) { SetInteractive(false); return true; }                // 잠금 (게임으로 돌아감)
+        if (!IsEnabled() || m_gameWindow == nullptr) return false;             // 오버레이가 꺼졌거나 게임이 없음
+        SetInteractive(true);                                                  // 편집 (오버레이 창이 맨 앞으로 → 게임 위에 보임)
+        return true;                                                           // 시작함
+    }
+
+    bool OverlayManager::IsGameFound() const noexcept
+    {
+        return m_gameWindow != nullptr;                                        // 따라가는 게임 창
+    }
+
     void OverlayManager::HandleHotkey(int hotkeyId)
     {
         if (hotkeyId == HOTKEY_TOGGLE_OVERLAY) SetEnabled(!IsEnabled());                             // 켜기 · 끄기
@@ -303,6 +376,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             const float height = state->m_height > 0.0f ? state->m_height : size.m_height; // 저장 세로
             panel->SetBounds(Core::RectF{ state->m_x, state->m_y, state->m_x + width, state->m_y + height });   // 위치
             panel->SetVisible(state->m_isVisible);                             // 표시
+            panel->SetAlpha(state->m_alpha);                                   // 요소 투명도
         }
         m_isPlaced = hasAllPositions;                                          // 모두 있으면 기본 배치 불필요
     }
@@ -344,7 +418,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         {
             const Core::RectF& bounds = panel->GetBounds();                    // 위치 · 크기
             m_settings->SetPanel(OverlayPanelState{ panel->GetId(), panel->IsVisible(), bounds.m_left, bounds.m_top,
-                bounds.GetWidth(), bounds.GetHeight() });                      // 상태
+                bounds.GetWidth(), bounds.GetHeight(), panel->GetAlpha() });   // 상태
         }
         SaveSettings();                                                        // 파일 저장
     }

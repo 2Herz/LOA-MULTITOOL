@@ -20,6 +20,16 @@ import LostArkMultiTool.Views.UI.ToastHost;  // 토스트 가져오기
 // 안전: 게임 프로세스 · 입력과 무관한 내 프로그램 창일 뿐 (평소엔 클릭이 그대로 게임으로 통과)
 export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내기 시작
 {
+    // 설정 탭에 보여 줄 요소(패널) 하나
+    struct OverlayElementInfo
+    {
+        std::string m_id;          // 패널 이름 ("character" 등)
+        std::wstring m_title;      // 표시 이름
+        bool m_isVisible{};        // 보이는지
+        float m_alpha{ 1.0f };     // 요소 투명도 (0.1 ~ 1)
+        Core::RectF m_bounds;      // 지금 위치 · 크기 (오버레이 기준 DIP, 아직 안 놓였으면 0)
+    };
+
     // 오버레이 매니저
     class OverlayManager final : public Core::Singleton<OverlayManager>
     {
@@ -39,6 +49,17 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         [[nodiscard]] bool ShowToast(const std::wstring& message, Core::NoticeKind kind);   // 게임 위 토스트 (보일 때만, 띄웠으면 true)
         [[nodiscard]] std::optional<std::wstring> TakeNotice();                             // 메인 창에 보여 줄 안내 (단축키 등록 실패 등)
         void SetOnEnabledChanged(std::function<void(bool isEnabled)> onEnabledChanged);     // 켜짐이 바뀌면 알림 (메뉴 버튼 글자)
+
+        // ===== 설정 탭 (UI 구성) =====
+        [[nodiscard]] std::vector<OverlayElementInfo> GetElements() const;                  // 요소 목록 (그리는 순서)
+        void SetElementVisible(std::string_view id, bool isVisible);                        // 요소 보이기 · 숨기기 (저장)
+        void SetElementAlpha(std::string_view id, float alpha, bool isCommit);              // 요소 투명도 (isCommit이면 저장)
+        void ResetElementPosition(std::string_view id);                                     // 기본 위치로 (저장)
+        [[nodiscard]] float GetBackOpacity() const noexcept;                                // 패널 바탕 진하기
+        void SetBackOpacity(float opacity, bool isCommit);                                  // 바탕 진하기 (isCommit이면 저장)
+        [[nodiscard]] bool IsEditing() const noexcept;                                      // 조작(편집) 모드인지
+        [[nodiscard]] bool SetEditing(bool isEditing);                                      // 편집 켜기 · 끄기 (게임이 없거나 오버레이가 꺼져 있으면 false)
+        [[nodiscard]] bool IsGameFound() const noexcept;                                    // 게임 창을 찾았는지
 
     private:
         friend class Core::Singleton<OverlayManager>;   // GetInstance만 생성 · 소멸

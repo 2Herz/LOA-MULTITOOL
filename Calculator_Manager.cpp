@@ -296,6 +296,8 @@ namespace LostArkMultiTool::Views
         m_screenWatcher->AddDetector(std::make_unique<Vision::ParadiseDetector>());   // 현재 낙원력
         PushCharacterNames();                                               // 현재 캐릭터 비교용 원정대 이름 · 별칭
         m_screenWatcher->SetCharacterScanEnabled(m_visionSettings->IsCharacterAutoEnabled());   // 자동 인식을 껐으면 캐릭터 확인 안 함
+        m_screenWatcher->SetCharacterInterval(std::chrono::seconds{ m_visionSettings->GetCharacterIntervalSeconds() });   // 확인 간격
+        m_screenWatcher->SetPreviewEnabled(m_isPreviewWanted);              // 설정 탭 미리 보기
         m_screenWatcher->Start();                                           // 감시 스레드 시작
     }
 
@@ -430,6 +432,102 @@ namespace LostArkMultiTool::Views
             summary.m_isOutdated = m_readItemLevel.has_value() && std::abs(*m_readItemLevel - summary.m_itemLevel) > ITEM_LEVEL_TOLERANCE;   // 저장된 정보가 옛날 것
         }
         return summary;   // 상태
+    }
+
+    bool CalculatorManager::IsVisionEnabled() const noexcept
+    {
+        return m_screenWatcher != nullptr;   // 감시 중이면 켜짐
+    }
+
+    void CalculatorManager::SetVisionEnabled(bool isEnabled)
+    {
+        if (IsVisionEnabled() == isEnabled) return;   // 그대로
+        SetVision(isEnabled);                         // 계산기 [화면 인식]과 같은 흐름 (설정 저장 · 안내)
+        if (m_view) m_view->SetVisionChecked(isEnabled);   // 계산기 체크 상자도 맞춤
+    }
+
+    void CalculatorManager::RestartVision()
+    {
+        if (!m_screenWatcher) return;                 // 꺼져 있으면 할 일 없음
+        m_screenWatcher.reset();                      // 감시 멈춤 (스레드 정리)
+        ClearCurrentCharacter();                      // 현재 캐릭터도 다시 확인
+        StartVision();                                // 처음부터 다시 (게임 창 다시 찾기)
+    }
+
+    void CalculatorManager::SetCharacterAutoEnabled(bool isEnabled)
+    {
+        if (!m_visionSettings || m_visionSettings->IsCharacterAutoEnabled() == isEnabled) return;   // 그대로
+        m_visionSettings->SetCharacterAutoEnabled(isEnabled);                         // 바꾸기
+        try
+        {
+            m_visionSettings->Save();                                                 // 저장
+        }
+        catch (const std::exception&)
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ VISION_SAVE_FAILED_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 저장 실패 안내
+        }
+        if (m_screenWatcher) m_screenWatcher->SetCharacterScanEnabled(isEnabled);     // 감시 반영 (끄면 화면 전체 OCR 안 함)
+    }
+
+    void CalculatorManager::ClearNameplateShapes()
+    {
+        if (m_nameplateMemory) m_nameplateMemory->Clear();   // 모두 지움 (저장 포함)
+    }
+
+    void CalculatorManager::ClearCharacterAliases()
+    {
+        if (!m_visionSettings) return;                       // 초기화 전
+        m_visionSettings->ClearCharacterAliases();           // 모두 지움
+        try
+        {
+            m_visionSettings->Save();                        // 저장
+        }
+        catch (const std::exception&)
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ VISION_SAVE_FAILED_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 저장 실패 안내
+        }
+        PushCharacterNames();                                // 감시기에도 반영
+    }
+
+    int CalculatorManager::GetCharacterIntervalSeconds() const noexcept
+    {
+        return m_visionSettings ? m_visionSettings->GetCharacterIntervalSeconds() : Vision::VisionSettings::DEFAULT_CHARACTER_INTERVAL_SECONDS;   // 확인 간격
+    }
+
+    void CalculatorManager::SetCharacterIntervalSeconds(int seconds)
+    {
+        if (!m_visionSettings) return;                                                // 초기화 전
+        m_visionSettings->SetCharacterIntervalSeconds(seconds);                       // 바꾸기 (범위 제한)
+        try
+        {
+            m_visionSettings->Save();                                                 // 저장
+        }
+        catch (const std::exception&)
+        {
+            m_context->m_notifier.ShowToast(std::wstring{ VISION_SAVE_FAILED_TEXT }, Core::NoticeKind::NOTICE_WARNING);   // 저장 실패 안내
+        }
+        if (m_screenWatcher) m_screenWatcher->SetCharacterInterval(std::chrono::seconds{ m_visionSettings->GetCharacterIntervalSeconds() });   // 감시 반영
+    }
+
+    void CalculatorManager::SetVisionPreview(bool isEnabled)
+    {
+        m_isPreviewWanted = isEnabled;                                    // 기억 (감시를 다시 만들 때도)
+        if (m_screenWatcher) m_screenWatcher->SetPreviewEnabled(isEnabled);   // 감시 반영
+    }
+
+    std::optional<VisionStatusSnapshot> CalculatorManager::GetVisionStatus() const
+    {
+        if (!m_screenWatcher) return std::nullopt;                        // 꺼짐
+        VisionStatusSnapshot snapshot;                                    // 결과
+        snapshot.m_status = m_screenWatcher->GetStatus();                 // 상태
+        snapshot.m_diagnostics = m_screenWatcher->GetDiagnostics();       // 진단
+        snapshot.m_topBar = Vision::ShardBarDetector::GetBarArea(snapshot.m_diagnostics.m_frameWidth, snapshot.m_diagnostics.m_frameHeight);   // 재화 줄
+        return snapshot;                                                  // 상태
+    }
+
+    std::size_t CalculatorManager::GetRosterCount() const noexcept
+    {
+        return m_characterNames.size();   // 원정대 캐릭터 수
     }
 
     // 확정된 인식 결과를 화면 스레드에서 반영 (모델은 이 스레드에서만 바뀜)

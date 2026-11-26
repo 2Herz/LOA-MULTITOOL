@@ -33,6 +33,9 @@ import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Views.DX11Renderer;
 import LostArkMultiTool.Views.OverlayWindow;
 import LostArkMultiTool.Views.MiniToolPanel;
+import LostArkMultiTool.Views.CharacterPanel;
+import LostArkMultiTool.Views.MainWindow;
+import LostArkMultiTool.Views.UI.Slider;
 import LostArkMultiTool.Views.OverlayPlaceholderTool;
 import LostArkMultiTool.Core.Input;
 import LostArkMultiTool.Core.ToolManager;
@@ -768,17 +771,62 @@ namespace LostArkMultiTool::Core::SelfTest
                 Views::OverlayWindow window;                                                   // 숨은 투명 창
                 Views::DX11Renderer renderer{ window.GetNativeHandle(), window.GetDPI(), Views::SurfaceMode::SURFACE_TRANSPARENT };   // 투명 렌더러
                 const bool isBegun = renderer.BeginFrame();                                    // 그리기 시작
+                constexpr int TEST_IMAGE_SIZE{ 4 };                                            // 검사 그림 크기
+                constexpr std::uint8_t TEST_CHANNEL{ 200 };                                    // 검사 그림 색
+                Core::ImageData image;                                                         // 검사 그림 (설정 탭 미리 보기 · 로고와 같은 경로)
+                image.m_width = TEST_IMAGE_SIZE;
+                image.m_height = TEST_IMAGE_SIZE;
+                image.m_version = 1;
+                image.m_pixels.assign(static_cast<std::size_t>(TEST_IMAGE_SIZE) * TEST_IMAGE_SIZE * 4, TEST_CHANNEL);   // 불투명한 회색
                 if (isBegun)
                 {
                     renderer.Clear(OVERLAY_TEST_CLEAR);                                        // 투명으로
+                    renderer.DrawImage(image, Core::RectF{ 0.0f, 0.0f, 32.0f, 32.0f }, 1.0f);  // 그림 그리기 (비트맵 만들기)
+                    renderer.DrawImage(image, Core::RectF{ 0.0f, 0.0f, 32.0f, 32.0f }, 0.5f);  // 같은 그림 다시 (캐시)
                     renderer.EndFrame();                                                       // 내보내기
                 }
-                reporter.Check(isBegun, "인게임 오버레이 · 투명 창 · 렌더러 만들기");          // 결과
+                reporter.Check(isBegun, "인게임 오버레이 · 투명 창 · 렌더러 만들기 · 그림 그리기");   // 결과
             }
             catch (const std::exception& error)
             {
                 reporter.Check(false, "인게임 오버레이 · 투명 창 · 렌더러 만들기", error.what());   // 실패 이유
             }
+        }
+
+        // 설정 탭 부품 · 요소 투명도 · 프로그램 아이콘 (v1.9.3)
+        void CheckOverlaySetup(Reporter& reporter)
+        {
+            // 값 막대: 10 ~ 100 · 5 단위, 가로 100 + 손잡이 여백
+            constexpr double SLIDER_MIN{ 10.0 };                                           // 최솟값
+            constexpr double SLIDER_MAX{ 100.0 };                                          // 최댓값
+            constexpr double SLIDER_STEP{ 5.0 };                                           // 단위
+            constexpr float SLIDER_LEFT{ 0.0f };                                           // 부품 왼쪽
+            constexpr float SLIDER_RIGHT{ 114.0f };                                        // 부품 오른쪽 (손잡이 반지름 7 × 2 + 막대 100)
+            double committed = 0.0;                                                        // 놓을 때 받은 값
+            Views::UI::Slider slider{ SLIDER_MIN, SLIDER_MAX, SLIDER_STEP, nullptr, [&committed](double value) { committed = value; } };
+            slider.SetBounds(Core::RectF{ SLIDER_LEFT, 0.0f, SLIDER_RIGHT, 32.0f });       // 위치
+            const bool isEnds = slider.ValueFromX(-50.0f) == SLIDER_MIN && slider.ValueFromX(500.0f) == SLIDER_MAX;   // 범위 밖은 끝 값
+            const bool isMiddle = slider.ValueFromX(7.0f + 50.0f) == 55.0;                 // 가운데 = 55
+            const bool isStep = slider.ValueFromX(7.0f + 51.0f) == 55.0 && slider.ValueFromX(7.0f + 54.0f) == 60.0;   // 5 단위 반올림
+            slider.SetValue(83.0);                                                         // 코드로 바꾸기 (85로 맞춤)
+            const bool isNormalized = slider.GetValue() == 85.0;
+            const bool isKey = slider.OnKeyDown(Core::KeyEvent{ Core::Key::KEY_RIGHT }) && slider.GetValue() == 90.0 && committed == 90.0;   // → 키 = 한 칸 + 저장
+            reporter.Check(isEnds && isMiddle && isStep && isNormalized && isKey, "설정 탭 · 값 막대 (범위 · 5 단위 · 키 · 놓을 때 저장)");
+
+            // 요소 투명도 (패널 전체, 10% ~ 100%)
+            Views::CharacterPanel panel{ nullptr, nullptr, nullptr };                      // 아무 패널
+            panel.SetAlpha(0.0f);                                                          // 너무 작음
+            const bool isLow = std::abs(panel.GetAlpha() - 0.1f) < 0.001f;                 // 10%로
+            panel.SetAlpha(2.0f);                                                          // 너무 큼
+            const bool isHigh = std::abs(panel.GetAlpha() - 1.0f) < 0.001f;                // 100%로
+            reporter.Check(isLow && isHigh, "설정 탭 · 요소 투명도 범위 (10% ~ 100%)");
+
+            // 프로그램 아이콘 (exe 리소스 → 메뉴 로고 그림)
+            constexpr int ICON_PIXELS{ 64 };                                               // 읽을 크기
+            const auto icon = Views::MainWindow::LoadProgramIconImage(ICON_PIXELS);        // 아이콘 그림
+            const bool hasOpaque = icon && std::ranges::any_of(std::views::iota(std::size_t{ 0 }, icon->m_pixels.size() / 4),
+                [&icon](std::size_t index) { return icon->m_pixels[index * 4 + 3] != 0; }); // 보이는 픽셀이 있음
+            reporter.Check(icon && icon->m_width == ICON_PIXELS && icon->m_height == ICON_PIXELS && hasOpaque, "프로그램 아이콘 (exe 리소스 64×64)");
         }
 
         // 미니 모드 패널: ◀ 처음 → 끝, ▶ 끝 → 처음 순환 + 안내 탭은 입력을 받지 않음 (창 없이 패널만)
@@ -836,6 +884,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckCharacterSamples(reporter, reportPath);         // 현재 캐릭터 실제 화면 샘플
             CheckOverlay(reporter);                              // 인게임 오버레이 투명 창
             CheckMiniToolPanel(reporter);                        // 인게임 오버레이 미니 모드
+            CheckOverlaySetup(reporter);                         // 설정 탭 부품 · 요소 투명도 · 아이콘
         }
         catch (const std::exception& exception)
         {

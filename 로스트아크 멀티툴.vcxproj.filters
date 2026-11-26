@@ -287,6 +287,9 @@
     <Filter Include="4. 뷰\14. 이관계산기">
       <UniqueIdentifier>{7d204e3c-9165-4fa0-bc83-4e5f6a7b8c93}</UniqueIdentifier>
     </Filter>
+    <Filter Include="4. 뷰\4. UI\13. 슬라이더">
+      <UniqueIdentifier>{7c2a66c0-0c60-4d13-84e3-40f09bee8aa4}</UniqueIdentifier>
+    </Filter>
     <Filter Include="4. 뷰\15. 오버레이">
       <UniqueIdentifier>{2bc4abbd-2dcd-45ae-9b53-62d46a21bb7b}</UniqueIdentifier>
     </Filter>
@@ -1116,6 +1119,24 @@
     </ClCompile>
     <ClCompile Include="Transfer_View.cpp">
       <Filter>4. 뷰\14. 이관계산기</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_View.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_View.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_Manager.ixx">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_Manager.cpp">
+      <Filter>4. 뷰\15. 오버레이</Filter>
+    </ClCompile>
+    <ClCompile Include="Slider.ixx">
+      <Filter>4. 뷰\4. UI\13. 슬라이더</Filter>
+    </ClCompile>
+    <ClCompile Include="Slider.cpp">
+      <Filter>4. 뷰\4. UI\13. 슬라이더</Filter>
     </ClCompile>
     <ClCompile Include="Nameplate_Memory.ixx">
       <Filter>3. 서비스\17. 화면인식</Filter>

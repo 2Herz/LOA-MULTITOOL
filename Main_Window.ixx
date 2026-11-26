@@ -60,6 +60,7 @@ export namespace LostArkMultiTool::Views
 
         [[nodiscard]] void* GetNativeHandle() const noexcept;   // HWND (렌더러가 스왑체인을 만들 때 사용)
         [[nodiscard]] float GetDPI() const noexcept;
+        [[nodiscard]] static std::optional<Core::ImageData> LoadProgramIconImage(int pixelSize);   // exe에 넣은 프로그램 아이콘을 그림으로 (메뉴 로고용, 못 읽으면 nullopt)
         [[nodiscard]] PixelSize GetClientPixelSize() const;
         [[nodiscard]] bool IsMinimized() const noexcept;
         [[nodiscard]] int GetExitCode() const noexcept;

@@ -66,6 +66,14 @@ namespace LostArkMultiTool::Views
 
         // ===== 프로그램 아이콘 =====
         constexpr int FIRST_ICON_INDEX{ 0 };                              // exe에 넣은 첫 번째 아이콘
+        constexpr WORD PROGRAM_ICON_RESOURCE_ID{ 1 };                     // App_Version.rc의 APP_ICON_ID (프로그램 아이콘)
+        constexpr WORD ICON_BITS_PER_PIXEL{ 32 };                         // BGRA
+        constexpr WORD ICON_PLANES{ 1 };                                  // 비트맵 면 수
+        constexpr int ICON_BYTES_PER_PIXEL{ 4 };                          // B · G · R · A
+        constexpr int ICON_ALPHA_CHANNEL{ 3 };                            // 알파 위치
+        constexpr int ICON_COLOR_CHANNELS{ 3 };                           // 색 채널 수 (B · G · R)
+        constexpr int ICON_CHANNEL_MAX{ 255 };                            // 채널 최댓값
+        constexpr std::uint64_t ICON_IMAGE_VERSION{ 1 };                  // 아이콘 그림은 바뀌지 않음
         constexpr UINT ICON_EXTRACT_COUNT{ 1 };
         constexpr DWORD MAX_PATH_LENGTH{ 32768 };                         // Windows 긴 경로 최대 길이 (글자 수)
 
@@ -727,6 +735,50 @@ namespace LostArkMultiTool::Views
         trayData.uFlags = NIF_TIP;
         CopyToFixedText(trayData.szTip, m_trayTooltip);
         ::Shell_NotifyIconW(NIM_MODIFY, &trayData);
+    }
+
+    // exe에 넣은 프로그램 아이콘 → BGRA 그림 (미리 곱한 알파, 메뉴 로고에 그림)
+    std::optional<Core::ImageData> MainWindow::LoadProgramIconImage(int pixelSize)
+    {
+        if (pixelSize <= 0) return std::nullopt;                                                          // 크기 이상
+        HICON icon{ static_cast<HICON>(::LoadImageW(::GetModuleHandleW(nullptr), MAKEINTRESOURCEW(PROGRAM_ICON_RESOURCE_ID), IMAGE_ICON,
+            pixelSize, pixelSize, LR_DEFAULTCOLOR)) };                                                    // 가장 가까운 크기 아이콘
+        if (icon == nullptr) return std::nullopt;                                                         // 리소스 없음
+        ICONINFO info{};                                                                                  // 아이콘 비트맵
+        const bool hasInfo{ ::GetIconInfo(icon, &info) != FALSE };                                        // 비트맵 얻기
+        std::optional<Core::ImageData> result;                                                            // 결과
+        if (hasInfo && info.hbmColor != nullptr)                                                          // 색 비트맵이 있으면
+        {
+            BITMAPINFO bitmapInfo{};                                                                      // 받을 형식
+            bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);                                       // 머리 크기
+            bitmapInfo.bmiHeader.biWidth = pixelSize;                                                     // 가로
+            bitmapInfo.bmiHeader.biHeight = -pixelSize;                                                   // 음수 = 위에서 아래로
+            bitmapInfo.bmiHeader.biPlanes = ICON_PLANES;                                                  // 면
+            bitmapInfo.bmiHeader.biBitCount = ICON_BITS_PER_PIXEL;                                        // 32비트
+            bitmapInfo.bmiHeader.biCompression = BI_RGB;                                                  // 압축 없음
+            Core::ImageData image;                                                                        // 그림
+            image.m_width = pixelSize;                                                                    // 가로
+            image.m_height = pixelSize;                                                                   // 세로
+            image.m_version = ICON_IMAGE_VERSION;                                                         // 버전
+            image.m_pixels.resize(static_cast<std::size_t>(pixelSize) * pixelSize * ICON_BYTES_PER_PIXEL);   // 자리
+            HDC screen{ ::GetDC(nullptr) };                                                               // 화면 DC
+            const int lines{ ::GetDIBits(screen, info.hbmColor, 0, static_cast<UINT>(pixelSize), image.m_pixels.data(), &bitmapInfo, DIB_RGB_COLORS) };   // 픽셀 복사
+            ::ReleaseDC(nullptr, screen);                                                                 // DC 놓기
+            if (lines == pixelSize)                                                                       // 다 읽었으면
+            {
+                for (std::size_t offset{}; offset < image.m_pixels.size(); offset += ICON_BYTES_PER_PIXEL)   // 픽셀마다 알파를 색에 미리 곱함
+                {
+                    const int alpha{ image.m_pixels[offset + ICON_ALPHA_CHANNEL] };                       // 알파
+                    for (int channel{}; channel < ICON_COLOR_CHANNELS; ++channel)                         // B · G · R
+                        image.m_pixels[offset + channel] = static_cast<std::uint8_t>(image.m_pixels[offset + channel] * alpha / ICON_CHANNEL_MAX);
+                }
+                result = std::move(image);                                                                // 성공
+            }
+        }
+        if (info.hbmColor != nullptr) ::DeleteObject(info.hbmColor);                                      // 비트맵 해제 (GetIconInfo가 만든 복사본)
+        if (info.hbmMask != nullptr) ::DeleteObject(info.hbmMask);
+        ::DestroyIcon(icon);                                                                              // 아이콘 해제
+        return result;                                                                                    // 그림 (실패하면 nullopt)
     }
 
     // exe에 넣은 아이콘(리소스)을 창 · 트레이에 사용, 없으면 Windows 기본 프로그램 아이콘 (원본 APPIcon과 같은 순서)

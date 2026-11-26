@@ -22,9 +22,59 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int HOVER_HALF_WIDTH{ 700 };                            // 커서 주변 OCR 영역 가로 반폭 (툴팁 너비 + 여유)
         constexpr int HOVER_UP{ 500 };                                    // 커서 위로 볼 높이 (위로 뜨는 툴팁 · 상단바)
         constexpr int HOVER_DOWN{ 450 };                                  // 커서 아래로 볼 높이
-        constexpr std::chrono::milliseconds CHARACTER_SCAN_INTERVAL{ 2000 };   // 현재 캐릭터 확인 간격 (화면 전체 OCR이라 가끔만)
-        constexpr std::chrono::milliseconds CHARACTER_STEADY_INTERVAL{ 4000 }; // 같은 캐릭터를 계속 확인하는 중이면 더 드물게 (CPU 절약)
+        constexpr std::chrono::milliseconds MIN_CHARACTER_INTERVAL{ 500 };    // 캐릭터 확인 간격 하한 (CPU 보호)
+        constexpr int STEADY_INTERVAL_FACTOR{ 2 };                            // 같은 캐릭터를 계속 확인하는 중이면 간격 × 2 (CPU 절약)
         constexpr std::chrono::milliseconds CHARACTER_LOADING_INTERVAL{ 1000 };// 로딩 화면이면 더 자주 (새 캐릭터를 빨리 알아봄)
+        constexpr std::chrono::milliseconds PREVIEW_INTERVAL{ 1000 };         // 미리 보기 그림 갱신 간격
+        constexpr std::chrono::milliseconds FULL_SCAN_INTERVAL{ 6000 };       // 화면 전체 OCR(정보 창 찾기) 간격 (1초 안팎으로 무거워서 가끔만)
+        constexpr int PREVIEW_MAX_WIDTH{ 640 };                               // 미리 보기 그림 가로 상한 (줄여서 메모리 · 시간 절약)
+        constexpr double AVERAGE_WEIGHT{ 0.3 };                               // 처리 시간 평균: 새 값 비중 (지수 이동 평균)
+        constexpr double MILLISECONDS_PER_SECOND{ 1000.0 };                   // 초 → 밀리초
+
+        // 프레임을 가로 PREVIEW_MAX_WIDTH 이하로 줄인 그림 (가까운 픽셀 고르기, 알파는 불투명)
+        [[nodiscard]] std::shared_ptr<const Core::ImageData> MakePreview(const FrameImage& frame, std::uint64_t version)
+        {
+            const int sourceWidth = frame.GetWidth();                          // 원래 가로
+            const int sourceHeight = frame.GetHeight();                        // 원래 세로
+            if (sourceWidth <= 0 || sourceHeight <= 0) return nullptr;         // 빈 프레임
+            const int width = std::min(sourceWidth, PREVIEW_MAX_WIDTH);        // 줄인 가로
+            const int height = std::max(1, static_cast<int>(static_cast<long long>(sourceHeight) * width / sourceWidth));   // 비율 유지
+            auto image = std::make_shared<Core::ImageData>();                   // 결과
+            image->m_width = width;                                            // 가로
+            image->m_height = height;                                          // 세로
+            image->m_version = version;                                        // 버전 (렌더러 캐시용)
+            image->m_pixels.resize(static_cast<std::size_t>(width) * height * FrameImage::BYTES_PER_PIXEL);   // 자리
+            const auto source = frame.GetPixels();                             // 원래 픽셀
+            constexpr int ALPHA_CHANNEL{ 3 };                                  // BGRA 알파 위치
+            constexpr std::uint8_t OPAQUE_ALPHA{ 255 };                        // 불투명
+            for (int y = 0; y < height; ++y)                                   // 줄마다
+            {
+                const int sourceY = static_cast<int>(static_cast<long long>(y) * sourceHeight / height);   // 원래 줄
+                for (int x = 0; x < width; ++x)                                // 칸마다
+                {
+                    const int sourceX = static_cast<int>(static_cast<long long>(x) * sourceWidth / width);   // 원래 칸
+                    const std::size_t from = (static_cast<std::size_t>(sourceY) * sourceWidth + sourceX) * FrameImage::BYTES_PER_PIXEL;   // 원래 위치
+                    const std::size_t to = (static_cast<std::size_t>(y) * width + x) * FrameImage::BYTES_PER_PIXEL;                      // 새 위치
+                    std::copy_n(source.begin() + static_cast<std::ptrdiff_t>(from), FrameImage::BYTES_PER_PIXEL, image->m_pixels.begin() + static_cast<std::ptrdiff_t>(to));   // BGRA 복사
+                    image->m_pixels[to + ALPHA_CHANNEL] = OPAQUE_ALPHA;        // 불투명 (미리 곱한 알파 그대로)
+                }
+            }
+            return image;   // 미리 보기
+        }
+
+        // 결과 → 설정 탭에 보일 설명 ("tooltip · Dest/top = 163439")
+        [[nodiscard]] std::string DescribeResult(const ScanResult& result)
+        {
+            std::string text = result.m_screenName;                            // 화면 이름
+            for (const ScanValue& value : result.m_values) text += std::format(" · {} = {}", value.m_key, value.m_value);   // 값들
+            return text;   // 설명
+        }
+
+        // 지수 이동 평균 (처음 값이면 그대로)
+        [[nodiscard]] double Average(double previous, double sample) noexcept
+        {
+            return previous <= 0.0 ? sample : previous + (sample - previous) * AVERAGE_WEIGHT;   // 평균
+        }
         constexpr int OCR_SCALE{ 1 };                                     // OCR 확대 배율 (1080p 글자는 원본 크기가 가장 잘 읽힘)
         constexpr std::string_view NO_GAME_TEXT{ "로스트아크 창을 찾지 못했어요" };                 // 게임 없음 안내
         constexpr std::string_view BACKGROUND_TEXT{ "게임이 맨 앞에 있을 때만 읽어요" };              // 쉬는 중 안내
@@ -117,6 +167,22 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         m_isCharacterScanEnabled = isEnabled;   // 다음 주기부터
     }
 
+    void ScreenWatcher::SetCharacterInterval(std::chrono::milliseconds interval) noexcept
+    {
+        m_characterIntervalMs = std::max(interval, MIN_CHARACTER_INTERVAL).count();   // 하한 적용 (다음 확인부터)
+    }
+
+    void ScreenWatcher::SetPreviewEnabled(bool isEnabled) noexcept
+    {
+        m_isPreviewEnabled = isEnabled;   // 다음 주기부터
+    }
+
+    WatcherDiagnostics ScreenWatcher::GetDiagnostics() const
+    {
+        const std::scoped_lock lock{ m_mutex };   // 보호
+        return m_diagnostics;                     // 복사본 (그림은 공유 포인터라 가벼움)
+    }
+
     void ScreenWatcher::Start()
     {
         if (m_isRunning) return;                                                      // 이미 감시 중
@@ -191,6 +257,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         auto nextCharacterScan = std::chrono::steady_clock::now();                 // 다음 캐릭터 확인 시각
         bool wasLoading = false;                                                   // 직전 확인이 로딩 화면이었는지 (로딩 알림은 한 번만)
         std::string lastCharacterName;                                             // 마지막으로 확정한 캐릭터 (같으면 확인 간격을 늘림)
+        auto nextPreview = std::chrono::steady_clock::now();                       // 다음 미리 보기 그림 시각
+        auto nextFullScan = std::chrono::steady_clock::now();                      // 다음 화면 전체 OCR 시각
+        std::uint64_t previewVersion = 0;                                          // 미리 보기 그림 버전
         void* gameWindow = nullptr;                                                // 지난번에 찾은 게임 창
         std::optional<PixelPoint> lastCursor;                                      // 지난 주기 커서 (프레임 기준)
         std::chrono::milliseconds restTime{};                                      // 커서가 멈춘 시간
@@ -247,12 +316,22 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 {
                     const std::scoped_lock lock{ m_mutex };                        // 상태 보호
                     m_status.m_lastFrameAt = std::chrono::system_clock::now();     // 마지막 프레임 시각
+                    m_diagnostics.m_frameWidth = frame->GetWidth();                // 프레임 크기
+                    m_diagnostics.m_frameHeight = frame->GetHeight();
+                }
+                if (frame && m_isPreviewEnabled && std::chrono::steady_clock::now() >= nextPreview)   // 미리 보기 그림 (설정 탭이 보일 때만)
+                {
+                    nextPreview = std::chrono::steady_clock::now() + PREVIEW_INTERVAL;   // 다음 시각
+                    auto preview = MakePreview(*frame, ++previewVersion);          // 줄인 그림 (잠금 밖에서 만듦)
+                    const std::scoped_lock lock{ m_mutex };                        // 보호
+                    m_diagnostics.m_preview = std::move(preview);                  // 교체
                 }
 
                 const auto steadyNow = std::chrono::steady_clock::now();           // 지금 (캐릭터 확인 주기용)
                 if (frame && m_isCharacterScanEnabled && steadyNow >= nextCharacterScan)   // 캐릭터 확인할 때 (커서와 상관없이)
                 {
-                    nextCharacterScan = steadyNow + CHARACTER_SCAN_INTERVAL;       // 다음 확인 시각
+                    const std::chrono::milliseconds characterInterval{ m_characterIntervalMs.load() };   // 설정한 간격
+                    nextCharacterScan = steadyNow + characterInterval;             // 다음 확인 시각
                     {
                         const std::scoped_lock lock{ m_mutex };                    // 이름 보호
                         if (!characterDetector || characterNamesVersion != m_characterNamesVersion)   // 이름이 바뀌었으면
@@ -261,7 +340,16 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                             characterNamesVersion = m_characterNamesVersion;       // 버전 기록
                         }
                     }
-                    const CharacterReading reading = characterDetector->Detect(*frame, text);   // 화면 전체 읽기
+                    const auto scanStart = std::chrono::steady_clock::now();      // 처리 시간 재기
+                    const bool isFullScanAllowed = steadyNow >= nextFullScan;      // 화면 전체 OCR 해도 되는지
+                    const CharacterReading reading = characterDetector->Detect(*frame, text, isFullScanAllowed);   // 로딩 · 이름표 (+ 가끔 화면 전체)
+                    if (isFullScanAllowed && reading.m_signal != CharacterSignal::SIGNAL_NAME) nextFullScan = steadyNow + FULL_SCAN_INTERVAL;   // 화면 전체를 봤으면 한동안 쉼 (이름표 모양으로 알아보면 화면 전체는 안 봄)
+                    {
+                        const std::scoped_lock lock{ m_mutex };                    // 보호
+                        const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - scanStart).count() * MILLISECONDS_PER_SECOND;   // 밀리초
+                        m_diagnostics.m_characterScanMs = Average(m_diagnostics.m_characterScanMs, elapsed);   // 평균
+                        if (reading.m_signal != CharacterSignal::SIGNAL_LOADING) m_diagnostics.m_nameplate = reading.m_plateBounds;   // 이름표 위치 (없으면 지움)
+                    }
                     ScanResult characterResult;                                    // 결과
                     characterResult.m_capturedAt = std::chrono::system_clock::now();   // 시각
                     if (reading.m_signal == CharacterSignal::SIGNAL_LOADING)       // 로딩 화면 → 캐릭터가 바뀌었을 수 있음
@@ -292,7 +380,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                             const std::scoped_lock lock{ m_mutex };                // 큐 보호
                             m_results.push_back(std::move(*confirmed));            // 큐에 추가
                         }
-                        if (isSameAsConfirmed) nextCharacterScan = steadyNow + CHARACTER_STEADY_INTERVAL;   // 같은 캐릭터면 천천히
+                        if (isSameAsConfirmed) nextCharacterScan = steadyNow + characterInterval * STEADY_INTERVAL_FACTOR;   // 같은 캐릭터면 천천히
                     }
                     else                                                           // 못 찾음 → 연속 횟수만 초기화 (지금 캐릭터는 유지)
                     {
@@ -314,6 +402,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 if (isReadyToScan && frame)                                        // 멈춘 커서 + 프레임이 있으면
                 {
                     ++scansThisRest;                                               // 읽은 횟수
+                    const auto hoverStart = std::chrono::steady_clock::now();     // 처리 시간 재기
                     const PixelRect hoverArea = GetHoverArea(*cursor, frame->GetWidth(), frame->GetHeight());   // 커서 주변
                     const auto hoverText = text.Recognize(frame->Crop(hoverArea), OCR_SCALE);   // 커서 주변 OCR
                     const TextResult emptyText;                                    // OCR 실패 때 넘길 빈 결과
@@ -334,6 +423,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                             if (auto confirmed = confirmer.Feed(*result))          // 확정되면
                             {
                                 const std::scoped_lock lock{ m_mutex };            // 큐 보호
+                                m_diagnostics.m_lastRead = DescribeResult(*confirmed);   // 마지막으로 읽은 값
+                                m_diagnostics.m_lastReadAt = confirmed->m_capturedAt;    // 그 시각
                                 m_results.push_back(std::move(*confirmed));        // 큐에 추가
                             }
                         }
@@ -342,6 +433,10 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                             SetStatus(WatcherState::WATCHER_ERROR, error.what());  // 인식기 오류 안내 (다른 인식기는 계속)
                         }
                     }
+                    const std::scoped_lock lock{ m_mutex };                        // 보호
+                    const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - hoverStart).count() * MILLISECONDS_PER_SECOND;   // 밀리초
+                    m_diagnostics.m_hoverScanMs = Average(m_diagnostics.m_hoverScanMs, elapsed);   // 커서 주변 읽기 평균
+                    m_diagnostics.m_hoverArea = hoverArea;                         // 읽은 영역
                 }
             }
 

@@ -25,6 +25,9 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         [[nodiscard]] bool IsVisible() const noexcept;                // 보이는지
         void SetVisible(bool isVisible) noexcept;                     // 보이기 · 숨기기
         [[nodiscard]] Core::SizeF GetDefaultSize() const noexcept;    // 기본 크기
+        [[nodiscard]] const std::wstring& GetTitle() const noexcept;  // 기본 제목 (설정 탭 목록용)
+        [[nodiscard]] float GetAlpha() const noexcept;                // 요소 투명도 (0.1 ~ 1)
+        void SetAlpha(float alpha) noexcept;                          // 요소 투명도 바꾸기 (패널 전체 · 글자까지)
         void ClampInto(const Core::RectF& area) noexcept;             // 오버레이 영역 밖으로 나가지 않게
 
         virtual void Update(double deltaSeconds);                                                 // 프레임 갱신 (기본: 할 일 없음)
@@ -58,6 +61,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         bool m_isHoverHeader{};           // 머리말 위에 마우스
         bool m_isChanged{};               // 옮김 · 닫음 · 크기 바뀜
         bool m_isInteractive{};           // 마지막으로 그릴 때 조작 모드였는지 (내용이 단추를 보일지 정함)
+        float m_alpha{ 1.0f };            // 요소 투명도
         Core::PointF m_dragOffset;        // 끌기 시작점과 패널 왼쪽 위의 차이
     };
 }

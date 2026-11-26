@@ -20,6 +20,9 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
     {
     public:
         static constexpr std::size_t MAX_CHARACTER_ALIASES{ 64 };   // 별칭 최대 개수 (넘으면 오래된 것부터 지움)
+        static constexpr int DEFAULT_CHARACTER_INTERVAL_SECONDS{ 2 };   // 현재 캐릭터 확인 간격 기본 (초)
+        static constexpr int MIN_CHARACTER_INTERVAL_SECONDS{ 1 };       // 간격 하한
+        static constexpr int MAX_CHARACTER_INTERVAL_SECONDS{ 10 };      // 간격 상한
 
         VisionSettings();   // 생성자 (저장 파일을 읽음, 없으면 꺼짐)
 
@@ -30,6 +33,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] const std::vector<SavedCharacterAlias>& GetCharacterAliases() const noexcept;   // 별칭들
         void AddCharacterAlias(std::string readText, std::string name);   // 별칭 추가 (같은 글자는 바꿈)
         void ClearCharacterAliases() noexcept;                            // 별칭 모두 지우기
+        [[nodiscard]] int GetCharacterIntervalSeconds() const noexcept;   // 현재 캐릭터 확인 간격 (초)
+        void SetCharacterIntervalSeconds(int seconds) noexcept;           // 간격 바꾸기 (범위 제한)
         void Save();                                     // 파일로 저장 (실패하면 예외)
 
     private:
@@ -37,5 +42,6 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         bool m_isEnabled{};                                   // 화면 인식 켜짐
         bool m_isCharacterAutoEnabled{ true };                // 현재 캐릭터 자동 인식
         std::vector<SavedCharacterAlias> m_characterAliases;  // 별칭들 (오래된 것이 앞)
+        int m_characterIntervalSeconds{ DEFAULT_CHARACTER_INTERVAL_SECONDS };   // 현재 캐릭터 확인 간격
     };
 }

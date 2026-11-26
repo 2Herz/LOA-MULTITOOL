@@ -22,6 +22,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::string_view KEY_Y{ "Y" };                    // 위쪽 키
         constexpr std::string_view KEY_WIDTH{ "Width" };            // 가로 키
         constexpr std::string_view KEY_HEIGHT{ "Height" };          // 세로 키
+        constexpr std::string_view KEY_ALPHA{ "Alpha" };            // 요소 투명도 키
 
         // 멤버가 숫자면 그 값, 아니면 기본값
         [[nodiscard]] double ReadNumber(const JSONValue& object, std::string_view key, double fallback)
@@ -60,7 +61,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                     if (id.GetType() != JSONType::STRING_VALUE) continue;                                  // 이름 없으면 건너뜀
                     m_panels.push_back(OverlayPanelState{ id.GetString(), ReadBool(item, KEY_VISIBLE, false),
                         static_cast<float>(ReadNumber(item, KEY_X, 0.0)), static_cast<float>(ReadNumber(item, KEY_Y, 0.0)),
-                        static_cast<float>(ReadNumber(item, KEY_WIDTH, 0.0)), static_cast<float>(ReadNumber(item, KEY_HEIGHT, 0.0)) });   // 상태
+                        static_cast<float>(ReadNumber(item, KEY_WIDTH, 0.0)), static_cast<float>(ReadNumber(item, KEY_HEIGHT, 0.0)),
+                        std::clamp(static_cast<float>(ReadNumber(item, KEY_ALPHA, MAX_ELEMENT_ALPHA)), MIN_ELEMENT_ALPHA, MAX_ELEMENT_ALPHA) });   // 상태 (투명도가 없던 예전 파일은 100%)
                 }
             });
     }
@@ -109,13 +111,19 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         else m_panels.push_back(std::move(state));                                             // 추가
     }
 
+    void OverlaySettings::RemovePanel(std::string_view id)
+    {
+        std::erase_if(m_panels, [id](const OverlayPanelState& state) { return state.m_id == id; });   // 이름이 같은 상태 지움
+    }
+
     void OverlaySettings::Save()
     {
         std::vector<JSONValue> panels;                                                           // 패널 목록
         for (const OverlayPanelState& panel : m_panels)                                          // 패널마다
-            panels.push_back(JSONValue::CreateObject(MakeKeys({ KEY_ID, KEY_VISIBLE, KEY_X, KEY_Y, KEY_WIDTH, KEY_HEIGHT }),
+            panels.push_back(JSONValue::CreateObject(MakeKeys({ KEY_ID, KEY_VISIBLE, KEY_X, KEY_Y, KEY_WIDTH, KEY_HEIGHT, KEY_ALPHA }),
                 { JSONValue::CreateString(panel.m_id), JSONValue::CreateBool(panel.m_isVisible), JSONValue::CreateNumber(panel.m_x),
-                  JSONValue::CreateNumber(panel.m_y), JSONValue::CreateNumber(panel.m_width), JSONValue::CreateNumber(panel.m_height) }));   // 한 패널
+                  JSONValue::CreateNumber(panel.m_y), JSONValue::CreateNumber(panel.m_width), JSONValue::CreateNumber(panel.m_height),
+                  JSONValue::CreateNumber(panel.m_alpha) }));   // 한 패널
         m_fileStore.Save(Services::WriteJSONText(JSONValue::CreateObject(MakeKeys({ KEY_ENABLED, KEY_OPACITY, KEY_MINI_TOOL, KEY_PANELS }),
             { JSONValue::CreateBool(m_isEnabled), JSONValue::CreateNumber(m_opacity),
               JSONValue::CreateNumber(static_cast<double>(m_miniToolIndex)), JSONValue::CreateArray(std::move(panels)) })));   // 저장

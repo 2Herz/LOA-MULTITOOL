@@ -379,7 +379,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return reading;   // 결과 (못 찾으면 SIGNAL_NONE + 정보 창 레벨 · 별칭 후보)
     }
 
-    CharacterReading CharacterDetector::Detect(const FrameImage& frame, const TextRecognizer& text) const
+    CharacterReading CharacterDetector::Detect(const FrameImage& frame, const TextRecognizer& text, bool isFullScanAllowed) const
     {
         const int width = frame.GetWidth();                                                          // 프레임 가로
         const int height = frame.GetHeight();                                                        // 프레임 세로
@@ -400,7 +400,12 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 if (const auto known = m_memory->Match(blob->m_shape))                               // 닮은 모양
                 {
                     std::wstring name = Core::TextEncoding::UTF8ToWide(*known);                     // 넓은 글자
-                    if (std::ranges::find(m_names, name) != m_names.end()) return toResult(std::move(name), CharacterSource::SOURCE_NAMEPLATE);   // 원정대 캐릭터
+                    if (std::ranges::find(m_names, name) != m_names.end())                          // 원정대 캐릭터
+                    {
+                        CharacterReading known_reading = toResult(std::move(name), CharacterSource::SOURCE_NAMEPLATE);   // 결과
+                        known_reading.m_plateBounds = blob->m_bounds;                               // 이름표 위치
+                        return known_reading;
+                    }
                 }
             }
 
@@ -418,7 +423,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                         if (auto matched = MatchName(word.m_text))                                   // 원정대 이름
                         {
                             if (m_memory) m_memory->Learn(Core::TextEncoding::WideToUTF8(matched->first), blob->m_shape);   // 모양 기억
-                            return toResult(std::move(matched->first), CharacterSource::SOURCE_NAMEPLATE);
+                            CharacterReading read_reading = toResult(std::move(matched->first), CharacterSource::SOURCE_NAMEPLATE);   // 결과
+                            read_reading.m_plateBounds = blob->m_bounds;                             // 이름표 위치
+                            return read_reading;
                         }
                         const std::wstring compact = OCRTextParser::Compact(word.m_text);            // 띄어쓰기 없이
                         if (compact.size() > longest.size()) longest = compact;                      // 가장 긴 단어
@@ -428,9 +435,11 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             }
             if (m_memory) m_memory->SetPending(blob->m_shape);                                       // 직접 고르면 기억하도록 대기
             reading.m_hasUnknownPlate = true;                                                        // 누군지 모르는 내 이름표
+            reading.m_plateBounds = blob->m_bounds;                                                  // 이름표 위치
         }
 
-        // 4) 화면 전체 OCR: 캐릭터 정보 창 · 글자 이름표 · "팁"
+        // 4) 화면 전체 OCR: 캐릭터 정보 창 · 글자 이름표 · "팁" (1초 안팎으로 무거워서 감시기가 허락할 때만 = 몇 초에 한 번)
+        if (!isFullScanAllowed) return reading;                                                      // 건너뜀
         if (const auto whole = text.Recognize(frame))                                                // 원래 크기
         {
             CharacterReading parsed = Parse(*whole, width, height, &frame);                          // 해석

@@ -20,6 +20,15 @@ export namespace LostArkMultiTool::Core
         return color;
     }
 
+    // 그림 한 장 (BGRA 8비트 · 미리 곱한 알파, 줄 순서) — 화면 인식 미리 보기 · 프로그램 아이콘
+    struct ImageData
+    {
+        int m_width{};                        // 가로 (픽셀)
+        int m_height{};                       // 세로 (픽셀)
+        std::vector<std::uint8_t> m_pixels;   // 가로 × 세로 × 4 (B · G · R · A)
+        std::uint64_t m_version{};            // 내용이 바뀔 때마다 올림 (렌더러가 같은 그림을 다시 만들지 않게)
+    };
+
     // 사각형 (DIP 단위 = 배율 100% 기준 논리 픽셀 → 모니터 배율이 달라도 같은 크기로 보임)
     struct RectF
     {
@@ -134,6 +143,9 @@ export namespace LostArkMultiTool::Core
 
         // 한 줄로 그렸을 때 각 글자 경계의 x 위치 (크기 = 글자 수 + 1, 입력칸 커서 · 선택 영역 계산용)
         [[nodiscard]] virtual std::vector<float> MeasureCaretPositions(std::wstring_view text, const TextStyle& style) = 0;
+
+        // 그림을 사각형에 맞춰 그리기 (늘리거나 줄임, opacity 0 ~ 1, 크기가 0이거나 픽셀이 모자라면 그리지 않음)
+        virtual void DrawImage(const ImageData& image, const RectF& rect, float opacity) = 0;
 
         // 그리기 범위 제한 · 투명도 (Push와 Pop은 짝을 맞춰야 함 → 아래 ClipScope · OpacityScope 사용)
         virtual void PushClip(const RectF& rect) = 0;

@@ -19,6 +19,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] std::string_view GetScreenName() const noexcept override;   // 담당 화면 이름
         [[nodiscard]] std::optional<ScanResult> Detect(const FrameImage& frame, const DetectorContext& context) override;   // 파편 읽기
 
+        [[nodiscard]] static PixelRect GetBarArea(int frameWidth, int frameHeight) noexcept;   // 맨 위 재화 줄 영역 (설정 탭 미리 보기에서도 씀)
+
         // 숫자 오른쪽 아이콘 영역이 보라색인지 (자체 검사에서도 씀)
         [[nodiscard]] static bool IsPurpleIcon(const FrameImage& frame, const PixelRect& numberBounds) noexcept;
     };

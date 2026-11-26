@@ -1,6 +1,7 @@
 ﻿export module LostArkMultiTool.Vision.ScreenWatcher;  // 화면 상시 감시 모듈 선언 (내보내기)
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Core.Renderer;  // 미리 보기 그림 형식 가져오기
 import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 별칭 형식 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.NameplateMemory;  // 이름표 모양 기억 가져오기
@@ -100,6 +101,20 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::chrono::system_clock::time_point m_lastFrameAt;     // 마지막으로 프레임을 받은 시각
     };
 
+    // 설정 탭 "인식 설정"에 보여 줄 감시 상태 (복사본)
+    struct WatcherDiagnostics
+    {
+        std::shared_ptr<const Core::ImageData> m_preview;   // 줄인 게임 화면 (미리 보기를 켰을 때만, 없으면 nullptr)
+        int m_frameWidth{};                                  // 원래 프레임 가로
+        int m_frameHeight{};                                 // 원래 프레임 세로
+        std::optional<PixelRect> m_nameplate;                // 마지막으로 찾은 내 이름표 (프레임 기준)
+        std::optional<PixelRect> m_hoverArea;                // 마지막 커서 주변 읽기 영역 (프레임 기준)
+        double m_hoverScanMs{};                              // 커서 주변 읽기 평균 시간 (밀리초)
+        double m_characterScanMs{};                          // 캐릭터 확인 평균 시간 (밀리초)
+        std::string m_lastRead;                              // 마지막으로 확정한 값 (UTF-8 설명)
+        std::chrono::system_clock::time_point m_lastReadAt;  // 그 시각
+    };
+
     // 상시 감시기
     class ScreenWatcher
     {
@@ -118,6 +133,9 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         // 현재 캐릭터 인식에 쓸 원정대 이름 · 별칭 · 이름표 모양 기억 (이름이 비면 로딩 화면만 봄)
         void SetCharacterNames(std::vector<std::wstring> names, std::vector<CharacterAlias> aliases = {}, std::shared_ptr<NameplateMemory> memory = nullptr);
         void SetCharacterScanEnabled(bool isEnabled) noexcept;        // 현재 캐릭터 확인 켜기 · 끄기 (끄면 화면 전체 OCR을 하지 않음)
+        void SetCharacterInterval(std::chrono::milliseconds interval) noexcept;   // 현재 캐릭터 확인 간격 (같은 캐릭터를 계속 보면 두 배로 늘어남)
+        void SetPreviewEnabled(bool isEnabled) noexcept;              // 미리 보기 그림 만들기 켜기 · 끄기 (설정 탭이 보일 때만)
+        [[nodiscard]] WatcherDiagnostics GetDiagnostics() const;      // 감시 상태 복사본
 
         void Start();                                  // 감시 시작 (이미 감시 중이면 그대로)
         void Stop();                                   // 감시 멈춤 (스레드가 끝날 때까지 기다림)
@@ -144,6 +162,9 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::atomic<std::int64_t> m_intervalMs{ DEFAULT_INTERVAL.count() };   // 감시 주기 (밀리초)
         std::atomic<bool> m_isReloadRequested{};                       // 배치 다시 읽기 요청
         std::atomic<bool> m_isCharacterScanEnabled{ true };            // 현재 캐릭터 확인 켜짐
+        std::atomic<std::int64_t> m_characterIntervalMs{ 2000 };      // 현재 캐릭터 확인 간격 (밀리초)
+        std::atomic<bool> m_isPreviewEnabled{};                        // 미리 보기 그림 만들기
+        WatcherDiagnostics m_diagnostics;                              // 감시 상태 (m_mutex로 보호)
         std::vector<std::wstring> m_characterNames;                    // 원정대 이름 (m_mutex로 보호)
         std::vector<CharacterAlias> m_characterAliases;                // 별칭 (m_mutex로 보호)
         std::shared_ptr<NameplateMemory> m_nameplateMemory;            // 이름표 모양 기억 (m_mutex로 보호, 기억 자체는 스스로 잠금)

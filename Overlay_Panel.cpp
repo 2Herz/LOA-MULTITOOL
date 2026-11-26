@@ -10,6 +10,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     namespace  // 이 파일 전용 상수
     {
         constexpr float HEADER_HEIGHT{ 28.0f };          // 머리말 높이
+        constexpr float MIN_ALPHA{ 0.1f };               // 요소 투명도 최소 (10%)
+        constexpr float MAX_ALPHA{ 1.0f };               // 요소 투명도 최대 (100%, 그대로)
         constexpr float CORNER_RADIUS{ 8.0f };           // 카드 모서리
         constexpr float BORDER_WIDTH{ 1.0f };            // 테두리 두께
         constexpr float PADDING{ 10.0f };                // 안쪽 여백
@@ -88,6 +90,21 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             m_bounds.m_right - PADDING, m_bounds.m_bottom - PADDING };   // 머리말 · 여백을 뺀 영역
     }
 
+    const std::wstring& OverlayPanel::GetTitle() const noexcept
+    {
+        return m_title;   // 기본 제목
+    }
+
+    float OverlayPanel::GetAlpha() const noexcept
+    {
+        return m_alpha;   // 요소 투명도
+    }
+
+    void OverlayPanel::SetAlpha(float alpha) noexcept
+    {
+        m_alpha = std::clamp(alpha, MIN_ALPHA, MAX_ALPHA);   // 범위 제한
+    }
+
     bool OverlayPanel::IsInteractive() const noexcept
     {
         return m_isInteractive;   // 조작 모드 여부
@@ -101,6 +118,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
     void OverlayPanel::Render(Core::Renderer& renderer, float backOpacity, bool isInteractive)
     {
         m_isInteractive = isInteractive;                                                              // 내용 그리기에서 쓸 조작 모드
+        const float alpha = isInteractive ? MAX_ALPHA : m_alpha;                                      // 조작 모드에서는 옮기기 쉽게 진하게
+        std::optional<Core::OpacityScope> fade;                                                       // 요소 투명도 (100%면 레이어 없이)
+        if (alpha < MAX_ALPHA) fade.emplace(renderer, alpha);                                         // 패널 전체를 반투명하게
         renderer.FillRoundedRect(m_bounds, CORNER_RADIUS, Core::WithAlpha(Theme::PANEL_BACK_COLOR, backOpacity));                 // 반투명 카드
         renderer.DrawRoundedRect(m_bounds, CORNER_RADIUS, isInteractive ? Theme::ACCENT_COLOR : Theme::PANEL_BORDER_COLOR, BORDER_WIDTH);   // 테두리 (조작 모드는 강조색)
 

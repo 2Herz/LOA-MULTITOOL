@@ -14,6 +14,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::string_view KEY_CHARACTER_ALIASES{ "CharacterAliases" };  // 별칭 목록 키
         constexpr std::string_view KEY_ALIAS_READ{ "Read" };                     // 별칭: 읽은 글자
         constexpr std::string_view KEY_ALIAS_NAME{ "Name" };                     // 별칭: 캐릭터 이름
+        constexpr std::string_view KEY_CHARACTER_INTERVAL{ "CharacterInterval" }; // 현재 캐릭터 확인 간격 (초) 키
     }
 
     VisionSettings::VisionSettings()
@@ -21,6 +22,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
     {
         std::optional<bool> loaded;                                      // 읽은 값 (끝까지 성공했을 때만)
         bool loadedAuto = true;                                          // 자동 인식 (없으면 켜짐 → 예전 파일도 그대로)
+        int loadedInterval = DEFAULT_CHARACTER_INTERVAL_SECONDS;         // 확인 간격 (없으면 기본)
         std::vector<SavedCharacterAlias> loadedAliases;                  // 별칭 (없으면 빈 목록)
         [[maybe_unused]] const auto result = m_fileStore.Load([&](const Services::JSONValue& root)   // 파일 읽기 (안내 문구는 쓰지 않음)
             {
@@ -28,6 +30,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 if (enabled.GetType() != Services::JSONType::BOOL_VALUE) throw std::runtime_error("VisionSettings: Enabled 형식 오류");   // 형식 검사
                 const Services::JSONValue& autoValue = root.FindMember(KEY_CHARACTER_AUTO);          // 자동 인식 값 (없어도 됨)
                 if (autoValue.GetType() == Services::JSONType::BOOL_VALUE) loadedAuto = autoValue.GetBool();   // 있으면 읽음
+                const Services::JSONValue& intervalValue = root.FindMember(KEY_CHARACTER_INTERVAL);  // 확인 간격 (없어도 됨)
+                if (intervalValue.GetType() == Services::JSONType::NUMBER_VALUE) loadedInterval = static_cast<int>(intervalValue.GetNumber());   // 있으면 읽음
                 for (const Services::JSONValue& item : root.FindMember(KEY_CHARACTER_ALIASES).GetItems())   // 별칭마다 (없으면 빈 배열)
                 {
                     const std::string& readText = item.FindMember(KEY_ALIAS_READ).GetString();      // 읽은 글자
@@ -40,6 +44,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         if (loaded)                                                      // 파일을 읽었으면
         {
             m_isCharacterAutoEnabled = loadedAuto;                       // 자동 인식
+            SetCharacterIntervalSeconds(loadedInterval);                 // 확인 간격 (범위 제한)
             m_characterAliases = std::move(loadedAliases);               // 별칭
         }
     }
@@ -83,6 +88,16 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         m_characterAliases.clear();   // 모두 지움
     }
 
+    int VisionSettings::GetCharacterIntervalSeconds() const noexcept
+    {
+        return m_characterIntervalSeconds;   // 확인 간격
+    }
+
+    void VisionSettings::SetCharacterIntervalSeconds(int seconds) noexcept
+    {
+        m_characterIntervalSeconds = std::clamp(seconds, MIN_CHARACTER_INTERVAL_SECONDS, MAX_CHARACTER_INTERVAL_SECONDS);   // 범위 제한
+    }
+
     void VisionSettings::Save()
     {
         std::vector<Services::JSONValue> aliases;                                              // 별칭 배열
@@ -93,8 +108,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 { Services::JSONValue::CreateString(alias.m_readText), Services::JSONValue::CreateString(alias.m_name) }));   // { "Read": ..., "Name": ... }
         }
         m_fileStore.Save(Services::WriteJSONText(Services::JSONValue::CreateObject(
-            { std::string{ KEY_ENABLED }, std::string{ KEY_CHARACTER_AUTO }, std::string{ KEY_CHARACTER_ALIASES } },
+            { std::string{ KEY_ENABLED }, std::string{ KEY_CHARACTER_AUTO }, std::string{ KEY_CHARACTER_INTERVAL }, std::string{ KEY_CHARACTER_ALIASES } },
             { Services::JSONValue::CreateBool(m_isEnabled), Services::JSONValue::CreateBool(m_isCharacterAutoEnabled),
-              Services::JSONValue::CreateArray(std::move(aliases)) })));                        // { "Enabled": true, "CharacterAuto": true, "CharacterAliases": [...] }
+              Services::JSONValue::CreateNumber(m_characterIntervalSeconds), Services::JSONValue::CreateArray(std::move(aliases)) })));   // { "Enabled", "CharacterAuto", "CharacterInterval", "CharacterAliases" }
     }
 }

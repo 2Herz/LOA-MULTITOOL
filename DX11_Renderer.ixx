@@ -53,6 +53,7 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] Core::SizeF MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth) override;
         [[nodiscard]] std::vector<float> MeasureCaretPositions(std::wstring_view text, const Core::TextStyle& style) override;
 
+        void DrawImage(const Core::ImageData& image, const Core::RectF& rect, float opacity) override;   // 그림 (같은 그림 · 버전은 비트맵 재사용)
         void PushClip(const Core::RectF& rect) override;
         void PopClip() override;
         void PushOpacity(float opacity) override;

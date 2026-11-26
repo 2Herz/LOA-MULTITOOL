@@ -40,7 +40,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int MIN_ROW_PIXELS{ 2 };                     // 줄에 노란 픽셀이 이만큼 있어야 글자 줄
         constexpr int MAX_ROW_GAP{ 2 };                        // 글자 줄 안에서 비어도 되는 줄 수
         constexpr double MIN_TEXT_HEIGHT_RATIO{ 0.007 };       // 글자 높이 하한 (화면 세로 비율, 1080p ≈ 8px)
-        constexpr double MAX_TEXT_HEIGHT_RATIO{ 0.030 };       // 글자 높이 상한 (1080p ≈ 32px)
+        constexpr double MAX_TEXT_HEIGHT_RATIO{ 0.022 };       // 글자 높이 상한 (1080p ≈ 24px, 이름표 글자는 13px 안팎 · 더 큰 노란 덩어리는 효과 · 아이콘)
         constexpr int MIN_TEXT_HEIGHT{ 7 };                    // 글자 높이 하한 (작은 창)
         constexpr double MAX_LETTER_GAP_RATIO{ 0.35 };         // 이름 안 글자 사이 빈칸 상한 (글자 높이 배수, 칭호와 이름 사이는 더 넓음)
         constexpr int MIN_LETTER_GAP{ 3 };                     // 글자 사이 빈칸 하한 (픽셀)

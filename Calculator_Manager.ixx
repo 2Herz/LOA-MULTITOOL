@@ -13,6 +13,7 @@ import LostArkMultiTool.Core.ToolManager;
 import LostArkMultiTool.Models.Character;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Views.CalculatorView;
+import LostArkMultiTool.Vision.FrameImage;       // 픽셀 사각형
 import LostArkMultiTool.Vision.NameplateMemory;  // 이름표 모양 기억
 import LostArkMultiTool.Vision.ScreenWatcher;    // 화면 인식 감시기
 import LostArkMultiTool.Vision.VisionSettings;   // 화면 인식 켜기 설정
@@ -64,6 +65,14 @@ export namespace LostArkMultiTool::Views
         std::size_t m_shapeCount{};                  // 이름표 모양을 기억한 캐릭터 수
     };
 
+    // 설정 탭 "인식 설정"에 보여 줄 화면 인식 상태
+    struct VisionStatusSnapshot
+    {
+        Vision::WatcherStatus m_status;            // 감시 상태 · 안내
+        Vision::WatcherDiagnostics m_diagnostics;  // 미리 보기 · 상자 · 처리 시간 · 마지막 값
+        Vision::PixelRect m_topBar;                // 맨 위 재화 줄 영역 (프레임 기준)
+    };
+
     // 인게임 오버레이 재료 패널 내용
     struct CalculatorOverlaySummary
     {
@@ -101,6 +110,19 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] CurrentCharacterSummary GetCurrentCharacter() const;  // 화면 인식으로 알아낸 현재 캐릭터 (화면 스레드에서)
         void PickCurrentCharacter(std::size_t index);                       // [변경]: 후보 번호로 현재 캐릭터 직접 고르기 (방금 못 맞춘 이름은 별칭으로 기억)
         void RefreshCurrentCharacter();                                     // [갱신]: 현재 캐릭터 기준으로 원정대 정보 다시 받기
+
+        // ===== 설정 탭 (오버레이 · 인식 설정) =====
+        [[nodiscard]] bool IsVisionEnabled() const noexcept;                 // 화면 인식 켜짐
+        void SetVisionEnabled(bool isEnabled);                              // 화면 인식 켜기 · 끄기 (계산기 체크 상자도 맞춤)
+        void RestartVision();                                               // [다시 찾기]: 감시를 처음부터 다시 (게임 창 다시 찾기)
+        void SetCharacterAutoEnabled(bool isEnabled);                       // 현재 캐릭터 자동 인식 켜기 · 끄기 (저장)
+        void ClearNameplateShapes();                                        // 기억한 이름표 모양 모두 지우기
+        void ClearCharacterAliases();                                       // 기억한 읽은 글자(별칭) 모두 지우기
+        [[nodiscard]] int GetCharacterIntervalSeconds() const noexcept;      // 현재 캐릭터 확인 간격 (초)
+        void SetCharacterIntervalSeconds(int seconds);                      // 간격 바꾸기 (저장)
+        void SetVisionPreview(bool isEnabled);                              // 미리 보기 그림 만들기 (설정 탭이 보일 때만)
+        [[nodiscard]] std::optional<VisionStatusSnapshot> GetVisionStatus() const;   // 화면 인식 상태 (꺼져 있으면 nullopt)
+        [[nodiscard]] std::size_t GetRosterCount() const noexcept;           // 원정대 캐릭터 수
 
     private:
         friend class Core::Singleton<CalculatorManager>;   // GetInstance만 생성 · 소멸할 수 있게
@@ -169,5 +191,6 @@ export namespace LostArkMultiTool::Views
         std::optional<std::string> m_lastUnknownName;               // 정보 창 이름 자리에서 읽었지만 원정대와 안 맞은 글자 (UTF-8)
         std::chrono::steady_clock::time_point m_lastUnknownAt;      // 그 글자를 읽은 시각 (오래되면 별칭으로 쓰지 않음)
         bool m_isWaitNoticeShown{};                                 // "캐릭터 확인 중" 안내를 이미 띄웠는지 (확인될 때까지 한 번만)
+        bool m_isPreviewWanted{};                                   // 설정 탭이 미리 보기를 원하는지 (감시를 다시 만들어도 유지)
     };
 }

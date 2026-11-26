@@ -37,6 +37,8 @@ namespace LostArkMultiTool::Views
         constexpr float GRADIENT_START{ 0.0f };
         constexpr float GRADIENT_END{ 1.0f };
         constexpr int MIN_SURFACE_SIZE{ 1 };                  // 투명 스왑체인 최소 크기 (0이면 만들 수 없음)
+        constexpr std::size_t MAX_CACHED_IMAGES{ 8 };         // 기억해 둘 그림 비트맵 수 (넘으면 모두 비우고 다시 만듦)
+        constexpr UINT32 IMAGE_BYTES_PER_PIXEL{ 4 };          // BGRA
 
         // 그래픽 카드가 지원하는 기능 수준 (높은 것부터 시도)
         constexpr std::array FEATURE_LEVELS{
@@ -210,12 +212,22 @@ namespace LostArkMultiTool::Views
         [[nodiscard]] Core::SizeF MeasureString(std::wstring_view text, const Core::TextStyle& style, float maxWidth);
         [[nodiscard]] std::vector<float> MeasureCaretPositions(std::wstring_view text, const Core::TextStyle& style);
 
+        void DrawImage(const Core::ImageData& image, const Core::RectF& rect, float opacity);
         void PushClip(const Core::RectF& rect);
         void PopClip();
         void PushOpacity(float opacity);
         void PopOpacity();
 
     private:
+        // 그림 비트맵 캐시 한 칸 (그림 주소별)
+        struct CachedImage
+        {
+            std::uint64_t m_version{};          // 만들 때의 그림 버전
+            int m_width{};                      // 만들 때의 가로
+            int m_height{};                     // 만들 때의 세로
+            COMPtr<ID2D1Bitmap1> m_bitmap;      // Direct2D 비트맵
+        };
+
         // 장치 자원: 그래픽 장치를 잃으면 버리고 다시 만듦
         void CreateDeviceResources();
         void ReleaseDeviceResources() noexcept;
@@ -259,6 +271,7 @@ namespace LostArkMultiTool::Views
         COMPtr<ID2D1DeviceContext> m_d2dContext;
         COMPtr<ID2D1SolidColorBrush> m_brush;     // 색만 바꿔 가며 재사용
         COMPtr<ID2D1Bitmap1> m_targetBitmap;
+        std::map<const Core::ImageData*, CachedImage> m_imageCache;   // 그림 비트맵 (장치를 잃으면 비움)
     };
 
     DX11Renderer::Impl::Impl(HWND window, float dpi, SurfaceMode mode)
@@ -367,6 +380,7 @@ namespace LostArkMultiTool::Views
 
     void DX11Renderer::Impl::ReleaseDeviceResources() noexcept
     {
+        m_imageCache.clear();   // 그림 비트맵은 장치 자원
         ReleaseTargetBitmap();
         m_brush.Reset();
         m_d2dContext.Reset();
@@ -630,6 +644,33 @@ namespace LostArkMultiTool::Views
     }
 
     // 레이어를 쌓아 그 안에 그린 것 전체에 투명도 적용 (대화상자 · 알림이 서서히 나타날 때)
+    void DX11Renderer::Impl::DrawImage(const Core::ImageData& image, const Core::RectF& rect, float opacity)
+    {
+        if (!m_isDrawing || !m_d2dContext || image.m_width <= 0 || image.m_height <= 0) return;                // 그릴 수 없음
+        const std::size_t expectedBytes{ static_cast<std::size_t>(image.m_width) * static_cast<std::size_t>(image.m_height) * IMAGE_BYTES_PER_PIXEL };
+        if (image.m_pixels.size() < expectedBytes) return;                                                       // 픽셀이 모자람 (경계 검사)
+
+        auto found{ m_imageCache.find(&image) };                                                                 // 같은 그림의 비트맵
+        const bool isStale{ found == m_imageCache.end() || found->second.m_version != image.m_version
+            || found->second.m_width != image.m_width || found->second.m_height != image.m_height || !found->second.m_bitmap };   // 다시 만들어야 함
+        if (isStale)
+        {
+            if (found == m_imageCache.end() && m_imageCache.size() >= MAX_CACHED_IMAGES) m_imageCache.clear();   // 너무 많으면 비움
+            D2D1_BITMAP_PROPERTIES1 properties{};                                                                // 비트맵 속성
+            properties.pixelFormat = D2D1_PIXEL_FORMAT{ DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED };   // BGRA · 미리 곱한 알파
+            properties.dpiX = DEFAULT_DPI;                                                                       // 픽셀 = DIP (그릴 때 사각형에 맞춰 늘림)
+            properties.dpiY = DEFAULT_DPI;
+            CachedImage entry{ image.m_version, image.m_width, image.m_height, {} };                             // 새 칸
+            const HRESULT result{ m_d2dContext->CreateBitmap(D2D1_SIZE_U{ static_cast<UINT32>(image.m_width), static_cast<UINT32>(image.m_height) },
+                image.m_pixels.data(), static_cast<UINT32>(image.m_width) * IMAGE_BYTES_PER_PIXEL, &properties, entry.m_bitmap.ReleaseAndGetAddressOf()) };
+            if (FAILED(result)) return;                                                                          // 만들기 실패 → 이번엔 안 그림
+            found = m_imageCache.insert_or_assign(&image, std::move(entry)).first;                               // 캐시에 넣기
+        }
+        const D2D1_RECT_F destination{ rect.m_left, rect.m_top, rect.m_right, rect.m_bottom };                   // 그릴 곳 (DIP)
+        m_d2dContext->DrawBitmap(found->second.m_bitmap.Get(), &destination, std::clamp(opacity, MIN_OPACITY, MAX_OPACITY),
+            D2D1_INTERPOLATION_MODE_LINEAR, nullptr);                                                            // 늘리거나 줄여서 그림
+    }
+
     void DX11Renderer::Impl::PushOpacity(float opacity)
     {
         constexpr float INFINITE_BOUND{ std::numeric_limits<float>::max() };
@@ -831,6 +872,11 @@ namespace LostArkMultiTool::Views
     std::vector<float> DX11Renderer::MeasureCaretPositions(std::wstring_view text, const Core::TextStyle& style)
     {
         return m_impl->MeasureCaretPositions(text, style);
+    }
+
+    void DX11Renderer::DrawImage(const Core::ImageData& image, const Core::RectF& rect, float opacity)
+    {
+        m_impl->DrawImage(image, rect, opacity);
     }
 
     void DX11Renderer::PushClip(const Core::RectF& rect)

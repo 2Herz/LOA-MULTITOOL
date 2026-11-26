@@ -47,7 +47,8 @@ export namespace LostArkMultiTool::Views
         void OnHiddenToTray() override;
 
     private:
-        static constexpr std::size_t TOOL_COUNT{ 10 };   // 귀속재료 계산기 · 보석 최저가 검색기 · 낙원력 트래커 · 유각 시세 검색기 · 악세 검색기 · 강화책 검색기 · 젬 시세 검색기 · 전투력 시뮬레이터 · 재련 시뮬레이터 · 2부 이관
+        static constexpr std::size_t TOOL_COUNT{ 11 };   // 귀속재료 계산기 · 보석 최저가 검색기 · 낙원력 트래커 · 유각 시세 검색기 · 악세 검색기 · 강화책 검색기 · 젬 시세 검색기 · 전투력 시뮬레이터 · 재련 시뮬레이터 · 2부 이관 · 오버레이 · 인식 설정
+        static constexpr std::size_t OVERLAY_TOOL_COUNT{ TOOL_COUNT - 1 };   // 오버레이 미니 탭으로 띄울 수 있는 탭 수 (마지막 설정 탭은 빼고)
 
         // 마우스를 누른 곳 (뗄 때까지 같은 곳으로 입력을 보냄 → 탭 화면에서 끌다가 탭 막대로 넘어가도 끊기지 않음)
         enum class PointerOwner
@@ -113,6 +114,7 @@ export namespace LostArkMultiTool::Views
         // 선언 순서 = 생성 순서, 해제는 반대 순서 (알림 · 렌더러가 창보다 먼저 해제됨)
         std::unique_ptr<MainWindow> m_window;
         std::unique_ptr<DX11Renderer> m_renderer;
+        std::optional<Core::ImageData> m_logoImage;   // 메뉴 로고 (exe 프로그램 아이콘, 못 읽으면 글자 로고)
         std::unique_ptr<Core::APIKeyStore> m_keyStore;
         std::unique_ptr<Core::MarketAPI> m_marketAPI;
         std::unique_ptr<UI::OverlayNotifier> m_notifier;
