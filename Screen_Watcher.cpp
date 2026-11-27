@@ -32,6 +32,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::chrono::milliseconds BOSS_KEEP_DURATION{ 3000 };       // 보스를 못 읽어도 이 시간까지는 마지막 값 유지 (잠깐 가려짐 · 오인식)
         constexpr std::chrono::milliseconds COMBAT_SCAN_INTERVAL{ 1000 };     // 전투 분석기 읽기 간격 (게임도 1초마다 갱신)
         constexpr std::chrono::milliseconds COMBAT_KEEP_DURATION{ 5000 };     // 전투 분석기를 못 읽어도 이 시간까지는 마지막 값 유지
+        constexpr std::chrono::milliseconds FRAME_SCAN_INTERVAL{ 2000 };      // 주기 인식기(창고 · 소지품 슬롯) 간격
+        constexpr std::chrono::milliseconds GATE_CHECK_DELAY{ 300 };          // 값을 붙잡으면 이만큼 뒤에 캐릭터를 다시 확인 (빨리 내보내려고)
         constexpr int PREVIEW_MAX_WIDTH{ 640 };                               // 미리 보기 그림 가로 상한 (줄여서 메모리 · 시간 절약)
         constexpr double AVERAGE_WEIGHT{ 0.3 };                               // 처리 시간 평균: 새 값 비중 (지수 이동 평균)
         constexpr double MILLISECONDS_PER_SECOND{ 1000.0 };                   // 초 → 밀리초
@@ -146,6 +148,53 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
     {
         if (!detector || m_isRunning) return;             // 빈 인식기 · 감시 중에는 무시 (스레드와 공유하지 않음)
         m_detectors.push_back(std::move(detector));       // 등록
+    }
+
+    void ScreenWatcher::AddFrameDetector(std::unique_ptr<ScreenDetector> detector)
+    {
+        if (!detector || m_isRunning) return;             // 빈 인식기 · 감시 중에는 무시
+        m_frameDetectors.push_back(std::move(detector));  // 등록
+    }
+
+    void ScreenWatcher::NotifyCharacterPicked() noexcept
+    {
+        m_isCharacterPicked = true;                       // 다음 주기부터
+    }
+
+    void CharacterValueGate::Hold(ScanResult result, Clock::time_point now)
+    {
+        if (m_entries.size() >= MAX_PENDING) m_entries.pop_front();   // 넘치면 오래된 것부터
+        m_entries.push_back(Entry{ std::move(result), now });        // 붙잡기
+    }
+
+    std::vector<ScanResult> CharacterValueGate::Release()
+    {
+        std::vector<ScanResult> released;                             // 결과
+        released.reserve(m_entries.size());                           // 자리
+        for (Entry& entry : m_entries) released.push_back(std::move(entry.m_result));   // 모두
+        m_entries.clear();                                            // 비움
+        return released;
+    }
+
+    std::vector<ScanResult> CharacterValueGate::ReleaseExpired(Clock::time_point now)
+    {
+        std::vector<ScanResult> released;                             // 결과
+        while (!m_entries.empty() && now - m_entries.front().m_heldAt >= MAX_HOLD)   // 오래된 것부터
+        {
+            released.push_back(std::move(m_entries.front().m_result));  // 내보냄
+            m_entries.pop_front();                                       // 뺌
+        }
+        return released;
+    }
+
+    void CharacterValueGate::Discard() noexcept
+    {
+        m_entries.clear();   // 모두 버림
+    }
+
+    bool CharacterValueGate::HasPending() const noexcept
+    {
+        return !m_entries.empty();   // 붙잡은 값
     }
 
     void ScreenWatcher::SetInterval(std::chrono::milliseconds interval) noexcept
@@ -280,6 +329,16 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
         ScreenCaptureService capture;                                              // 캡처 서비스 (이 스레드 전용)
         ScanConfirmer confirmer;                                                   // 연속 확정 도구
+        ScanConfirmer frameConfirmer;                                              // 주기 인식기 확정 도구
+        CharacterValueGate gate;                                                   // 캐릭터 확인 전 값 붙잡기
+        auto nextFrameScan = std::chrono::steady_clock::now();                     // 다음 주기 인식기 시각
+        const auto deliver = [this](ScanResult&& result)                           // 확정 값을 큐로 보냄
+            {
+                const std::scoped_lock lock{ m_mutex };                            // 큐 보호
+                m_diagnostics.m_lastRead = DescribeResult(result);                 // 마지막으로 읽은 값
+                m_diagnostics.m_lastReadAt = result.m_capturedAt;                  // 그 시각
+                m_results.push_back(std::move(result));                            // 큐에 추가
+            };
         ScanConfirmer characterConfirmer;                                          // 현재 캐릭터 확정 도구 (로딩 화면이면 새로 만듦)
         std::optional<CharacterDetector> characterDetector;                        // 현재 캐릭터 인식기 (이름을 받으면 만듦)
         std::uint64_t characterNamesVersion = 0;                                   // 받은 이름 버전
@@ -413,6 +472,10 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                         nextCharacterScan = steadyNow + CHARACTER_LOADING_INTERVAL;// 로딩 중엔 자주 확인
                         characterConfirmer = ScanConfirmer{};                      // 확정 기록 지움 (로딩 뒤 같은 캐릭터도 다시 확정)
                         lastCharacterName.clear();                                 // 확정 이름도 지움
+                        m_isCharacterPicked = false;                               // 직접 고른 캐릭터도 이제 모름
+                        gate.Discard();                                            // 로딩 전후에 읽은 값은 어느 캐릭터 것인지 모름 → 버림
+                        confirmer = ScanConfirmer{};                               // 새 캐릭터에서 같은 값을 다시 읽어도 다시 확정되게
+                        frameConfirmer = ScanConfirmer{};
                         if (!wasLoading)                                           // 이번 로딩에서 처음 봄
                         {
                             characterResult.m_screenName = std::string{ CharacterDetector::LOADING_SCREEN_NAME };   // 로딩 알림
@@ -437,6 +500,16 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                             m_results.push_back(std::move(*confirmed));            // 큐에 추가
                         }
                         if (isSameAsConfirmed) nextCharacterScan = steadyNow + characterInterval * STEADY_INTERVAL_FACTOR;   // 같은 캐릭터면 천천히
+                        if (lastCharacterName == characterResult.m_characterName)  // 확정한 캐릭터를 지금 봄 → 붙잡은 값은 이 캐릭터 것
+                        {
+                            for (ScanResult& released : gate.Release()) deliver(std::move(released));   // 내보냄
+                        }
+                        else if (gate.HasPending())                                // 다른 캐릭터가 보이기 시작 → 그 사이 값은 어느 캐릭터 것인지 모름
+                        {
+                            gate.Discard();                                        // 버림
+                            confirmer = ScanConfirmer{};                           // 다시 읽으면 다시 확정되게
+                            frameConfirmer = ScanConfirmer{};
+                        }
                     }
                     else                                                           // 못 찾음 → 연속 횟수만 초기화 (지금 캐릭터는 유지)
                     {
@@ -452,6 +525,43 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                             }
                         }
                     }
+                }
+
+                if (frame && !m_frameDetectors.empty() && steadyNow >= nextFrameScan)   // 주기 인식기 (커서와 상관없이)
+                {
+                    nextFrameScan = steadyNow + FRAME_SCAN_INTERVAL;               // 다음 시각
+                    const TextResult noText;                                       // 주기 인식기는 OCR 안 씀
+                    const DetectorContext frameContext{ *layouts, text, noText, PixelRect{ 0, 0, frame->GetWidth(), frame->GetHeight() }, PixelPoint{} };   // 화면 전체
+                    for (const auto& detector : m_frameDetectors)                  // 인식기마다
+                    {
+                        try
+                        {
+                            auto result = detector->Detect(*frame, frameContext);  // 읽기
+                            if (!result) { frameConfirmer.Reset(detector->GetScreenName()); continue; }   // 안 보임
+                            result->m_screenName = std::string{ detector->GetScreenName() };   // 화면 이름 보장
+                            result->m_capturedAt = std::chrono::system_clock::now();           // 시각
+                            if (auto confirmed = frameConfirmer.Feed(*result))     // 두 번 연속 같으면
+                            {
+                                if (!m_isCharacterScanEnabled) deliver(std::move(*confirmed));   // 캐릭터 확인을 끔 → 바로
+                                else
+                                {
+                                    gate.Hold(std::move(*confirmed), steadyNow);   // 캐릭터 확인 뒤에
+                                    nextCharacterScan = std::min(nextCharacterScan, steadyNow + GATE_CHECK_DELAY);   // 곧 확인
+                                }
+                            }
+                        }
+                        catch (const std::exception& error)
+                        {
+                            SetStatus(WatcherState::WATCHER_ERROR, error.what());  // 인식기 오류 안내
+                        }
+                    }
+                }
+                if (gate.HasPending())                                             // 붙잡은 값
+                {
+                    if (!m_isCharacterScanEnabled)                                 // 캐릭터 확인을 껐으면 모두 바로
+                        for (ScanResult& released : gate.Release()) deliver(std::move(released));
+                    else if ((!lastCharacterName.empty() || m_isCharacterPicked) && !wasLoading)   // 캐릭터가 정해져 있으면 오래 기다린 값만
+                        for (ScanResult& released : gate.ReleaseExpired(std::chrono::steady_clock::now())) deliver(std::move(released));
                 }
 
                 const bool isReadyToScan = cursor && restTime >= REST_BEFORE_SCAN && scansThisRest < SCANS_PER_REST;   // 읽을 때인지
@@ -478,10 +588,12 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                             result->m_capturedAt = now;                            // 시각 기록
                             if (auto confirmed = confirmer.Feed(*result))          // 확정되면
                             {
-                                const std::scoped_lock lock{ m_mutex };            // 큐 보호
-                                m_diagnostics.m_lastRead = DescribeResult(*confirmed);   // 마지막으로 읽은 값
-                                m_diagnostics.m_lastReadAt = confirmed->m_capturedAt;    // 그 시각
-                                m_results.push_back(std::move(*confirmed));        // 큐에 추가
+                                if (!m_isCharacterScanEnabled) deliver(std::move(*confirmed));   // 캐릭터 확인을 끔 → 바로 보냄
+                                else                                               // 캐릭터를 다시 확인한 뒤에 보냄
+                                {
+                                    gate.Hold(std::move(*confirmed), std::chrono::steady_clock::now());
+                                    nextCharacterScan = std::min(nextCharacterScan, std::chrono::steady_clock::now() + GATE_CHECK_DELAY);   // 곧 확인
+                                }
                             }
                         }
                         catch (const std::exception& error)

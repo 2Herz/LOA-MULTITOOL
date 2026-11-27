@@ -30,6 +30,7 @@ import LostArkMultiTool.Views.TrackerManager;          // 낙원력을 기록할
 import LostArkMultiTool.Views.ArkGemFinderManager;     // 귀속 젬 계산기 (화면 인식 젬 값)
 import LostArkMultiTool.Models.BoundGemData;           // 젬 · 등급 이름
 import LostArkMultiTool.Vision.GemTooltipDetector;     // 귀속 젬 툴팁 인식기
+import LostArkMultiTool.Vision.MaterialSlotDetector;   // 창고 · 소지품 슬롯 인식기
 import LostArkMultiTool.Vision.CharacterDetector;      // 현재 캐릭터 인식 결과 이름
 import LostArkMultiTool.Vision.NameplateMemory;        // 이름표 모양 기억
 import LostArkMultiTool.Vision.OCRTextParser;          // 인식 값 이름 해석 ("Dest/top")
@@ -302,6 +303,7 @@ namespace LostArkMultiTool::Views
         m_screenWatcher->AddDetector(std::make_unique<Vision::ShardBarDetector>());   // 상단바 운명의 파편
         m_screenWatcher->AddDetector(std::make_unique<Vision::ParadiseDetector>());   // 현재 낙원력
         m_screenWatcher->AddDetector(std::make_unique<Vision::GemTooltipDetector>()); // 귀속 젬 툴팁
+        m_screenWatcher->AddFrameDetector(std::make_unique<Vision::MaterialSlotDetector>());   // 창고 · 소지품 슬롯 (융화 재료 · 숨결, 마우스 없이)
         PushCharacterNames();                                               // 현재 캐릭터 비교용 원정대 이름 · 별칭
         m_screenWatcher->SetCharacterScanEnabled(m_visionSettings->IsCharacterAutoEnabled());   // 자동 인식을 껐으면 캐릭터 확인 안 함
         m_screenWatcher->SetCharacterInterval(std::chrono::seconds{ m_visionSettings->GetCharacterIntervalSeconds() });   // 확인 간격
@@ -374,6 +376,7 @@ namespace LostArkMultiTool::Views
         if (m_nameplateMemory && m_nameplateMemory->LearnPending(name, ALIAS_CANDIDATE_LIFETIME))   // 방금 본 내 이름표 모양을 이 캐릭터로 기억
             m_context->m_notifier.ShowToast(std::format(SHAPE_SAVED_FORMAT, Core::TextEncoding::UTF8ToWide(name)), Core::NoticeKind::NOTICE_SUCCESS);   // 안내
         SetCurrentCharacter(name, CurrentCharacterSource::SOURCE_MANUAL, std::nullopt);   // 직접 고름
+        if (m_screenWatcher) m_screenWatcher->NotifyCharacterPicked();      // 이름표를 못 봐도 붙잡은 값을 내보내게
         m_context->m_notifier.ShowToast(std::format(MANUAL_CHARACTER_FORMAT, Core::TextEncoding::UTF8ToWide(name)), Core::NoticeKind::NOTICE_INFO);   // 안내
     }
 

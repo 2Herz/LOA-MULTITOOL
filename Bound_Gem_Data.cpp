@@ -47,8 +47,11 @@ namespace LostArkMultiTool::Models
         const int count = std::max(quantity, 0);                                     // 음수 없음
         switch (kind)
         {
-        case GemStockKind::STOCK_BOUND: slot.m_bound = count; break;                 // 귀속 묶음
-        case GemStockKind::STOCK_TRADABLE: slot.m_tradable = count; break;           // 거래 가능 묶음
+        case GemStockKind::STOCK_BOUND:                                              // 귀속 묶음
+        case GemStockKind::STOCK_TRADABLE:                                           // 거래 가능 묶음 (게임의 "전체 보유 수량"이 이름이 같은 젬을 거래 타입과 상관없이 모두 셈)
+            slot.m_bound = count;                                                    // 마지막으로 읽은 전체 보유 수량 하나만
+            slot.m_tradable.reset();                                                 // 따로 더하지 않음 (예전 내역 정리)
+            break;
         case GemStockKind::STOCK_PROCESSED:                                          // 가공 젬 한 개
             if (!processedKey.empty() && std::ranges::find(slot.m_processed, processedKey) == slot.m_processed.end()
                 && std::cmp_less(slot.m_processed.size(), maxCount)) slot.m_processed.emplace_back(processedKey);   // 처음 본 젬만 더함

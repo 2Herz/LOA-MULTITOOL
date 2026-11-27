@@ -84,6 +84,33 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::map<std::string, State, std::less<>> m_states;     // 화면별 상태
     };
 
+    // 캐릭터를 다시 확인할 때까지 값 결과를 붙잡아 두는 문
+    // - 캐릭터를 바꾸는 사이(로딩 전후 · 확정 전) 읽은 재료 수량이 다른 캐릭터에 들어가지 않게 "캐릭터 먼저, 값은 나중에"
+    // - 같은 캐릭터를 다시 보면 내보내고, 로딩 화면 · 다른 이름을 보면 버림
+    // - 이름표가 안 보여 확인을 못 해도 캐릭터가 이미 정해져 있으면 MAX_HOLD 뒤에 내보냄
+    class CharacterValueGate
+    {
+    public:
+        using Clock = std::chrono::steady_clock;                                   // 시계
+        static constexpr std::chrono::milliseconds MAX_HOLD{ 8000 };              // 오래 기다린 값을 내보내는 시간
+        static constexpr std::size_t MAX_PENDING{ 32 };                           // 붙잡아 둘 결과 수 상한 (넘으면 오래된 것부터 버림)
+
+        void Hold(ScanResult result, Clock::time_point now);                      // 붙잡기
+        [[nodiscard]] std::vector<ScanResult> Release();                          // 같은 캐릭터 확인 → 모두 내보냄
+        [[nodiscard]] std::vector<ScanResult> ReleaseExpired(Clock::time_point now);   // MAX_HOLD 넘게 기다린 값만 내보냄
+        void Discard() noexcept;                                                   // 로딩 · 다른 캐릭터 → 모두 버림
+        [[nodiscard]] bool HasPending() const noexcept;                            // 붙잡은 값이 있는지
+
+    private:
+        // 붙잡은 결과 하나
+        struct Entry
+        {
+            ScanResult m_result;            // 결과
+            Clock::time_point m_heldAt;     // 붙잡은 시각
+        };
+        std::deque<Entry> m_entries;        // 붙잡은 결과들 (오래된 것부터)
+    };
+
     // 감시 상태
     enum class WatcherState
     {
@@ -144,6 +171,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         ScreenWatcher& operator=(const ScreenWatcher&) = delete;   // 복사 대입 금지
 
         void AddDetector(std::unique_ptr<ScreenDetector> detector);   // 인식기 등록 (감시 중이면 무시 → 멈춘 뒤 등록)
+        void AddFrameDetector(std::unique_ptr<ScreenDetector> detector);   // 커서와 상관없이 주기적으로 화면 전체를 읽는 인식기 등록 (창고 · 소지품 슬롯)
+        void NotifyCharacterPicked() noexcept;                        // 현재 캐릭터를 직접 골랐음 (이름표를 못 봐도 붙잡은 값을 내보낼 수 있게)
         void SetInterval(std::chrono::milliseconds interval) noexcept;// 감시 주기 (다음 주기부터)
         void RequestLayoutReload() noexcept;                          // 교정 후 화면 배치 다시 읽기 요청
         // 현재 캐릭터 인식에 쓸 원정대 이름 · 별칭 · 이름표 모양 기억 (이름이 비면 로딩 화면만 봄)
@@ -177,6 +206,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         mutable std::mutex m_mutex;                                    // 큐 · 상태 보호
         std::condition_variable_any m_wakeUp;                          // 주기 대기 · 멈춤 알림
         std::vector<std::unique_ptr<ScreenDetector>> m_detectors;      // 인식기들 (감시 중에는 감시 스레드만 씀)
+        std::vector<std::unique_ptr<ScreenDetector>> m_frameDetectors; // 주기 인식기들 (감시 중에는 감시 스레드만 씀)
+        std::atomic<bool> m_isCharacterPicked{};                       // 직접 고른 캐릭터가 있음 (로딩 화면을 보면 지움)
         std::vector<ScanResult> m_results;                             // 확정 결과 큐
         WatcherStatus m_status;                                        // 지금 상태
         std::atomic<std::int64_t> m_intervalMs{ DEFAULT_INTERVAL.count() };   // 감시 주기 (밀리초)

@@ -24,6 +24,7 @@ import LostArkMultiTool.Vision.BossHealthDetector;
 import LostArkMultiTool.Views.BossPanel;
 import LostArkMultiTool.Vision.CombatAnalyzerDetector;  // 전투 분석기 인식기
 import LostArkMultiTool.Views.DamagePanel;  // 딜 지분 계산
+import LostArkMultiTool.Vision.MaterialSlotDetector;  // 창고 · 소지품 슬롯 인식기
 import LostArkMultiTool.Vision.GemTooltipDetector;
 import LostArkMultiTool.Vision.CharacterDetector;
 import LostArkMultiTool.Vision.DigitReader;
@@ -917,6 +918,57 @@ namespace LostArkMultiTool::Core::SelfTest
             }
         }
 
+        // 창고 · 소지품 슬롯 (v1.10.3): 마우스 없이 융화 재료 · 숨결 수량 + 캐릭터 확인 전 값 붙잡기
+        void CheckMaterialSlots(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            Vision::CharacterValueGate gate;                                           // 값 붙잡기 문
+            const auto start = Vision::CharacterValueGate::Clock::now();               // 기준 시각
+            Vision::ScanResult sample;                                                 // 아무 결과
+            sample.m_screenName = "tooltip";
+            gate.Hold(sample, start);                                                  // 하나
+            gate.Hold(sample, start + std::chrono::seconds{ 1 });                      // 둘
+            const std::size_t early = gate.ReleaseExpired(start + std::chrono::seconds{ 2 }).size();   // 아직 기다림
+            const std::size_t expired = gate.ReleaseExpired(start + Vision::CharacterValueGate::MAX_HOLD).size();   // 첫째만
+            const std::size_t released = gate.Release().size();                        // 남은 하나
+            gate.Hold(sample, start);
+            gate.Discard();                                                            // 로딩 → 버림
+            reporter.Check(early == 0 && expired == 1 && released == 1 && !gate.HasPending(), "캐릭터 확인 전 값 붙잡기 (같은 캐릭터 → 내보냄 · 오래 기다림 → 내보냄 · 로딩 → 버림)");
+
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
+            if (!folder) { reporter.Note("슬롯 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
+            struct SlotSample
+            {
+                std::wstring_view m_file;                                              // 파일
+                std::string_view m_expected;                                           // 기대 값 ("키=값 ...")
+            };
+            constexpr std::array samples{
+                SlotSample{ L"storage.png", "Bing/level=3024 Fusion/level=1178 Yong/level=2720" },             // 창고 (파괴석 · 수호석 9999+는 건너뜀)
+                SlotSample{ L"tooltip_guard_top_bound.png", "Fusion/level=207 Yong/level=1423" },             // 툴팁이 일부 가린 창고
+                SlotSample{ L"boss_hp.webp", "없음" },                                                          // 1080p 전투 화면 (창고 없음 → 오탐 없어야 함)
+                SlotSample{ L"character_info.webp", "없음" } };                                                 // 1080p 캐릭터 정보 창
+            std::vector<std::string> outcomes(samples.size());                         // 결과 글자
+            std::vector<std::string> timings(samples.size());                          // 크기 · 처리 시간
+            std::thread worker{ [&]                                                    // 같은 방식으로 일꾼 스레드
+                {
+                    for (std::size_t index = 0; index < samples.size(); ++index)
+                    {
+                        const auto frame = Vision::ImageFile::Load(*folder / samples[index].m_file);   // 이미지
+                        if (!frame) { outcomes[index] = "파일을 못 읽음"; continue; }
+                        const auto scanStart = std::chrono::steady_clock::now();      // 처리 시간 재기
+                        const auto result = Vision::MaterialSlotDetector::DetectFrame(*frame);   // 읽기
+                        const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - scanStart).count();   // 밀리초
+                        std::string text;                                              // "키=값 ..."
+                        if (result) for (const Vision::ScanValue& value : result->m_values) text += std::format("{}{}={}", text.empty() ? "" : " ", value.m_key, value.m_value);
+                        outcomes[index] = text.empty() ? std::string{ "없음" } : text;
+                        timings[index] = std::format("{}x{} · {}ms", frame->GetWidth(), frame->GetHeight(), elapsedMs);   // 크기 · 시간
+                    }
+                } };
+            worker.join();                                                             // 기다림
+            for (std::size_t index = 0; index < samples.size(); ++index)
+                reporter.Check(outcomes[index] == samples[index].m_expected, "슬롯 샘플",
+                    std::format("{} : {} ({})", std::string(samples[index].m_file.begin(), samples[index].m_file.end()), outcomes[index], timings[index]));
+        }
+
         // 젬 툴팁 (v1.10.1~): 실제 화면 샘플 다섯 장 (가공 중인 영웅 젬은 v1.10.2부터 한 개로 셈)
         void CheckGemTooltips(Reporter& reporter, const std::filesystem::path& reportPath)
         {
@@ -931,13 +983,13 @@ namespace LostArkMultiTool::Core::SelfTest
             reporter.Check(isKey, "젬 · 값 이름 (귀속 · 거래 가능 · 가공 · 예전 모양 · 범위 밖 · 다른 값 제외)");
             Models::BoundGemData stock;                                                // 종류별 합계
             stock.SetQuantity(0, 0, 5);                                                // 예전에 손으로 넣은 5개 (내역 없음)
-            const int afterBound = stock.ApplyScan(0, 0, GemStockKind::STOCK_BOUND, 3, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT);       // 귀속 3
-            const int afterTradable = stock.ApplyScan(0, 0, GemStockKind::STOCK_TRADABLE, 2, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT); // + 거래 가능 2
+            const int afterBound = stock.ApplyScan(0, 0, GemStockKind::STOCK_BOUND, 3, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT);       // 귀속 툴팁 전체 3
+            const int afterTradable = stock.ApplyScan(0, 0, GemStockKind::STOCK_TRADABLE, 5, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT); // 거래 가능 툴팁 전체 5 (같은 이름 합계라 더하지 않음)
             const int afterProcessed = stock.ApplyScan(0, 0, GemStockKind::STOCK_PROCESSED, 1, "4.99", Core::APPConstants::MAX_BOUND_GEM_COUNT);   // + 가공 1
             const int afterSame = stock.ApplyScan(0, 0, GemStockKind::STOCK_PROCESSED, 1, "4.99", Core::APPConstants::MAX_BOUND_GEM_COUNT);        // 같은 가공 젬 다시
-            const int afterBoundAgain = stock.ApplyScan(0, 0, GemStockKind::STOCK_BOUND, 4, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT);  // 귀속 4로 바뀜
+            const int afterBoundAgain = stock.ApplyScan(0, 0, GemStockKind::STOCK_BOUND, 6, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT);  // 전체 6으로 바뀜
             reporter.Check(afterBound == 3 && afterTradable == 5 && afterProcessed == 6 && afterSame == 6 && afterBoundAgain == 7 && stock.GetQuantity(0, 0) == 7,
-                "젬 수량 · 귀속 + 거래 가능 + 가공 젬 합계 (같은 가공 젬은 한 번만)",
+                "젬 수량 · 전체 보유 수량(거래 타입 구분 없음) + 가공 젬 (같은 가공 젬은 한 번만)",
                 std::format("{} → {} → {} → {} → {}", afterBound, afterTradable, afterProcessed, afterSame, afterBoundAgain));
             const bool isQuantity = Vision::OCRTextParser::ParseQuantity(L": 417개") == 417 && Vision::OCRTextParser::ParseQuantity(L": 41774") == 417
                 && Vision::OCRTextParser::ParseQuantity(L": 1774") == 17 && Vision::OCRTextParser::ParseQuantity(L": 1 77h") == 17
@@ -1087,6 +1139,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckBossHealth(reporter, reportPath);               // 보스 체력바
             CheckGemTooltips(reporter, reportPath);              // 귀속 젬 툴팁
             CheckCombatAnalyzer(reporter, reportPath);           // 전투 분석기 · 딜 지분
+            CheckMaterialSlots(reporter, reportPath);            // 창고 · 소지품 슬롯 · 값 붙잡기
         }
         catch (const std::exception& exception)
         {

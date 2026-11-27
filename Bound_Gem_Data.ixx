@@ -4,7 +4,7 @@ import std;
 
 export namespace LostArkMultiTool::Models
 {
-    // 화면 인식으로 읽은 젬 수량의 종류 (계산기 칸 = 귀속 + 거래 가능 + 가공 젬 개수)
+    // 화면 인식으로 읽은 젬 수량의 종류 (계산기 칸 = 전체 보유 수량(귀속 · 거래 가능 구분 없음) + 가공 젬 개수)
     enum class GemStockKind
     {
         STOCK_BOUND,       // 캐릭터 귀속 젬 묶음 ("전체 보유 수량")
@@ -15,8 +15,8 @@ export namespace LostArkMultiTool::Models
     // 한 칸(젬 · 등급)의 화면 인식 내역
     struct GemScanSlot
     {
-        std::optional<int> m_bound;               // 귀속 묶음 수량 (아직 못 읽었으면 nullopt)
-        std::optional<int> m_tradable;            // 거래 가능 묶음 수량
+        std::optional<int> m_bound;               // 묶음 전체 보유 수량 (귀속 · 거래 가능 합계, 아직 못 읽었으면 nullopt)
+        std::optional<int> m_tradable;            // 예전(v1.10.2) 거래 가능 묶음 수량 (새로 읽으면 비움)
         std::vector<std::string> m_processed;     // 읽은 가공 젬 구분 글자 (한 개 = 한 줄)
 
         [[nodiscard]] bool IsEmpty() const noexcept;    // 읽은 내역이 없음

@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.10.2 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
+      <div class="sub">C++23 모듈 · v1.10.3 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -793,10 +793,10 @@ const MODULES = [
   "imports": [],
   "cppImports": [],
   "lines": 63,
-  "cppLines": 62,
+  "cppLines": 65,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\9. 젬",
-  "desc": "화면 인식으로 읽은 젬 수량의 종류 (계산기 칸 = 귀속 + 거래 가능 + 가공 젬 개수)",
+  "desc": "화면 인식으로 읽은 젬 수량의 종류 (계산기 칸 = 전체 보유 수량(귀속 · 거래 가능 구분 없음) + 가공 젬 개수)",
   "types": [
    "GemScanSlot",
    "BoundGemData"
@@ -900,13 +900,14 @@ const MODULES = [
    "LostArkMultiTool.Views.TrackerManager",
    "LostArkMultiTool.Views.UI.LineChart",
    "LostArkMultiTool.Vision.CharacterDetector",
+   "LostArkMultiTool.Vision.MaterialSlotDetector",
    "LostArkMultiTool.Vision.OCRTextParser",
    "LostArkMultiTool.Vision.ParadiseDetector",
    "LostArkMultiTool.Vision.ShardBarDetector",
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 204,
-  "cppLines": 1165,
+  "cppLines": 1168,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\1. 귀속재료 계산기 매니저",
   "desc": "인게임 오버레이 재료 패널 한 줄",
@@ -2483,6 +2484,26 @@ const MODULES = [
   ]
  },
  {
+  "file": "Material_Slot_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.MaterialSlotDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.ScreenWatcher"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.SlotTemplates"
+  ],
+  "lines": 38,
+  "cppLines": 416,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "창고 · 소지품이 열려 있으면 마우스를 올리지 않아도 슬롯 아이콘 + 오른쪽 위 숫자로 재료 수량 읽기",
+  "types": [
+   "SlotReading",
+   "MaterialSlotDetector"
+  ]
+ },
+ {
   "file": "Message_Dialog.ixx",
   "module": "LostArkMultiTool.Views.UI.MessageDialog",
   "imports": [
@@ -3413,8 +3434,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.GameWindowFinder",
    "LostArkMultiTool.Vision.ScreenCaptureService"
   ],
-  "lines": 200,
-  "cppLines": 527,
+  "lines": 231,
+  "cppLines": 639,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "게임 화면 상시 감시 (\"마우스를 올려 두면 읽기\")",
@@ -3425,8 +3446,8 @@ const MODULES = [
    "ScreenDetector",
    "ScanConfirmer",
    "State",
-   "WatcherStatus",
-   "WatcherDiagnostics"
+   "CharacterValueGate",
+   "Entry"
   ]
  },
  {
@@ -3480,6 +3501,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.GemTooltipDetector",
    "LostArkMultiTool.Vision.ImageFile",
+   "LostArkMultiTool.Vision.MaterialSlotDetector",
    "LostArkMultiTool.Vision.NameplateMemory",
    "LostArkMultiTool.Vision.OCRTextParser",
    "LostArkMultiTool.Vision.ParadiseDetector",
@@ -3492,7 +3514,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 1102,
+  "cppLines": 1155,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",
@@ -3604,6 +3626,21 @@ const MODULES = [
   "desc": "가로 막대 + 손잡이로 최솟값 ~ 최댓값 사이 값을 고르는 부품 (오버레이 요소별 투명도 등)",
   "types": [
    "Slider"
+  ]
+ },
+ {
+  "file": "Slot_Templates.ixx",
+  "module": "LostArkMultiTool.Vision.SlotTemplates",
+  "imports": [],
+  "cppImports": [],
+  "lines": 31,
+  "cppLines": 147,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "창고 · 소지품 슬롯을 마우스 없이 읽을 때 쓰는 템플릿 (tools/Make-SlotTemplates.py가 샘플에서 만든 데이터)",
+  "types": [
+   "SlotIconTemplate",
+   "SlotGlyphTemplate"
   ]
  },
  {
