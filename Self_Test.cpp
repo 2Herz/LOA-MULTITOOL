@@ -13,6 +13,7 @@ import LostArkMultiTool.Core.APPConstants;
 import LostArkMultiTool.Core.CombatRegression;
 import LostArkMultiTool.Models.BoundGemData;  // 젬 수량 종류별 합계
 import LostArkMultiTool.Models.CombatCoefficientData;
+import LostArkMultiTool.Models.Season;  // 낙원력 이번 주차 계산
 import LostArkMultiTool.Models.RefineData;
 import LostArkMultiTool.Models.CharacterArmory;
 import LostArkMultiTool.Models.TransferData;
@@ -930,6 +931,24 @@ namespace LostArkMultiTool::Core::SelfTest
             }
         }
 
+        // 낙원력 이번 주차 (v1.10.7): 지금 게임 시즌 기간(2026.9.9 수 ~ 12.16)으로 계산, 수요일 06시(게임 날짜)에 다음 주차
+        void CheckParadiseWeek(Reporter& reporter)
+        {
+            Models::Season live;                                                       // 계산용 시즌
+            live.SetPeriod(Core::APPConstants::LIVE_SEASON_START, Core::APPConstants::LIVE_SEASON_END);
+            const auto weekOf = [&live](int year, unsigned month, unsigned day)        // 그날의 주차 번호 (1부터, 없으면 0)
+                {
+                    const auto index = live.FindWeekIndex(std::chrono::year_month_day{ std::chrono::year{ year }, std::chrono::month{ month }, std::chrono::day{ day } });
+                    return index ? static_cast<int>(*index) + 1 : 0;
+                };
+            const int first = weekOf(2026, 9, 9);                                      // 시즌 첫날
+            const int now = weekOf(2026, 11, 28);                                      // 11/28 (토)
+            const int tuesday = weekOf(2026, 12, 1);                                   // 다음 주 화요일 (아직 12주차)
+            const int wednesday = weekOf(2026, 12, 2);                                 // 다음 주 수요일 (13주차)
+            reporter.Check(first == 1 && now == 12 && tuesday == 12 && wednesday == 13, "낙원력 이번 주차 (9/9 → 1주차 · 11/28 → 12주차 · 12/2 수요일 → 13주차)",
+                std::format("{} · {} · {} · {}", first, now, tuesday, wednesday));
+        }
+
         // 창고 · 소지품 슬롯 (v1.10.3): 마우스 없이 융화 재료 · 숨결 수량 + 캐릭터 확인 전 값 붙잡기
         void CheckMaterialSlots(Reporter& reporter, const std::filesystem::path& reportPath)
         {
@@ -1155,6 +1174,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckGemTooltips(reporter, reportPath);              // 귀속 젬 툴팁
             CheckCombatAnalyzer(reporter, reportPath);           // 전투 분석기 · 딜 지분
             CheckMaterialSlots(reporter, reportPath);            // 창고 · 소지품 슬롯 · 값 붙잡기
+            CheckParadiseWeek(reporter);                         // 낙원력 이번 주차
         }
         catch (const std::exception& exception)
         {

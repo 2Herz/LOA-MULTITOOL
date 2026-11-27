@@ -44,6 +44,16 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view CHARACTER_HEADER_FORMAT{ L"{}\n(Lv.{})" };   // 현재 원정대 열: 직업 + 레벨 (원본과 같음)
         constexpr std::wstring_view PAST_CHARACTER_HEADER_FORMAT{ L"{}\n(원정대 제외)" };   // 원정대에서 빠졌지만 기록이 있는 캐릭터
         constexpr std::wstring_view OVERLAY_WEEK_FORMAT{ L"{}주차" };   // 인게임 오버레이 낙원력 패널 주차 이름
+
+        // 이번 주차 번호 (0부터): 기간 있는 시즌은 그 기간, 기간 없는 시즌은 지금 게임 시즌 기간(LIVE_SEASON_*)으로 계산 (수요일 06시에 바뀜)
+        [[nodiscard]] std::optional<std::size_t> FindThisWeekIndex(const Models::Season& season)
+        {
+            const auto today = Core::LocalTime::GetGameToday();                            // 06시 기준 오늘
+            if (season.HasPeriod()) return season.FindWeekIndex(today);                     // 시즌 기간
+            Models::Season live;                                                            // 지금 게임 시즌 (계산용)
+            live.SetPeriod(Core::APPConstants::LIVE_SEASON_START, Core::APPConstants::LIVE_SEASON_END);
+            return live.FindWeekIndex(today);                                               // 9/9부터 몇 번째 주
+        }
         constexpr std::wstring_view CHART_TITLE_FORMAT{ L"{} · 주차별 평균 낙원력" };
 
         // ===== 통계 카드 · 목록 (새 디자인) =====
@@ -911,9 +921,13 @@ namespace LostArkMultiTool::Views
 
         Models::Season& season{ GetCurrentSeason() };                                              // 고른 시즌
         std::vector<Models::WeeklyRecord>& records{ season.GetRecords() };                         // 주차 기록
-        std::optional<std::size_t> weekIndex;                                                      // 이번 주차
-        if (season.HasPeriod()) weekIndex = season.FindWeekIndex(Core::LocalTime::GetGameToday()); // 기간 시즌: 오늘이 든 주차
-        else if (!records.empty()) weekIndex = records.size() - 1;                                 // 기간 없는 시즌: 마지막 주차
+        std::optional<std::size_t> weekIndex{ FindThisWeekIndex(season) };                         // 이번 주차 (날짜 기준, 표의 마지막 칸이 아님)
+        if (!weekIndex && !season.HasPeriod() && !records.empty()) weekIndex = records.size() - 1; // 게임 시즌 기간 밖 + 기간 없는 시즌: 마지막 주차
+        if (weekIndex && *weekIndex >= records.size() && !season.HasPeriod())                      // 기간 없는 시즌에 이번 주차 칸이 아직 없음 → 늘림
+        {
+            while (records.size() <= *weekIndex) season.AddWeek();                                 // 이번 주차까지
+            PopulateGridData();                                                                     // 표 다시 채우기
+        }
         if (!weekIndex || *weekIndex >= records.size() || !IsWeekEditable(*weekIndex)) return ScanApplyResult::SCAN_NO_WEEK;   // 기록할 주차 없음 (경계 검사)
 
         const double recorded{ records[*weekIndex].GetScore(characterName) };                      // 지금 기록
@@ -930,9 +944,8 @@ namespace LostArkMultiTool::Views
         if (!m_repository) return summary;                                                      // 초기화 전
         Models::Season& season{ GetCurrentSeason() };                                          // 고른 시즌
         const std::vector<Models::WeeklyRecord>& records{ season.GetRecords() };                // 주차 기록
-        std::optional<std::size_t> weekIndex;                                                   // 이번 주차
-        if (season.HasPeriod()) weekIndex = season.FindWeekIndex(Core::LocalTime::GetGameToday());   // 오늘이 든 주차
-        else if (!records.empty()) weekIndex = records.size() - 1;                              // 마지막 주차
+        std::optional<std::size_t> weekIndex{ FindThisWeekIndex(season) };                      // 이번 주차 (날짜 기준)
+        if (!weekIndex && !season.HasPeriod() && !records.empty()) weekIndex = records.size() - 1;   // 게임 시즌 기간 밖: 마지막 주차
         if (!weekIndex || *weekIndex >= records.size()) return summary;                         // 이번 주차 없음 (경계 검사)
 
         summary.m_weekLabel = std::format(OVERLAY_WEEK_FORMAT, *weekIndex + 1);                 // "N주차"

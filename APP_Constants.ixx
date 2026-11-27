@@ -6,7 +6,7 @@ import std;
 export namespace LostArkMultiTool::Core::APPConstants
 {
 	//	프로그램 버전 (원격 설정의 LatestVersion과 비교 → 패치노트 버전을 올릴 때 같이 올릴 것)
-	inline constexpr std::string_view APP_VERSION{ "1.10.6" };
+	inline constexpr std::string_view APP_VERSION{ "1.10.7" };
 
 	//	툴별 저장 파일 이름 (툴마다 파일을 따로 씀, 전체 경로는 GetUserDataFilePath가 사용자 데이터 폴더 기준으로 계산)
 	//	예전 버전은 실행 파일 폴더에 저장했음 → 처음 실행할 때 한 번만 사용자 데이터 폴더로 가져옴 (예전 파일은 그대로 둠)
@@ -46,6 +46,9 @@ export namespace LostArkMultiTool::Core::APPConstants
 
 	//	로스트아크 하루가 바뀌는 시각 (일일 컨텐츠 초기화 오전 6시 → 그래프 · 일별 기록의 날짜 기준)
 	inline constexpr int DAILY_RESET_HOUR{ 6 };
+	//	지금 게임 시즌 기간 (수요일 시작, 낙원력 트래커에서 기간을 넣지 않은 시즌의 "이번 주차"를 이 날짜로 계산 → 화면 인식 · 오버레이)
+	inline constexpr std::chrono::year_month_day LIVE_SEASON_START{ std::chrono::year{ 2026 }, std::chrono::month{ 9 }, std::chrono::day{ 9 } };     // 2026.9.9 (수)
+	inline constexpr std::chrono::year_month_day LIVE_SEASON_END{ std::chrono::year{ 2026 }, std::chrono::month{ 12 }, std::chrono::day{ 16 } };    // 2026.12.16
 
 	//	상위 재료(결정·위대한·상급) 사용 기준 아이템 레벨
 	inline constexpr double TOP_MATERIAL_MIN_LEVEL{ 1730.00 };

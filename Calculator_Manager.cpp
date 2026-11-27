@@ -98,7 +98,7 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view VISION_NO_CHARACTER_TEXT{ L"화면 인식: 먼저 캐릭터를 골라 주세요." };
         constexpr std::wstring_view VISION_SAVE_FAILED_TEXT{ L"화면 인식 설정을 저장하지 못했어요." };
         constexpr std::wstring_view SCAN_MATERIAL_FORMAT{ L"{} · {}{} {}개 반영" };          // 캐릭터 · 재료 · (상/하) · 수량
-        constexpr std::wstring_view SCAN_PARADISE_FORMAT{ L"{} · 낙원력 {} 기록" };           // 캐릭터 · 낙원력
+        constexpr std::wstring_view SCAN_PARADISE_FORMAT{ L"{} · 낙원력 {} 기록 (이번 주차)" };   // 캐릭터 · 낙원력
         constexpr std::wstring_view SCAN_GEM_FORMAT{ L"{} · {} ({}) {}개 반영 ({})" };         // 캐릭터 · 젬 · 등급 · 합계 · 읽은 종류
         constexpr std::array<std::wstring_view, 3> GEM_KIND_LABELS{ L"귀속", L"거래 가능", L"가공 젬 +1" };   // GemStockKind 순서
         constexpr std::wstring_view SCAN_GEM_NO_CHARACTER_FORMAT{ L"귀속 젬 계산기에 '{}' 캐릭터가 없어요. 젬 시세 검색기에서 원정대 동기화를 먼저 해 주세요." };
