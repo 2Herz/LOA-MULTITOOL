@@ -1,9 +1,11 @@
 ﻿module LostArkMultiTool.Vision.MaterialSlotDetector;  // 창고 · 소지품 슬롯 재료 인식기 모듈 구현
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Vision.BossHealthDetector;  // 흰 글자 흑백 그림 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.ScreenWatcher;  // 결과 형식 가져오기
 import LostArkMultiTool.Vision.SlotTemplates;  // 아이콘 · 숫자 글자 템플릿 가져오기
+import LostArkMultiTool.Vision.TextRecognizer;  // 3배 OCR 가져오기
 
 namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 {
@@ -31,6 +33,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int GLYPH_MAX_GAP{ 6 };               // 숫자 사이 빈칸 상한 (넘으면 다른 글자 덩어리, 폭이 좁은 "11" 사이가 5)
         constexpr int GLYPH_CANVAS_MARGIN{ 2 };         // 글자 비교 판 여유 (위아래 · 좌우 한 칸씩 밀어 봄)
         constexpr double GLYPH_MIN_SCORE{ 0.70 };       // 글자 일치 점수 하한 (다이스 계수)
+        constexpr double GLYPH_STRONG_SCORE{ 0.85 };    // 모든 글자가 이 이상이면 확실 → 3배 OCR 없이 받음 (애매하면 3배 OCR과 같아야 받음)
         constexpr char OVERFLOW_MARK{ '+' };            // "9999+" 넘침 표시
         constexpr char INK_MARK{ '#' };                 // 템플릿 글자 칸
         constexpr std::size_t MAX_COUNT_DIGITS{ 6 };    // 슬롯 숫자 자릿수 상한
@@ -320,11 +323,19 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
     std::optional<std::string> MaterialSlotDetector::ReadCount(const FrameImage& band)
     {
+        const auto scored = ReadCountScored(band);                                           // 점수와 함께
+        if (!scored) return std::nullopt;                                                    // 못 읽음
+        return scored->first;                                                                // 글자
+    }
+
+    std::optional<std::pair<std::string, double>> MaterialSlotDetector::ReadCountScored(const FrameImage& band)
+    {
         std::vector<Glyph> glyphs = SplitGlyphs(band);                                       // 글자 덩어리
         if (glyphs.empty()) return std::nullopt;                                             // 글자 없음
         std::size_t first = glyphs.size() - 1;                                               // 오른쪽 끝 숫자 묶음 시작
         while (first > 0 && glyphs[first].m_left - glyphs[first - 1].m_right <= GLYPH_MAX_GAP) --first;   // 가까운 글자까지
         std::string text;                                                                    // 결과
+        double lowestScore = 1.0;                                                            // 가장 낮은 글자 점수
         for (std::size_t index = first; index < glyphs.size(); ++index)                     // 글자마다
         {
             double bestScore = 0.0;                                                          // 최고 점수
@@ -337,24 +348,129 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 return std::nullopt;                                                         // 숫자 사이 → 믿을 수 없음
             }
             text += bestSymbol;                                                              // 추가
+            lowestScore = std::min(lowestScore, bestScore);                                  // 가장 낮은 점수
         }
-        return text;                                                                         // "2720"
+        if (text.empty()) return std::nullopt;                                               // 숫자 없음
+        return std::pair{ text, lowestScore };                                               // "2720" · 점수
     }
 
-    std::vector<SlotReading> MaterialSlotDetector::FindSlots(const FrameImage& frame)
+    namespace  // 슬롯 하나 읽기 도우미
+    {
+        // 아이콘 템플릿 하나의 비교 준비물
+        struct IconPattern
+        {
+            const SlotIconTemplate* m_icon{};       // 템플릿
+            LumaImage m_luma;                       // 밝기
+            float m_mean{};                         // 밝기 평균
+            double m_norm{};                        // 편차 크기
+            std::array<double, 3> m_color{};        // 평균 색
+        };
+
+        // 템플릿 → 비교 준비물
+        [[nodiscard]] IconPattern MakeIconPattern(const SlotIconTemplate& icon)
+        {
+            IconPattern pattern{ &icon, ToLuma(icon) };                                       // 템플릿 · 밝기
+            std::tie(pattern.m_mean, pattern.m_norm) = GetStats(pattern.m_luma);             // 통계
+            pattern.m_color = GetMeanColor(icon);                                            // 평균 색
+            return pattern;
+        }
+
+        // 숫자 띠를 3배로 OCR → 숫자만 (흰 글자 흑백 그림, 못 읽으면 nullopt)
+        [[nodiscard]] std::optional<std::string> ReadCountByOcr(const FrameImage& band, const TextRecognizer& text)
+        {
+            constexpr int OCR_SCALE{ 3 };                                                    // 3배 확대
+            const auto result = text.Recognize(BossHealthDetector::MakeTextMask(band), OCR_SCALE);   // 흰 글자만 3배 OCR
+            if (!result) return std::nullopt;                                                // 실패
+            std::string digits;                                                              // 숫자만
+            for (const TextLine& line : result->m_lines)
+                for (wchar_t character : line.m_text)
+                {
+                    if (character >= L'0' && character <= L'9') digits += static_cast<char>(character);   // 숫자
+                    else if (character == L'+') digits += OVERFLOW_MARK;                     // 넘침
+                }
+            if (digits.empty()) return std::nullopt;                                         // 숫자 없음
+            return digits;
+        }
+
+        // (x, y) 근처 radius 안에서 아이콘을 맞춰 보고 숫자 읽기 (아이콘 · 색이 안 맞거나 숫자를 못 읽으면 nullopt)
+        [[nodiscard]] std::optional<SlotReading> ReadSlotAt(const FrameImage& frame, const IconPattern& pattern, int x, int y, int radius, const TextRecognizer* text)
+        {
+            const int width = pattern.m_luma.m_width;                                        // 템플릿 가로
+            const int height = pattern.m_luma.m_height;                                      // 템플릿 세로
+            const PixelRect region = ClampRect(PixelRect{ x - radius, y - radius, width + radius * 2, height + radius * 2 }, frame.GetWidth(), frame.GetHeight());   // 볼 영역
+            if (region.m_width < width || region.m_height < height) return std::nullopt;     // 화면 끝
+            const LumaImage local = ToLuma(frame.Crop(region));                              // 그 영역만 밝기
+            double bestScore = -1.0;                                                         // 최고 점수
+            int bestX = 0;                                                                   // 그 위치 (영역 기준)
+            int bestY = 0;
+            for (int localY = 0; localY + height <= local.m_height; ++localY)
+                for (int localX = 0; localX + width <= local.m_width; ++localX)
+                    if (const double score = Correlate(local, pattern.m_luma, pattern.m_mean, pattern.m_norm, localX, localY); score > bestScore)
+                    {
+                        bestScore = score;                                                   // 더 잘 맞음
+                        bestX = localX;
+                        bestY = localY;
+                    }
+            if (bestScore < FINE_MIN_SCORE) return std::nullopt;                             // 다른 아이콘
+            const PixelRect bounds{ region.m_x + bestX, region.m_y + bestY, width, height }; // 맞은 자리 (프레임 기준)
+            const std::array<double, 3> color = GetMeanColor(frame, bounds);                 // 화면 색
+            double colorDiff = 0.0;                                                          // 가장 큰 채널 차이
+            for (std::size_t channel = 0; channel < color.size(); ++channel) colorDiff = std::max(colorDiff, std::abs(color[channel] - pattern.m_color[channel]));
+            if (colorDiff > MAX_COLOR_DIFF) return std::nullopt;                             // 색이 다름
+
+            const PixelRect bandRect = ClampRect(PixelRect{ bounds.m_x - BAND_SIDE_MARGIN, bounds.m_y - BAND_TOP_OFFSET,
+                width + BAND_SIDE_MARGIN - BAND_RIGHT_TRIM, BAND_TOP_OFFSET - BAND_BOTTOM_OFFSET }, frame.GetWidth(), frame.GetHeight());   // 숫자 띠 (테두리 앞까지)
+            if (bandRect.IsEmpty()) return std::nullopt;                                     // 화면 위 끝
+            const FrameImage band = frame.Crop(bandRect);                                    // 숫자 띠
+            const auto scored = MaterialSlotDetector::ReadCountScored(band);                 // 글자 모양 비교
+            std::optional<std::string> count;                                                // 받을 숫자
+            if (scored && scored->second >= GLYPH_STRONG_SCORE) count = scored->first;       // 확실 → 바로 (3배 OCR 없이, 빠름)
+            else if (text)                                                                   // 애매하거나 못 읽음 → 3배 OCR
+            {
+                const auto ocr = ReadCountByOcr(band, *text);                                // 3배 OCR
+                if (scored && ocr && scored->first == *ocr) count = ocr;                     // 둘이 같음 → 받음
+                else if (!scored) count = ocr;                                               // 글자 모양 비교 실패 → 3배 OCR 결과
+                else return std::nullopt;                                                    // 애매한데 둘이 다름 → 믿을 수 없음 (오인식 막기)
+            }
+            else if (scored) count = scored->first;                                          // OCR이 없을 때 (자체 검사 등) → 글자 모양 결과
+            if (!count || count->empty() || count->contains(OVERFLOW_MARK) || count->size() > MAX_COUNT_DIGITS) return std::nullopt;   // 못 읽음 · 넘침
+            std::int64_t quantity = 0;                                                       // 값
+            for (char digit : *count) quantity = quantity * DECIMAL_BASE + (digit - '0');    // 숫자
+            return SlotReading{ std::string{ pattern.m_icon->m_valueKey }, quantity, bounds, bestScore };
+        }
+
+        // 겹치는 슬롯은 점수 높은 것만 남기며 추가
+        void AddSlot(std::vector<SlotReading>& found, SlotReading slot)
+        {
+            if (std::ranges::any_of(found, [&](const SlotReading& other) { return GetOverlap(other.m_iconBounds, slot.m_iconBounds) > OVERLAP_RATIO && other.m_score >= slot.m_score; })) return;   // 더 잘 맞는 게 있음
+            std::erase_if(found, [&](const SlotReading& other) { return GetOverlap(other.m_iconBounds, slot.m_iconBounds) > OVERLAP_RATIO; });   // 덜 맞는 것은 지움
+            found.push_back(std::move(slot));                                                // 추가
+        }
+
+        // 슬롯들 → 재료별 합계 결과
+        [[nodiscard]] std::optional<ScanResult> Summarize(const std::vector<SlotReading>& slots)
+        {
+            if (slots.empty()) return std::nullopt;                                          // 창고 · 소지품이 안 보임
+            std::map<std::string, std::int64_t, std::less<>> totals;                         // 재료별 합
+            for (const SlotReading& slot : slots) totals[slot.m_valueKey] += slot.m_quantity;   // 더하기
+            ScanResult result;                                                               // 결과
+            result.m_screenName = std::string{ MaterialSlotDetector::SCREEN_NAME };          // 화면 이름
+            for (const auto& [key, quantity] : totals) result.m_values.push_back(ScanValue{ key, quantity });   // 값
+            return result;
+        }
+    }
+
+    std::vector<SlotReading> MaterialSlotDetector::FindSlots(const FrameImage& frame, const TextRecognizer* text)
     {
         std::vector<SlotReading> found;                                                      // 결과
         if (frame.IsEmpty()) return found;                                                   // 빈 프레임
-        const LumaImage luma = ToLuma(frame);                                                // 밝기
-        const LumaImage small = Shrink(luma, DOWN_SCALE);                                    // 축소
+        const LumaImage small = Shrink(ToLuma(frame), DOWN_SCALE);                           // 축소 밝기
         const SumTable smallTable = MakeSumTable(small);                                     // 축소 화면 창 합 표
         for (const SlotIconTemplate& icon : GetSlotIcons())                                  // 아이콘마다
         {
-            const LumaImage pattern = ToLuma(icon);                                          // 템플릿 밝기
-            const LumaImage smallPattern = Shrink(pattern, DOWN_SCALE);                      // 축소 템플릿
-            const auto [mean, norm] = GetStats(pattern);                                     // 원래 크기 통계
+            const IconPattern pattern = MakeIconPattern(icon);                               // 비교 준비물
+            const LumaImage smallPattern = Shrink(pattern.m_luma, DOWN_SCALE);               // 축소 템플릿
             const auto [smallMean, smallNorm] = GetStats(smallPattern);                      // 축소 통계
-            const std::array<double, 3> iconColor = GetMeanColor(icon);                      // 템플릿 색
             std::vector<float> centeredSmall(smallPattern.m_pixels.size());                  // 축소 템플릿 - 평균
             std::ranges::transform(smallPattern.m_pixels, centeredSmall.begin(), [smallMean](float value) { return value - smallMean; });
 
@@ -377,34 +493,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
             // 2) 원래 크기에서 다시 맞춰 보고 색 비교 → 숫자 읽기
             for (const Candidate& candidate : kept)
-            {
-                double bestScore = -1.0;                                                     // 최고 점수
-                int bestX = 0;                                                               // 그 위치
-                int bestY = 0;
-                for (int y = candidate.m_y * DOWN_SCALE - REFINE_RADIUS; y <= candidate.m_y * DOWN_SCALE + REFINE_RADIUS; ++y)
-                    for (int x = candidate.m_x * DOWN_SCALE - REFINE_RADIUS; x <= candidate.m_x * DOWN_SCALE + REFINE_RADIUS; ++x)
-                    {
-                        if (x < 0 || y < 0 || x + pattern.m_width > luma.m_width || y + pattern.m_height > luma.m_height) continue;   // 밖
-                        if (const double score = Correlate(luma, pattern, mean, norm, x, y); score > bestScore) { bestScore = score; bestX = x; bestY = y; }
-                    }
-                if (bestScore < FINE_MIN_SCORE) continue;                                    // 다른 아이콘
-                const PixelRect bounds{ bestX, bestY, pattern.m_width, pattern.m_height };   // 맞은 자리
-                const std::array<double, 3> color = GetMeanColor(frame, bounds);             // 화면 색
-                double colorDiff = 0.0;                                                      // 가장 큰 채널 차이
-                for (std::size_t channel = 0; channel < color.size(); ++channel) colorDiff = std::max(colorDiff, std::abs(color[channel] - iconColor[channel]));
-                if (colorDiff > MAX_COLOR_DIFF) continue;                                    // 색이 다름
-                if (std::ranges::any_of(found, [&](const SlotReading& other) { return GetOverlap(other.m_iconBounds, bounds) > OVERLAP_RATIO && other.m_score >= bestScore; })) continue;   // 더 잘 맞는 아이콘이 이미 있음
-                std::erase_if(found, [&](const SlotReading& other) { return GetOverlap(other.m_iconBounds, bounds) > OVERLAP_RATIO; });   // 덜 맞는 것은 지움
-
-                const PixelRect bandRect = ClampRect(PixelRect{ bestX - BAND_SIDE_MARGIN, bestY - BAND_TOP_OFFSET,
-                    pattern.m_width + BAND_SIDE_MARGIN - BAND_RIGHT_TRIM, BAND_TOP_OFFSET - BAND_BOTTOM_OFFSET }, frame.GetWidth(), frame.GetHeight());   // 숫자 띠 (테두리 앞까지)
-                if (bandRect.IsEmpty()) continue;                                            // 화면 위 끝
-                const auto text = ReadCount(frame.Crop(bandRect));                           // 숫자
-                if (!text || text->empty() || text->contains(OVERFLOW_MARK) || text->size() > MAX_COUNT_DIGITS) continue;   // 못 읽음 · 넘침
-                std::int64_t quantity = 0;                                                   // 값
-                for (char digit : *text) quantity = quantity * DECIMAL_BASE + (digit - '0'); // 숫자
-                found.push_back(SlotReading{ std::string{ icon.m_valueKey }, quantity, bounds, bestScore });   // 추가
-            }
+                if (auto slot = ReadSlotAt(frame, pattern, candidate.m_x * DOWN_SCALE, candidate.m_y * DOWN_SCALE, REFINE_RADIUS, text)) AddSlot(found, std::move(*slot));
         }
         return found;                                                                        // 슬롯들
     }
@@ -414,20 +503,31 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return SCREEN_NAME;   // "material_slot"
     }
 
-    std::optional<ScanResult> MaterialSlotDetector::Detect(const FrameImage& frame, const DetectorContext&)
+    std::optional<ScanResult> MaterialSlotDetector::Detect(const FrameImage& frame, const DetectorContext& context)
     {
-        return DetectFrame(frame);   // 화면 전체 (커서 · OCR 안 씀)
+        if (!m_known.empty() && m_scansSinceSearch < FULL_SEARCH_EVERY)                     // 지난번 슬롯 자리만 다시 확인 (빠름)
+        {
+            ++m_scansSinceSearch;                                                            // 횟수
+            std::vector<SlotReading> again;                                                  // 다시 읽은 슬롯
+            bool isAllFound = true;                                                          // 모두 그대로 있는지
+            for (const SlotReading& known : m_known)
+            {
+                const auto icons = GetSlotIcons();                                           // 아이콘 목록
+                const auto icon = std::ranges::find(icons, known.m_valueKey, &SlotIconTemplate::m_valueKey);   // 그 아이콘
+                if (icon == icons.end()) { isAllFound = false; break; }                      // 없음
+                auto slot = ReadSlotAt(frame, MakeIconPattern(*icon), known.m_iconBounds.m_x, known.m_iconBounds.m_y, KNOWN_SLOT_RADIUS, &context.m_text);   // 그 자리
+                if (!slot) { isAllFound = false; break; }                                    // 창을 닫았거나 옮김
+                again.push_back(std::move(*slot));                                           // 다시 읽음
+            }
+            if (isAllFound) { m_known = std::move(again); return Summarize(m_known); }      // 그대로
+        }
+        m_scansSinceSearch = 0;                                                              // 화면 전체 다시 찾기
+        m_known = FindSlots(frame, &context.m_text);                                         // 슬롯들
+        return Summarize(m_known);
     }
 
-    std::optional<ScanResult> MaterialSlotDetector::DetectFrame(const FrameImage& frame)
+    std::optional<ScanResult> MaterialSlotDetector::DetectFrame(const FrameImage& frame, const TextRecognizer* text)
     {
-        const std::vector<SlotReading> slots = FindSlots(frame);                             // 슬롯들
-        if (slots.empty()) return std::nullopt;                                              // 창고 · 소지품이 안 보임
-        std::map<std::string, std::int64_t, std::less<>> totals;                             // 재료별 합
-        for (const SlotReading& slot : slots) totals[slot.m_valueKey] += slot.m_quantity;    // 더하기
-        ScanResult result;                                                                   // 결과
-        result.m_screenName = std::string{ SCREEN_NAME };                                    // 화면 이름
-        for (const auto& [key, quantity] : totals) result.m_values.push_back(ScanValue{ key, quantity });   // 값
-        return result;
+        return Summarize(FindSlots(frame, text));                                            // 화면 전체 (상태 없음)
     }
 }

@@ -13,7 +13,6 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr double AREA_TOP_RATIO{ 0.03 };        // 체력바 영역 위쪽 (창 제목줄이 있어도 · 없어도 들어오게 넉넉히)
         constexpr double AREA_BOTTOM_RATIO{ 0.15 };     // 체력바 영역 아래쪽
         constexpr int MIN_TEXT_CHANNEL{ 150 };          // 세 채널이 모두 이 이상이면 흰 글자 (막대 색은 파랑 · 초록이 낮음)
-        constexpr int MASK_PADDING{ 20 };               // 흑백 그림 둘레 여백 (OCR이 가장자리 글자를 잘 읽게)
         constexpr std::uint8_t TEXT_VALUE{ 0 };         // 글자 = 검정
         constexpr std::uint8_t BACK_VALUE{ 255 };       // 바탕 = 흰색
         constexpr int ALPHA_CHANNEL{ 3 };               // BGRA 알파 위치

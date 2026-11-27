@@ -45,6 +45,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
     class BossHealthDetector
     {
     public:
+        static constexpr int MASK_PADDING{ 20 };   // 흑백 그림 둘레 여백 (OCR이 가장자리 글자를 잘 읽게, OCR 위치를 프레임 기준으로 바꿀 때 뺌)
         [[nodiscard]] static PixelRect GetBarArea(int frameWidth, int frameHeight) noexcept;              // 체력바를 찾을 영역 (위쪽 가운데)
         [[nodiscard]] static FrameImage MakeTextMask(const FrameImage& image);                            // 흰 글자만 검게, 나머지는 흰 바탕 (여백 포함)
         [[nodiscard]] static std::optional<BossHealthReading> Parse(const TextResult& text);              // OCR 결과 해석

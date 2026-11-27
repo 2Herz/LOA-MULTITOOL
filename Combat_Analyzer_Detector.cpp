@@ -26,6 +26,17 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int DECIMAL_BASE{ 10 };               // 십진수
         constexpr int MAX_DIGITS{ 15 };                 // 숫자 자릿수 상한
         constexpr double HALF{ 0.5 };                   // 절반
+        constexpr int FIND_SCALE{ 1 };                  // 머리글 찾기는 1배 (빠름)
+        constexpr int STRIP_ABOVE_RATIO{ 1 };           // 띠 위쪽 = 머리글 위 - 머리글 높이 × 1
+        constexpr int STRIP_BELOW_RATIO{ 4 };           // 띠 아래쪽 = 머리글 아래 + 머리글 높이 × 4 (값 줄까지)
+
+        // 머리글 줄인지 ("DPS" · "피해량")
+        [[nodiscard]] bool IsHeader(const TextLine& line)
+        {
+            const std::wstring compact = OCRTextParser::Compact(line.m_text);   // 띄어쓰기 없이
+            if (compact == DPS_HEADER) return true;                             // DPS
+            return compact.size() <= DAMAGE_HEADER.size() + HEADER_MAX_DISTANCE && OCRTextParser::FindDistance(DAMAGE_HEADER, compact) <= HEADER_MAX_DISTANCE;   // 피해량
+        }
 
         [[nodiscard]] double CenterX(const PixelRect& rect) noexcept { return rect.m_x + rect.m_width * HALF; }   // 가로 가운데
     }
@@ -91,11 +102,52 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return reading;                                                         // 읽은 값
     }
 
-    std::optional<CombatReading> CombatAnalyzerDetector::Detect(const FrameImage& frame, const TextRecognizer& text)
+    std::optional<CombatReading> CombatAnalyzerDetector::Detect(const FrameImage& frame, const TextRecognizer& text, std::optional<PixelRect>* stripCache)
     {
         const PixelRect area = GetArea(frame.GetWidth(), frame.GetHeight());    // 오른쪽 아래
         if (area.m_width <= 0 || area.m_height <= 0) return std::nullopt;       // 너무 작은 프레임
-        const auto result = text.Recognize(BossHealthDetector::MakeTextMask(frame.Crop(area)), OCR_SCALE);   // 흰 글자만 2배 OCR
+        struct StripRead { bool m_hasHeader{}; std::optional<CombatReading> m_reading; };   // 띠 읽은 결과 (머리글이 보였는지 · 값)
+        const auto readStrip = [&](const PixelRect& strip) -> StripRead       // 띠만 2배로 읽기
+            {
+                const PixelRect clamped = ClampRect(strip, frame.GetWidth(), frame.GetHeight());   // 프레임 안
+                if (clamped.IsEmpty()) return {};                               // 빈 띠
+                const auto result = text.Recognize(BossHealthDetector::MakeTextMask(frame.Crop(clamped)), OCR_SCALE);   // 흰 글자만 2배
+                if (!result) return {};                                         // OCR 실패
+                const bool hasHeader = std::ranges::any_of(result->m_lines, [](const TextLine& line) { return IsHeader(line); });   // 전투 분석기가 그 자리에 있음
+                return StripRead{ hasHeader, Parse(*result) };                  // 해석
+            };
+
+        // 1) 지난번에 찾은 띠 (전투 분석기는 잘 안 움직임)
+        if (stripCache && *stripCache)
+        {
+            StripRead cached = readStrip(**stripCache);                         // 그 띠
+            if (cached.m_reading || cached.m_hasHeader) return cached.m_reading; // 값 · 또는 머리글만 (값이 "-" = 전투 전)
+            stripCache->reset();                                                // 옮겼거나 닫음 → 다시 찾기
+        }
+
+        // 2) 1배로 머리글 줄 찾기 → 그 띠만 2배
+        const FrameImage mask = BossHealthDetector::MakeTextMask(frame.Crop(area));   // 흰 글자만
+        if (const auto found = text.Recognize(mask, FIND_SCALE))                // 1배 OCR (빠름)
+        {
+            for (const TextLine& line : found->m_lines)                         // 줄마다
+            {
+                if (!IsHeader(line)) continue;                                  // 머리글 아님
+                const int height = std::max(line.m_bounds.m_height, 1);         // 머리글 높이
+                const int top = area.m_y + line.m_bounds.m_y - BossHealthDetector::MASK_PADDING - height * STRIP_ABOVE_RATIO;   // 띠 위 (프레임 기준)
+                const int bottom = area.m_y + line.m_bounds.GetBottom() - BossHealthDetector::MASK_PADDING + height * STRIP_BELOW_RATIO;   // 띠 아래
+                const PixelRect strip{ area.m_x, top, area.m_width, bottom - top };   // 영역 가로 전체 (다른 칸 머리글도 들어오게)
+                StripRead found_strip = readStrip(strip);                       // 띠 읽기
+                if (found_strip.m_reading || found_strip.m_hasHeader)           // 값 · 또는 머리글 (값이 "-")
+                {
+                    if (stripCache) *stripCache = strip;                        // 기억
+                    return found_strip.m_reading;
+                }
+                break;                                                          // 한 번만 (아래 넓은 영역으로)
+            }
+        }
+
+        // 3) 못 찾음 → 넓은 영역 2배 (예전 방식)
+        const auto result = text.Recognize(mask, OCR_SCALE);                    // 흰 글자만 2배 OCR
         if (!result) return std::nullopt;                                       // OCR 실패
         return Parse(*result);                                                  // 해석
     }

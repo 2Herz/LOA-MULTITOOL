@@ -24,6 +24,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] static PixelRect GetArea(int frameWidth, int frameHeight) noexcept;                      // 찾을 영역 (오른쪽 아래)
         [[nodiscard]] static std::optional<std::int64_t> ParseAmount(std::wstring_view text);                  // "460,99익" → 46099000000
         [[nodiscard]] static std::optional<CombatReading> Parse(const TextResult& text);                       // OCR 결과 해석 (피해량 · DPS 둘 다 없으면 nullopt)
-        [[nodiscard]] static std::optional<CombatReading> Detect(const FrameImage& frame, const TextRecognizer& text);   // 프레임에서 읽기
+        // 프레임에서 읽기: 1배로 머리글 줄을 찾고 그 띠만 2배로 읽음 (stripCache가 있으면 찾은 띠를 기억해 다음부터 바로 읽음)
+        [[nodiscard]] static std::optional<CombatReading> Detect(const FrameImage& frame, const TextRecognizer& text, std::optional<PixelRect>* stripCache = nullptr);
     };
 }

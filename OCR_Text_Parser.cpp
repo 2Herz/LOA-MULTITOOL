@@ -1,6 +1,7 @@
 ﻿module LostArkMultiTool.Vision.OCRTextParser;  // OCR 글자 해석 모듈 구현
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.TextRecognizer;  // OCR 결과 가져오기
 
 namespace LostArkMultiTool::Vision::OCRTextParser  // OCR 해석 네임스페이스 시작
@@ -188,6 +189,48 @@ namespace LostArkMultiTool::Vision::OCRTextParser  // OCR 해석 네임스페이
         }
         if (digits == 0) return std::nullopt;                                                  // 숫자 없음
         return value;                                                                          // "1 7" → 17
+    }
+
+    std::optional<std::int64_t> ReadQuantityZoomed(const FrameImage& frame, const PixelRect& hoverArea, const TextResult& hoverText,
+        const TextRecognizer& text, std::wstring_view keyword, std::size_t maxDistance)
+    {
+        constexpr int ZOOM_SCALE{ 3 };                                             // 3배 확대
+        constexpr double LINE_MARGIN_RATIO{ 0.6 };                                 // 줄 위아래 · 왼쪽 여백 (줄 높이 배수)
+        constexpr int MIN_LINE_MARGIN{ 4 };                                        // 여백 하한 (픽셀)
+        constexpr int RIGHT_EXTEND_RATIO{ 6 };                                     // 오른쪽으로 더 볼 폭 (줄 높이 배수, 숫자가 줄에서 빠졌을 때)
+        const std::wstring compactKeyword = Compact(keyword);                      // 띄어쓰기 없는 keyword
+        const TextLine* bestLine = nullptr;                                        // keyword가 가장 잘 맞는 줄
+        std::size_t bestDistance = std::numeric_limits<std::size_t>::max();        // 그 거리
+        for (const TextLine& line : hoverText.m_lines)                             // 줄마다
+        {
+            const std::wstring compact = Compact(line.m_text);                     // 띄어쓰기 없는 줄
+            if (compact.empty()) continue;                                         // 빈 줄
+            const std::size_t distance = FindBestMatch(compactKeyword, compact).first;   // keyword 거리
+            if (distance <= maxDistance && distance < bestDistance) { bestDistance = distance; bestLine = &line; }   // 더 잘 맞음
+        }
+        if (bestLine == nullptr) return std::nullopt;                              // 수량 줄 없음
+        const PixelRect& bounds = bestLine->m_bounds;                              // 줄 위치 (커서 주변 그림 기준)
+        const int margin = std::max(MIN_LINE_MARGIN, static_cast<int>(bounds.m_height * LINE_MARGIN_RATIO));   // 여백
+        const PixelRect lineArea = ClampRect(PixelRect{ hoverArea.m_x + bounds.m_x - margin, hoverArea.m_y + bounds.m_y - margin,
+            bounds.m_width + margin * 2 + bounds.m_height * RIGHT_EXTEND_RATIO, bounds.m_height + margin * 2 }, frame.GetWidth(), frame.GetHeight());   // 프레임 기준 줄 영역
+        if (lineArea.IsEmpty()) return std::nullopt;                               // 화면 밖
+        const auto zoomed = text.Recognize(frame.Crop(lineArea), ZOOM_SCALE);      // 그 줄만 3배 OCR
+        if (!zoomed) return std::nullopt;                                          // OCR 실패
+        return FindQuantityAfter(*zoomed, keyword, maxDistance);                   // 수량
+    }
+
+    std::optional<std::int64_t> ResolveTooltipQuantity(const FrameImage& frame, const PixelRect& hoverArea, const TextResult& hoverText,
+        const TextRecognizer& text, std::wstring_view keyword, std::size_t maxDistance)
+    {
+        constexpr std::wstring_view STACK_KEYWORD{ L"겹침 수량" };                 // 이 칸(묶음) 수량 줄 (전체 보유 수량보다 클 수 없음)
+        constexpr std::size_t STACK_MAX_DISTANCE{ 1 };                             // 오인식 허용
+        const auto quick = FindQuantityAfter(hoverText, keyword, maxDistance, hoverArea.m_width);   // 1배
+        const auto zoomed = ReadQuantityZoomed(frame, hoverArea, hoverText, text, keyword, maxDistance);   // 3배
+        const auto stack = FindQuantityAfter(hoverText, STACK_KEYWORD, STACK_MAX_DISTANCE, hoverArea.m_width);   // 겹침 수량
+        const auto isPossible = [&stack](const std::optional<std::int64_t>& value) { return value && (!stack || *value >= *stack); };   // 겹침 수량 이상
+        if (isPossible(zoomed)) return zoomed;                                     // 3배 값
+        if (isPossible(quick)) return quick;                                       // 1배 값
+        return std::nullopt;                                                       // 못 읽음 · 오인식
     }
 
     std::optional<std::int64_t> FindQuantityAfter(const TextResult& text, std::wstring_view keyword, std::size_t maxDistance, std::optional<int> areaWidth)

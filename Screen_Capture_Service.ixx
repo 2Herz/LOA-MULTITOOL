@@ -40,7 +40,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] bool IsCapturing(void* windowHandle) const noexcept;   // 이 창을 캡처 중인지
 
         // 가장 최근 프레임의 게임 화면 영역(제목 표시줄 · 테두리 제외)을 CPU 메모리로 복사 (새 프레임이 없으면 nullopt)
-        [[nodiscard]] std::optional<FrameImage> TakeLatestFrame();
+        // 쌓인 프레임 중 가장 최근 것 (isCopyNeeded가 false면 쌓인 프레임만 비우고 복사하지 않음 → 할 일이 없는 주기의 GPU → CPU 복사를 아낌)
+        [[nodiscard]] std::optional<FrameImage> TakeLatestFrame(bool isCopyNeeded = true);
 
         [[nodiscard]] const std::string& GetLastError() const noexcept;   // 마지막 실패 이유 (UTF-8, 로그용)
 

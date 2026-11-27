@@ -6,7 +6,7 @@ import std;
 export namespace LostArkMultiTool::Core::APPConstants
 {
 	//	프로그램 버전 (원격 설정의 LatestVersion과 비교 → 패치노트 버전을 올릴 때 같이 올릴 것)
-	inline constexpr std::string_view APP_VERSION{ "1.10.7" };
+	inline constexpr std::string_view APP_VERSION{ "1.10.8" };
 
 	//	툴별 저장 파일 이름 (툴마다 파일을 따로 씀, 전체 경로는 GetUserDataFilePath가 사용자 데이터 폴더 기준으로 계산)
 	//	예전 버전은 실행 파일 폴더에 저장했음 → 처음 실행할 때 한 번만 사용자 데이터 폴더로 가져옴 (예전 파일은 그대로 둠)

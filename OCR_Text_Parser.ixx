@@ -1,6 +1,7 @@
 ﻿export module LostArkMultiTool.Vision.OCRTextParser;  // OCR 글자 해석 모듈 선언 (내보내기)
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.TextRecognizer;  // OCR 결과 가져오기
 
 // OCR이 읽은 글자에서 필요한 값 꺼내기 (상태 없는 함수 모음)
@@ -44,6 +45,14 @@ export namespace LostArkMultiTool::Vision::OCRTextParser  // OCR 해석 네임�
     // "전체 보유 수량: 417개" 같은 수량 줄 전용 (FindNumberAfter와 같지만 뒤의 "개"를 OCR이 "74" · "7h"로 읽은 경우를 떼어 냄)
     [[nodiscard]] std::optional<std::int64_t> FindQuantityAfter(const TextResult& text, std::wstring_view keyword, std::size_t maxDistance,
         std::optional<int> areaWidth = std::nullopt);
+
+    // 수량 줄만 잘라 3배로 다시 읽기 (커서 주변 1배 OCR에서 keyword 줄 위치를 찾고 → 그 줄만 3배 OCR → 수량, 줄이 없거나 못 읽으면 nullopt)
+    [[nodiscard]] std::optional<std::int64_t> ReadQuantityZoomed(const FrameImage& frame, const PixelRect& hoverArea, const TextResult& hoverText,
+        const TextRecognizer& text, std::wstring_view keyword, std::size_t maxDistance);
+
+    // 툴팁 수량 정하기: 3배로 다시 읽은 값을 먼저 쓰고(없으면 1배), "겹침 수량"보다 작으면 오인식으로 봄 (1배 값이 맞으면 그것, 아니면 nullopt)
+    [[nodiscard]] std::optional<std::int64_t> ResolveTooltipQuantity(const FrameImage& frame, const PixelRect& hoverArea, const TextResult& hoverText,
+        const TextRecognizer& text, std::wstring_view keyword, std::size_t maxDistance);
 
     // 수량 글자 → 숫자 (":417개" · ": 41774" → 417, ": 1 77h" → 17, 자체 검사용으로도 공개)
     [[nodiscard]] std::optional<std::int64_t> ParseQuantity(std::wstring_view text);

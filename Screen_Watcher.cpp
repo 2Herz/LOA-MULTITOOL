@@ -161,6 +161,34 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         m_isCharacterPicked = true;                       // 다음 주기부터
     }
 
+    bool RegionChangeDetector::IsSame(const FrameImage& frame, const PixelRect& area)
+    {
+        constexpr int SAMPLE_CHANNEL{ 1 };                                             // BGRA 초록 (밝기에 가장 가까움)
+        const PixelRect rect = ClampRect(area, frame.GetWidth(), frame.GetHeight());   // 프레임 안
+        std::vector<std::uint8_t> samples;                                             // 이번 표본
+        samples.reserve(static_cast<std::size_t>(rect.m_width / SAMPLE_STEP + 1) * (rect.m_height / SAMPLE_STEP + 1));
+        const auto pixels = frame.GetPixels();                                         // BGRA
+        for (int y = rect.m_y; y < rect.GetBottom(); y += SAMPLE_STEP)
+            for (int x = rect.m_x; x < rect.GetRight(); x += SAMPLE_STEP)
+                samples.push_back(pixels[(static_cast<std::size_t>(y) * frame.GetWidth() + x) * FrameImage::BYTES_PER_PIXEL + SAMPLE_CHANNEL]);
+        bool isSame = !samples.empty() && m_rect == rect && m_samples.size() == samples.size();   // 같은 자리 · 크기
+        if (isSame)
+        {
+            std::uint64_t difference = 0;                                              // 차이 합 (SAD)
+            for (std::size_t index = 0; index < samples.size(); ++index)
+                difference += static_cast<std::uint64_t>(std::abs(static_cast<int>(samples[index]) - static_cast<int>(m_samples[index])));
+            isSame = static_cast<double>(difference) / static_cast<double>(samples.size()) <= MAX_SAME_DIFFERENCE;   // 평균 차이
+        }
+        m_rect = rect;                                                                 // 이번 영역
+        m_samples = std::move(samples);                                                // 이번 표본
+        return isSame;
+    }
+
+    void RegionChangeDetector::Reset() noexcept
+    {
+        m_samples.clear();   // 다음엔 "바뀜"
+    }
+
     void CharacterValueGate::Hold(ScanResult result, Clock::time_point now)
     {
         if (m_entries.size() >= MAX_PENDING) m_entries.pop_front();   // 넘치면 오래된 것부터
@@ -350,6 +378,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         auto nextBossScan = std::chrono::steady_clock::now();                      // 다음 보스 체력 읽기 시각
         auto nextCombatScan = std::chrono::steady_clock::now();                    // 다음 전투 분석기 읽기 시각
         BossHealthTracker bossTracker;                                             // 보스 체력 투표 (오인식 걸러내기)
+        RegionChangeDetector bossChange;                                               // 보스 체력바 영역 변경 감지
+        std::optional<BossHealthReading> lastBossReading;                          // 그 영역에서 마지막으로 읽은 값 (같은 화면이면 다시 씀)
+        RegionChangeDetector combatChange;                                             // 전투 분석기 영역 변경 감지
+        std::optional<CombatReading> lastCombatReading;                            // 마지막으로 읽은 전투 분석기
+        std::optional<PixelRect> combatStrip;                                      // 전투 분석기 머리글 · 값 띠 (찾으면 다음부터 그 띠만 읽음)
+        RegionChangeDetector hoverChange;                                              // 커서 주변 영역 변경 감지
+        std::optional<TextResult> lastHoverText;                                   // 커서 주변 마지막 OCR (같은 화면이면 다시 씀)
         auto lastBossSeen = std::chrono::steady_clock::now();                      // 마지막으로 체력바를 읽은 시각
         std::uint64_t previewVersion = 0;                                          // 미리 보기 그림 버전
         void* gameWindow = nullptr;                                                // 지난번에 찾은 게임 창
@@ -403,7 +438,14 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 }
                 else restTime += interval;                                         // 멈춘 시간 누적
 
-                auto frame = capture.TakeLatestFrame();                            // 최신 프레임 (쌓인 프레임 비우기 겸)
+                const auto planNow = std::chrono::steady_clock::now();             // 이번 주기에 할 일이 있는지 보는 시각
+                const bool isFrameNeeded = (cursor && restTime >= REST_BEFORE_SCAN && scansThisRest < SCANS_PER_REST)   // 커서 주변 읽기
+                    || (m_isPreviewEnabled && planNow >= nextPreview)                   // 미리 보기
+                    || (m_isBossScanEnabled && planNow >= nextBossScan)                 // 보스 체력
+                    || (m_isCombatScanEnabled && planNow >= nextCombatScan)             // 전투 분석기
+                    || (m_isCharacterScanEnabled && planNow >= nextCharacterScan)       // 캐릭터 확인
+                    || (!m_frameDetectors.empty() && planNow >= nextFrameScan);         // 창고 슬롯
+                auto frame = capture.TakeLatestFrame(isFrameNeeded);               // 최신 프레임 (할 일이 없으면 쌓인 프레임만 비우고 복사 안 함)
                 if (frame)                                                         // 받았으면
                 {
                     const std::scoped_lock lock{ m_mutex };                        // 상태 보호
@@ -423,7 +465,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 if (frame && m_isBossScanEnabled && steadyNow >= nextBossScan)     // 보스 체력 (커서와 상관없이)
                 {
                     nextBossScan = steadyNow + BOSS_SCAN_INTERVAL;                 // 다음 시각
-                    if (const auto boss = BossHealthDetector::Detect(*frame, text))   // 체력바 읽기
+                    const bool isSameBoss = bossChange.IsSame(*frame, BossHealthDetector::GetBarArea(frame->GetWidth(), frame->GetHeight()));   // 지난번과 같은 화면
+                    if (!isSameBoss) lastBossReading = BossHealthDetector::Detect(*frame, text);   // 바뀌었을 때만 OCR
+                    if (const auto& boss = lastBossReading)                        // 체력바 (같은 화면이면 지난 값)
                     {
                         lastBossSeen = steadyNow;                                  // 봤음
                         if (const auto confirmed = bossTracker.Feed(*boss))        // 투표로 믿을 만한 값만
@@ -437,7 +481,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 if (frame && m_isCombatScanEnabled && steadyNow >= nextCombatScan) // 전투 분석기 (커서와 상관없이)
                 {
                     nextCombatScan = steadyNow + COMBAT_SCAN_INTERVAL;             // 다음 시각
-                    if (const auto combat = CombatAnalyzerDetector::Detect(*frame, text))   // 피해량 · DPS 읽기
+                    const bool isSameCombat = combatChange.IsSame(*frame, CombatAnalyzerDetector::GetArea(frame->GetWidth(), frame->GetHeight()));   // 지난번과 같은 화면
+                    if (!isSameCombat) lastCombatReading = CombatAnalyzerDetector::Detect(*frame, text, &combatStrip);   // 바뀌었을 때만 OCR (찾은 띠만)
+                    if (const auto& combat = lastCombatReading)                    // 피해량 · DPS (같은 화면이면 지난 값)
                     {
                         const std::scoped_lock lock{ m_mutex };                    // 보호
                         m_combatStats = CombatSample{ *combat, steadyNow };        // 기록
@@ -571,7 +617,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                     ++scansThisRest;                                               // 읽은 횟수
                     const auto hoverStart = std::chrono::steady_clock::now();     // 처리 시간 재기
                     const PixelRect hoverArea = GetHoverArea(*cursor, frame->GetWidth(), frame->GetHeight());   // 커서 주변
-                    const auto hoverText = text.Recognize(frame->Crop(hoverArea), OCR_SCALE);   // 커서 주변 OCR
+                    if (!hoverChange.IsSame(*frame, hoverArea) || !lastHoverText)   // 바뀌었거나 처음이면 OCR (같은 멈춤의 두 번째 읽기는 보통 같은 화면)
+                        lastHoverText = text.Recognize(frame->Crop(hoverArea), OCR_SCALE);   // 커서 주변 OCR
+                    const auto& hoverText = lastHoverText;                         // 이번에 쓸 OCR 결과
                     const TextResult emptyText;                                    // OCR 실패 때 넘길 빈 결과
                     const DetectorContext context{ *layouts, text, hoverText ? *hoverText : emptyText, hoverArea, *cursor };   // 인식기 공용 도구
                     const auto now = std::chrono::system_clock::now();             // 읽은 시각

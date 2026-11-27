@@ -3,6 +3,7 @@
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.ScreenWatcher;  // 결과 형식 가져오기
+import LostArkMultiTool.Vision.TextRecognizer;  // 3배 OCR 가져오기
 
 // 창고 · 소지품이 열려 있으면 마우스를 올리지 않아도 슬롯 아이콘 + 오른쪽 위 숫자로 재료 수량 읽기
 // - 대상: 아비도스 융화 재료 · 용암의 숨결 · 빙하의 숨결 (파괴석 · 수호석 · 돌파석은 9999+로 넘쳐서 툴팁으로 읽음)
@@ -30,8 +31,18 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] std::string_view GetScreenName() const noexcept override;   // 담당 화면 이름
         [[nodiscard]] std::optional<ScanResult> Detect(const FrameImage& frame, const DetectorContext& context) override;   // 재료별 합계 (없으면 nullopt)
 
-        [[nodiscard]] static std::vector<SlotReading> FindSlots(const FrameImage& frame);   // 보이는 대상 슬롯 모두
-        [[nodiscard]] static std::optional<ScanResult> DetectFrame(const FrameImage& frame);// 재료별 합계 (자체 검사용으로도 공개)
+        static constexpr int FULL_SEARCH_EVERY{ 5 };       // 찾은 슬롯 자리만 이만큼 다시 확인한 뒤 화면 전체를 다시 찾음 (새로 연 창)
+        static constexpr int KNOWN_SLOT_RADIUS{ 2 };       // 찾은 슬롯 자리 다시 확인 범위 (픽셀)
+
+        // 보이는 대상 슬롯 모두 (text가 있으면 숫자 띠를 3배 OCR로도 읽어 글자 모양 비교와 맞춰 봄)
+        [[nodiscard]] static std::vector<SlotReading> FindSlots(const FrameImage& frame, const TextRecognizer* text = nullptr);
+        [[nodiscard]] static std::optional<ScanResult> DetectFrame(const FrameImage& frame, const TextRecognizer* text = nullptr);   // 재료별 합계 (상태 없음, 자체 검사용으로도 공개)
         [[nodiscard]] static std::optional<std::string> ReadCount(const FrameImage& band);  // 숫자 띠 → 글자 ("2720" · "9999+", 못 읽으면 nullopt)
+        // ReadCount와 같지만 글자 일치 점수 중 가장 낮은 값도 함께 (애매하면 3배 OCR로 다시 확인할 때 씀)
+        [[nodiscard]] static std::optional<std::pair<std::string, double>> ReadCountScored(const FrameImage& band);
+
+    private:
+        std::vector<SlotReading> m_known;   // 지난번에 찾은 슬롯 (자리 · 아이콘)
+        int m_scansSinceSearch{};           // 화면 전체를 찾은 뒤 자리만 확인한 횟수
     };
 }

@@ -226,7 +226,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return m_impl->m_session != nullptr && m_impl->m_window == static_cast<HWND>(windowHandle);   // 세션이 있고 같은 창
     }
 
-    std::optional<FrameImage> ScreenCaptureService::TakeLatestFrame()
+    std::optional<FrameImage> ScreenCaptureService::TakeLatestFrame(bool isCopyNeeded)
     {
         if (!m_impl->m_pool) return std::nullopt;   // 캡처 중이 아님
 
@@ -236,6 +236,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             for (auto frame = m_impl->m_pool.TryGetNextFrame(); frame; frame = m_impl->m_pool.TryGetNextFrame())   // 쌓인 프레임을 모두 꺼냄
                 latest = frame;                                                        // 마지막 것만 남김
             if (!latest) return std::nullopt;                                          // 새 프레임 없음
+            if (!isCopyNeeded) return std::nullopt;                                    // 이번 주기엔 할 일이 없음 → 비우기만
 
             const auto contentSize = latest.ContentSize();                             // 실제 화면 크기
             if (contentSize.Width != m_impl->m_poolSize.Width || contentSize.Height != m_impl->m_poolSize.Height)   // 창 크기가 바뀌었으면
@@ -253,9 +254,14 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             const UINT width = std::min(description.Width, static_cast<UINT>(std::max(contentSize.Width, 0)));     // 복사할 가로 (실제 화면 크기까지)
             const UINT height = std::min(description.Height, static_cast<UINT>(std::max(contentSize.Height, 0)));  // 복사할 세로
             if (width == 0 || height == 0) return std::nullopt;                        // 최소화 등으로 크기가 0
-            if (!m_impl->EnsureStaging(width, height)) return std::nullopt;            // 복사용 텍스처 준비 실패
+            const PixelRect client = m_impl->GetClientRegion(static_cast<int>(width), static_cast<int>(height));   // 게임 화면 영역 (창 테두리 · 제목 줄 제외)
+            if (client.IsEmpty()) return std::nullopt;                                 // 영역 없음
+            const UINT copyWidth = static_cast<UINT>(client.m_width);                  // 복사할 가로 (게임 영역만)
+            const UINT copyHeight = static_cast<UINT>(client.m_height);                // 복사할 세로
+            if (!m_impl->EnsureStaging(copyWidth, copyHeight)) return std::nullopt;    // 복사용 텍스처 준비 실패
 
-            const D3D11_BOX box{ 0, 0, 0, width, height, 1 };                          // 복사할 영역 (왼 · 위 · 앞 · 오 · 아래 · 뒤)
+            const D3D11_BOX box{ static_cast<UINT>(client.m_x), static_cast<UINT>(client.m_y), 0,
+                static_cast<UINT>(client.m_x) + copyWidth, static_cast<UINT>(client.m_y) + copyHeight, 1 };   // 게임 영역만 GPU에서 잘라 복사 (한 번만 복사)
             m_impl->m_context->CopySubresourceRegion(m_impl->m_staging.get(), SUBRESOURCE_INDEX, 0, 0, 0,
                 texture.get(), SUBRESOURCE_INDEX, &box);                               // GPU에서 복사용 텍스처로
 
@@ -264,11 +270,11 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             if (FAILED(mappedResult)) { m_impl->m_lastError = DescribeFailure("프레임 읽기", mappedResult); return std::nullopt; }   // 실패
 
             const std::span<const std::uint8_t> source{ static_cast<const std::uint8_t*>(mapped.pData),
-                static_cast<std::size_t>(mapped.RowPitch) * height };                  // 매핑 메모리 (경계가 있는 span)
+                static_cast<std::size_t>(mapped.RowPitch) * copyHeight };              // 매핑 메모리 (경계가 있는 span)
             FrameImage frame;                                                          // 결과
             try
             {
-                frame = FrameImage::FromRows(static_cast<int>(width), static_cast<int>(height), source, static_cast<int>(mapped.RowPitch));   // CPU 버퍼로 복사
+                frame = FrameImage::FromRows(static_cast<int>(copyWidth), static_cast<int>(copyHeight), source, static_cast<int>(mapped.RowPitch));   // CPU 버퍼로 복사 (게임 영역만)
             }
             catch (...)
             {
@@ -277,7 +283,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             }
             m_impl->m_context->Unmap(m_impl->m_staging.get(), SUBRESOURCE_INDEX);      // 매핑 해제
 
-            return frame.Crop(m_impl->GetClientRegion(frame.GetWidth(), frame.GetHeight()));   // 게임 화면 영역만
+            return frame;                                                              // 게임 화면 (이미 게임 영역만)
         }
         catch (const winrt::hresult_error& error)
         {

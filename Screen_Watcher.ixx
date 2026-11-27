@@ -84,6 +84,21 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::map<std::string, State, std::less<>> m_states;     // 화면별 상태
     };
 
+    // 영역 변경 감지 (지난번 표본과 픽셀 차이 평균(SAD / 픽셀 수)을 비교 → 같으면 OCR을 건너뛰고 지난 결과를 씀)
+    class RegionChangeDetector
+    {
+    public:
+        static constexpr int SAMPLE_STEP{ 4 };                  // 가로 · 세로 4칸마다 한 픽셀만 봄
+        static constexpr double MAX_SAME_DIFFERENCE{ 1.5 };     // 픽셀 차이 평균이 이 이하면 같은 화면
+
+        [[nodiscard]] bool IsSame(const FrameImage& frame, const PixelRect& area);   // 지난번과 같은지 (표본은 이번 것으로 바꿈)
+        void Reset() noexcept;                                                     // 표본 지우기 (다음엔 무조건 "바뀜")
+
+    private:
+        PixelRect m_rect;                       // 지난 영역
+        std::vector<std::uint8_t> m_samples;    // 지난 표본 픽셀
+    };
+
     // 캐릭터를 다시 확인할 때까지 값 결과를 붙잡아 두는 문
     // - 캐릭터를 바꾸는 사이(로딩 전후 · 확정 전) 읽은 재료 수량이 다른 캐릭터에 들어가지 않게 "캐릭터 먼저, 값은 나중에"
     // - 같은 캐릭터를 다시 보면 내보내고, 로딩 화면 · 다른 이름을 보면 버림

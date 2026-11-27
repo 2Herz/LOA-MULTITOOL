@@ -931,6 +931,236 @@ namespace LostArkMultiTool::Core::SelfTest
             }
         }
 
+        // 화면 인식 측정 (v1.10.8): 모든 실제 화면 샘플의 정답률 · 단계별 평균 시간 (같은 샘플을 여러 번 → 개선 전후 비교)
+        void CheckVisionBenchmark(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
+            if (!folder) { reporter.Note("화면 인식 측정 건너뜀 (Verify/screens 없음)"); return; }
+            constexpr int RUNS{ 3 };                                                   // 반복 횟수
+            constexpr double TARGET_ACCURACY{ 0.99 };                                  // 목표 정답률
+            constexpr double PERCENT{ 100.0 };                                         // 백분율
+            using Clock = std::chrono::steady_clock;                                   // 시계
+            struct Stage { std::string m_name; double m_totalMs{}; int m_count{}; double m_bestMs{ std::numeric_limits<double>::max() }; };   // 단계별 시간 (평균 · 가장 빠른 값)
+            std::vector<Stage> stages;                                                 // 단계들
+            int correct = 0;                                                           // 맞힌 수
+            int total = 0;                                                             // 전체 수
+            std::vector<std::string> misses;                                           // 틀린 단계
+            const auto measure = [&](std::string_view name, auto&& work)               // 시간 재며 실행 (정답이면 true)
+                {
+                    const auto start = Clock::now();                                   // 시작
+                    const bool isCorrect = work();                                     // 실행
+                    const double elapsed = std::chrono::duration<double, std::milli>(Clock::now() - start).count();   // 밀리초
+                    auto stage = std::ranges::find(stages, name, &Stage::m_name);      // 단계
+                    if (stage == stages.end()) { stages.push_back(Stage{ std::string{ name } }); stage = std::prev(stages.end()); }
+                    stage->m_totalMs += elapsed;                                       // 시간 합
+                    stage->m_bestMs = std::min(stage->m_bestMs, elapsed);              // 가장 빠른 값 (PC 부하에 덜 흔들림)
+                    ++stage->m_count;                                                  // 횟수
+                    ++total;                                                           // 전체
+                    if (isCorrect) ++correct; else misses.emplace_back(name);          // 정답 · 오답
+                };
+            std::thread worker{ [&]                                                    // OCR 일꾼 스레드
+                {
+                    const Vision::VisionApartment apartment;                           // WinRT 준비
+                    const Vision::TextRecognizer recognizer;                           // OCR
+                    const Vision::ScreenLayoutStore layouts;                           // 배치
+                    std::map<std::wstring, Vision::FrameImage> frames;                 // 샘플 그림 (읽기 시간은 빼려고 먼저 읽음)
+                    const auto frameOf = [&](std::wstring_view file) -> const Vision::FrameImage*   // 샘플 그림
+                        {
+                            const std::wstring key{ file };                            // 파일 이름
+                            if (!frames.contains(key))                                 // 처음
+                            {
+                                auto loaded = Vision::ImageFile::Load(*folder / key);  // 읽기
+                                if (!loaded) return nullptr;                           // 없음
+                                frames.emplace(key, std::move(*loaded));               // 기억
+                            }
+                            return &frames.at(key);
+                        };
+
+                    // 툴팁 · 낙원 · 상단바 (커서 주변 OCR + 인식기)
+                    for (int run = 0; run < RUNS; ++run)
+                        for (const VisionSample& sample : VISION_SAMPLES)
+                            if (const auto* frame = frameOf(sample.m_file)) measure("커서 주변", [&] { return ReadSample(*frame, sample, recognizer, layouts) == sample.m_expected; });
+
+                    // 젬 툴팁
+                    struct GemCase { std::wstring_view m_file; std::string m_key; std::int64_t m_value; };   // 젬 샘플
+                    const std::array gems{ GemCase{ L"gem_order_stable_common_417.png", Vision::GemTooltipDetector::MakeValueKey(0, 0), 417 },
+                        GemCase{ L"gem_order_stable_rare_17.png", Vision::GemTooltipDetector::MakeValueKey(0, 1), 17 },
+                        GemCase{ L"gem_order_solid_hero_processed.png", Vision::GemTooltipDetector::MakeValueKey(1, 2, Models::GemStockKind::STOCK_PROCESSED, {}), 1 } };
+                    for (int run = 0; run < RUNS; ++run)
+                        for (const GemCase& gem : gems)
+                            if (const auto* frame = frameOf(gem.m_file))
+                                measure("젬 툴팁", [&]
+                                    {
+                                        const auto text = recognizer.Recognize(*frame);  // OCR
+                                        const Vision::TextResult empty;                  // 실패 때
+                                        const Vision::DetectorContext context{ layouts, recognizer, text ? *text : empty,
+                                            Vision::PixelRect{ 0, 0, frame->GetWidth(), frame->GetHeight() }, Vision::PixelPoint{} };
+                                        Vision::GemTooltipDetector detector;             // 젬 인식기
+                                        const auto result = detector.Detect(*frame, context);   // 읽기
+                                        return result && !result->m_values.empty() && result->m_values.front().m_key.starts_with(gem.m_key)
+                                            && result->m_values.front().m_value == gem.m_value;
+                                    });
+
+                    // 보스 체력 · 전투 분석기
+                    struct BossCase { std::wstring_view m_file; std::int64_t m_current; std::optional<std::int64_t> m_damage; };   // 보스 샘플
+                    const std::array bosses{ BossCase{ L"boss_hp.webp", 83'119'120'458, std::nullopt }, BossCase{ L"boss_hp_half.webp", 37'019'552'389, 46'099'000'000 },
+                        BossCase{ L"boss_hp_low.webp", 4'816'559'070, 78'298'000'000 } };
+                    std::array<std::optional<Vision::PixelRect>, 3> combatStrips{};   // 샘플마다 찾은 전투 분석기 띠 (감시기처럼 기억)
+                    for (int run = 0; run < RUNS; ++run)
+                        for (const BossCase& boss : bosses)
+                            if (const auto* frame = frameOf(boss.m_file))
+                            {
+                                measure("보스 체력", [&] { const auto reading = Vision::BossHealthDetector::Detect(*frame, recognizer); return reading && reading->m_current == boss.m_current; });
+                                measure("전투 분석기", [&] { const auto reading = Vision::CombatAnalyzerDetector::Detect(*frame, recognizer, &combatStrips[&boss - bosses.data()]); return boss.m_damage ? (reading && reading->m_damage == boss.m_damage) : !reading; });
+                            }
+
+                    // 창고 슬롯 (마우스 없이)
+                    struct SlotCase { std::wstring_view m_file; std::size_t m_count; };       // 슬롯 샘플 (읽은 재료 수)
+                    const std::array slots{ SlotCase{ L"storage.png", 3 }, SlotCase{ L"storage_fusion.png", 3 }, SlotCase{ L"boss_hp.webp", 0 } };
+                    for (int run = 0; run < RUNS; ++run)
+                        for (const SlotCase& slot : slots)
+                            if (const auto* frame = frameOf(slot.m_file))
+                                measure("창고 슬롯", [&] { const auto result = Vision::MaterialSlotDetector::DetectFrame(*frame, &recognizer); return (result ? result->m_values.size() : 0) == slot.m_count; });
+
+                    // 현재 캐릭터 (이름표 글자 확인 · 기억한 모양)
+                    const std::vector<std::wstring> roster{ L"외숡모", L"당숡모", L"읾모", L"핢머니", L"정찻" };   // 원정대
+                    if (const auto* frame = frameOf(L"character_nameplate.webp"))
+                        for (int run = 0; run < RUNS; ++run)
+                        {
+                            const auto memory = std::make_shared<Vision::NameplateMemory>(Vision::MemoryStorage::STORAGE_NONE);   // 빈 기억
+                            const Vision::CharacterDetector detector{ roster, {}, memory };   // 인식기
+                            measure("캐릭터 글자 확인", [&] { return detector.Detect(*frame, recognizer, false, true).m_name == L"핢머니"; });
+                            measure("캐릭터 모양", [&] { return detector.Detect(*frame, recognizer, false, false).m_name == L"핢머니"; });
+                        }
+
+                    // 같은 화면을 다시 읽을 때 (변경 감지 → OCR 건너뜀, 커서 주변 두 번째 읽기 · 보스 · 전투 분석기가 가만히 있을 때)
+                    if (const auto* frame = frameOf(L"boss_hp_half.webp"))
+                    {
+                        Vision::RegionChangeDetector change;                           // 변경 감지
+                        const Vision::PixelRect area = Vision::BossHealthDetector::GetBarArea(frame->GetWidth(), frame->GetHeight());   // 보스 영역
+                        (void)change.IsSame(*frame, area);                             // 첫 표본
+                        for (int run = 0; run < RUNS; ++run)
+                            measure("같은 화면 다시 읽기", [&] { return change.IsSame(*frame, area); });   // 같은 화면 → true (OCR 없이 지난 값)
+                    }
+
+                    // 캡처 한 장 복사 (1080p 게임 + 창 테두리 → 게임 영역)
+                    constexpr int WINDOW_WIDTH{ 1936 };                                // 창 가로
+                    constexpr int WINDOW_HEIGHT{ 1119 };                               // 창 세로
+                    constexpr int GAME_WIDTH{ 1920 };                                  // 게임 가로
+                    constexpr int GAME_HEIGHT{ 1080 };                                 // 게임 세로
+                    constexpr int BORDER{ 8 };                                         // 테두리
+                    constexpr int TITLE{ 31 };                                         // 제목 줄
+                    constexpr int COPY_RUNS{ 10 };                                     // 반복
+                    constexpr std::uint8_t GRAY{ 128 };                                // 채울 값
+                    const std::vector<std::uint8_t> buffer(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT * Vision::FrameImage::BYTES_PER_PIXEL, GRAY);   // 가짜 화면
+                    const Vision::PixelRect client{ BORDER, TITLE, GAME_WIDTH, GAME_HEIGHT };   // 게임 영역
+                    for (int run = 0; run < COPY_RUNS; ++run)
+                        measure("캡처 복사", [&]
+                            {
+                                const std::size_t offset = (static_cast<std::size_t>(client.m_y) * WINDOW_WIDTH + client.m_x) * Vision::FrameImage::BYTES_PER_PIXEL;   // 게임 영역 시작 (GPU에서 잘라 복사하는 것과 같음)
+                                const auto frame = Vision::FrameImage::FromRows(GAME_WIDTH, GAME_HEIGHT, std::span{ buffer }.subspan(offset), WINDOW_WIDTH * Vision::FrameImage::BYTES_PER_PIXEL);   // 한 번만 복사
+                                return frame.GetWidth() == GAME_WIDTH;
+                            });
+                } };
+            worker.join();                                                             // 기다림
+            std::string summary;                                                       // 단계별 평균
+            double sumMs = 0.0;                                                        // 캡처 복사를 뺀 한 번씩 평균 합
+            for (const Stage& stage : stages)
+            {
+                const double average = stage.m_totalMs / std::max(stage.m_count, 1);  // 평균
+                summary += std::format("{}{} {:.1f}ms(최소 {:.1f})", summary.empty() ? "" : " · ", stage.m_name, average, stage.m_bestMs);
+                sumMs += average;
+            }
+            const double accuracy = total > 0 ? static_cast<double>(correct) / total : 0.0;   // 정답률
+            std::string missText;                                                      // 틀린 단계
+            for (const std::string& miss : misses) missText += " " + miss;
+            reporter.Check(accuracy >= TARGET_ACCURACY, "화면 인식 측정 · 정답률 99% 이상",
+                std::format("{}/{} ({:.1f}%) · 단계 평균 합 {:.1f}ms · {}{}", correct, total, accuracy * PERCENT, sumMs, summary, missText.empty() ? "" : " · 틀림:" + missText));
+        }
+
+        // 감시 한 주기 예전 방식 → 지금 방식 (v1.10.8): 같은 실행 안에서 번갈아 재고 가장 빠른 값으로 비교 (게임 등 PC 부하에 덜 흔들리게)
+        // 한 주기 = 커서 주변 두 번 읽기(확정) + 보스 체력 + 전투 분석기 + 창고 슬롯 + 캡처 복사
+        void CheckWatchCycleSpeed(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
+            if (!folder) { reporter.Note("감시 주기 측정 건너뜀 (Verify/screens 없음)"); return; }
+            constexpr int RUNS{ 4 };                                                   // 반복 (가장 빠른 값)
+            constexpr double TARGET_GAIN{ 0.30 };                                      // 목표: 30% 이상 빨라짐
+            constexpr double PERCENT{ 100.0 };                                         // 백분율
+            constexpr int OLD_COMBAT_SCALE{ 2 };                                       // 예전 전투 분석기: 넓은 영역 2배
+            using Clock = std::chrono::steady_clock;                                   // 시계
+            double bestOld = std::numeric_limits<double>::max();                       // 예전 방식 가장 빠른 한 주기
+            double bestNew = std::numeric_limits<double>::max();                       // 지금 방식 가장 빠른 한 주기
+            bool isLoaded = false;                                                     // 샘플을 읽었는지
+            std::thread worker{ [&]
+                {
+                    const Vision::VisionApartment apartment;                           // WinRT 준비
+                    const Vision::TextRecognizer recognizer;                           // OCR
+                    const Vision::ScreenLayoutStore layouts;                           // 배치
+                    const auto tooltip = Vision::ImageFile::Load(*folder / L"tooltip_dest_top.png");   // 커서 주변 (툴팁)
+                    const auto boss = Vision::ImageFile::Load(*folder / L"boss_hp_half.webp");         // 보스 · 전투 분석기 (1080p)
+                    const auto storage = Vision::ImageFile::Load(*folder / L"storage.png");            // 창고
+                    if (!tooltip || !boss || !storage) return;                         // 샘플 없음
+                    isLoaded = true;
+                    const Vision::PixelRect hoverArea{ 0, 0, tooltip->GetWidth(), tooltip->GetHeight() };   // 툴팁 그림 전체
+                    constexpr int WINDOW_WIDTH{ 1936 };                                // 캡처 창 가로
+                    constexpr int WINDOW_HEIGHT{ 1119 };                               // 캡처 창 세로
+                    constexpr int BORDER{ 8 };                                         // 테두리
+                    constexpr int TITLE{ 31 };                                         // 제목 줄
+                    constexpr int GAME_WIDTH{ 1920 };                                  // 게임 가로
+                    constexpr int GAME_HEIGHT{ 1080 };                                 // 게임 세로
+                    constexpr std::uint8_t GRAY{ 128 };                                // 채울 값
+                    const std::vector<std::uint8_t> buffer(static_cast<std::size_t>(WINDOW_WIDTH) * WINDOW_HEIGHT * Vision::FrameImage::BYTES_PER_PIXEL, GRAY);
+                    const int pitch = WINDOW_WIDTH * Vision::FrameImage::BYTES_PER_PIXEL;   // 줄 간격
+                    const Vision::PixelRect client{ BORDER, TITLE, GAME_WIDTH, GAME_HEIGHT };   // 게임 영역
+                    const auto readTooltip = [&](const Vision::TextResult& text, bool isZoomed)   // 툴팁 수량
+                        {
+                            if (!isZoomed) return Vision::OCRTextParser::FindQuantityAfter(text, L"전체 보유 수량", 2, hoverArea.m_width);   // 예전: 1배만
+                            return Vision::OCRTextParser::ResolveTooltipQuantity(*tooltip, hoverArea, text, recognizer, L"전체 보유 수량", 2);   // 지금: 3배 다시 읽기
+                        };
+                    Vision::MaterialSlotDetector slotDetector;                         // 지금: 슬롯 자리 기억
+                    const Vision::TextResult noText;                                   // 주기 인식기용 빈 OCR
+                    const Vision::DetectorContext slotContext{ layouts, recognizer, noText, Vision::PixelRect{ 0, 0, storage->GetWidth(), storage->GetHeight() }, Vision::PixelPoint{} };
+                    (void)slotDetector.Detect(*storage, slotContext);                  // 처음 한 번 찾음 (감시기도 처음 한 번은 화면 전체)
+                    std::optional<Vision::PixelRect> combatStrip;                      // 지금: 전투 분석기 띠 기억
+                    (void)Vision::CombatAnalyzerDetector::Detect(*boss, recognizer, &combatStrip);   // 처음 한 번 찾음
+                    Vision::RegionChangeDetector hoverChange;                          // 지금: 커서 주변 변경 감지
+                    for (int run = 0; run < RUNS; ++run)
+                    {
+                        // 예전 방식
+                        auto start = Clock::now();
+                        for (int scan = 0; scan < 2; ++scan)                           // 커서 주변 두 번 (확정) → 매번 OCR
+                            if (const auto text = recognizer.Recognize(*tooltip)) (void)readTooltip(*text, false);
+                        (void)Vision::BossHealthDetector::Detect(*boss, recognizer);   // 보스
+                        (void)recognizer.Recognize(Vision::BossHealthDetector::MakeTextMask(boss->Crop(Vision::CombatAnalyzerDetector::GetArea(boss->GetWidth(), boss->GetHeight()))), OLD_COMBAT_SCALE);   // 전투 분석기 넓은 영역 2배
+                        (void)Vision::MaterialSlotDetector::DetectFrame(*storage);     // 창고 화면 전체 찾기
+                        (void)Vision::FrameImage::FromRows(WINDOW_WIDTH, WINDOW_HEIGHT, buffer, pitch).Crop(client);   // 창 전체 복사 → 다시 잘라 복사
+                        bestOld = std::min(bestOld, std::chrono::duration<double, std::milli>(Clock::now() - start).count());
+
+                        // 지금 방식
+                        start = Clock::now();
+                        std::optional<Vision::TextResult> hoverText;                   // 커서 주변 OCR
+                        hoverChange.Reset();                                           // 새 멈춤
+                        for (int scan = 0; scan < 2; ++scan)                           // 두 번째는 같은 화면이면 OCR 건너뜀
+                        {
+                            if (!hoverChange.IsSame(*tooltip, hoverArea) || !hoverText) hoverText = recognizer.Recognize(*tooltip);
+                            if (hoverText) (void)readTooltip(*hoverText, true);
+                        }
+                        (void)Vision::BossHealthDetector::Detect(*boss, recognizer);   // 보스
+                        (void)Vision::CombatAnalyzerDetector::Detect(*boss, recognizer, &combatStrip);   // 전투 분석기 띠만
+                        (void)slotDetector.Detect(*storage, slotContext);              // 창고 슬롯 자리만
+                        const std::size_t offset = (static_cast<std::size_t>(client.m_y) * WINDOW_WIDTH + client.m_x) * Vision::FrameImage::BYTES_PER_PIXEL;
+                        (void)Vision::FrameImage::FromRows(GAME_WIDTH, GAME_HEIGHT, std::span{ buffer }.subspan(offset), pitch);   // 게임 영역만 한 번 복사
+                        bestNew = std::min(bestNew, std::chrono::duration<double, std::milli>(Clock::now() - start).count());
+                    }
+                } };
+            worker.join();                                                             // 기다림
+            if (!isLoaded) { reporter.Note("감시 주기 측정 건너뜀 (샘플 없음)"); return; }
+            const double gain = bestOld > 0.0 ? bestOld / bestNew - 1.0 : 0.0;         // 빨라진 정도 (처리량)
+            reporter.Check(gain >= TARGET_GAIN, "감시 한 주기 속도 (예전 → 지금, 30% 이상 빨라짐)",
+                std::format("{:.1f}ms → {:.1f}ms · {:.0f}% 빨라짐 (시간 {:.0f}% 줄어듦)", bestOld, bestNew, gain * PERCENT, (1.0 - bestNew / bestOld) * PERCENT));
+        }
+
         // 낙원력 이번 주차 (v1.10.7): 지금 게임 시즌 기간(2026.9.9 수 ~ 12.16)으로 계산, 수요일 06시(게임 날짜)에 다음 주차
         void CheckParadiseWeek(Reporter& reporter)
         {
@@ -984,12 +1214,14 @@ namespace LostArkMultiTool::Core::SelfTest
             std::vector<std::string> timings(samples.size());                          // 크기 · 처리 시간
             std::thread worker{ [&]                                                    // 같은 방식으로 일꾼 스레드
                 {
+                    const Vision::VisionApartment apartment;                           // WinRT 준비 (숫자 띠 3배 OCR)
+                    const Vision::TextRecognizer recognizer;                           // OCR
                     for (std::size_t index = 0; index < samples.size(); ++index)
                     {
                         const auto frame = Vision::ImageFile::Load(*folder / samples[index].m_file);   // 이미지
                         if (!frame) { outcomes[index] = "파일을 못 읽음"; continue; }
                         const auto scanStart = std::chrono::steady_clock::now();      // 처리 시간 재기
-                        const auto result = Vision::MaterialSlotDetector::DetectFrame(*frame);   // 읽기
+                        const auto result = Vision::MaterialSlotDetector::DetectFrame(*frame, &recognizer);   // 읽기 (글자 모양 + 3배 OCR 대조)
                         const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - scanStart).count();   // 밀리초
                         std::string text;                                              // "키=값 ..."
                         if (result) for (const Vision::ScanValue& value : result->m_values) text += std::format("{}{}={}", text.empty() ? "" : " ", value.m_key, value.m_value);
@@ -1175,6 +1407,8 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckCombatAnalyzer(reporter, reportPath);           // 전투 분석기 · 딜 지분
             CheckMaterialSlots(reporter, reportPath);            // 창고 · 소지품 슬롯 · 값 붙잡기
             CheckParadiseWeek(reporter);                         // 낙원력 이번 주차
+            CheckVisionBenchmark(reporter, reportPath);          // 화면 인식 정답률 · 속도 측정
+            CheckWatchCycleSpeed(reporter, reportPath);          // 감시 한 주기 예전 → 지금
         }
         catch (const std::exception& exception)
         {
