@@ -32,7 +32,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr int HOTKEY_TOGGLE_MATERIAL{ 4 };           // 단축키 번호: 재료 시세 패널
         constexpr int HOTKEY_TOGGLE_DAMAGE{ 5 };             // 단축키 번호: 딜 지분 패널
         constexpr unsigned KEY_BACKQUOTE{ 0xC0 };            // ` 키 (VK_OEM_3)
-        constexpr unsigned KEY_D{ 'D' };                     // D 키
+        constexpr unsigned KEY_F6{ 0x75 };                   // F6 키 (VK_F6)
         constexpr unsigned KEY_F5{ 0x74 };                   // F5 키 (VK_F5)
         constexpr float BOSS_PANEL_TOP_RATIO{ 0.15f };       // 보스 체력 패널 위쪽 (게임 체력바 바로 아래, 화면 세로 비율)
         constexpr unsigned MODIFIER_CONTROL{ 0x0002 };       // MOD_CONTROL (Ctrl)
@@ -65,7 +65,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view TOOLBAR_DAMAGE_TEXT{ L"딜 지분" };          // 딜 지분 단추 글자
         constexpr float DAMAGE_PANEL_BOTTOM_RATIO{ 0.74f };  // 딜 지분 패널 아래쪽 (게임 전투 분석기 바로 위, 화면 세로 비율)
         constexpr std::wstring_view TOOLBAR_BOSS_TEXT{ L"보스 체력" };
-        constexpr std::wstring_view PANEL_HOTKEY_FAILED_TEXT{ L"패널 단축키(Ctrl+Shift+` · Ctrl+Shift+D)를 다른 프로그램이 쓰고 있어요. 조작 모드 도구 막대로 켜 주세요." };
+        constexpr std::wstring_view PANEL_HOTKEY_FAILED_TEXT{ L"패널 단축키(Ctrl+Shift+` · Ctrl+Shift+F6)를 다른 프로그램이 쓰고 있어요. 조작 모드 도구 막대로 켜 주세요." };
         constexpr std::wstring_view REFRESH_HOTKEY_FAILED_TEXT{ L"시세 갱신 단축키(Ctrl+Shift+F5)를 다른 프로그램이 쓰고 있어요. 그 프로그램의 단축키를 바꾸거나 계산기의 [시세 갱신]을 눌러 주세요." };
         constexpr std::wstring_view TOOLBAR_MATERIAL_TEXT{ L"재료 시세" };
         constexpr std::wstring_view TOOLBAR_PARADISE_TEXT{ L"낙원력" };
@@ -99,7 +99,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         else if (!m_window->RegisterHotkey(HOTKEY_REFRESH_PRICES, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_F5))                   // Ctrl+Shift+F5
             m_pendingNotice = std::wstring{ REFRESH_HOTKEY_FAILED_TEXT };                                                       // 등록 실패 안내
         const bool isMaterialKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_MATERIAL, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_BACKQUOTE);   // Ctrl+Shift+`
-        const bool isDamageKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_DAMAGE, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_D);              // Ctrl+Shift+D
+        const bool isDamageKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_DAMAGE, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_F6);             // Ctrl+Shift+F6
         if ((!isMaterialKey || !isDamageKey) && !m_pendingNotice) m_pendingNotice = std::wstring{ PANEL_HOTKEY_FAILED_TEXT };   // 등록 실패 안내 (먼저 난 안내가 있으면 그것만)
         [[maybe_unused]] const bool isCaptureApplied = m_window->SetCaptureHidden(m_settings->IsCaptureHidden());              // 캡처 · 방송에서 숨기기 (옛 윈도우면 그대로)
 
