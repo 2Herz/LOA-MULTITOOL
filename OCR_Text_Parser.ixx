@@ -41,6 +41,13 @@ export namespace LostArkMultiTool::Vision::OCRTextParser  // OCR 해석 네임�
     [[nodiscard]] std::optional<std::int64_t> FindNumberAfter(const TextResult& text, std::wstring_view keyword, std::size_t maxDistance,
         std::optional<int> areaWidth = std::nullopt);
 
+    // "전체 보유 수량: 417개" 같은 수량 줄 전용 (FindNumberAfter와 같지만 뒤의 "개"를 OCR이 "74" · "7h"로 읽은 경우를 떼어 냄)
+    [[nodiscard]] std::optional<std::int64_t> FindQuantityAfter(const TextResult& text, std::wstring_view keyword, std::size_t maxDistance,
+        std::optional<int> areaWidth = std::nullopt);
+
+    // 수량 글자 → 숫자 (":417개" · ": 41774" → 417, ": 1 77h" → 17, 자체 검사용으로도 공개)
+    [[nodiscard]] std::optional<std::int64_t> ParseQuantity(std::wstring_view text);
+
     [[nodiscard]] std::span<const MaterialName> GetMaterialNames() noexcept;   // 알아볼 재료 이름 표
 
     // 줄 하나(툴팁 제목)에서 재료 이름 찾기 (편집 거리가 작은 것 우선, 거리 1 이하끼리는 긴 이름 우선 → "결정" · "위대한" 구분)

@@ -213,6 +213,7 @@ namespace LostArkMultiTool::Views
         });
         m_view->SetOnSyncRoster([this](const std::wstring& mainCharacterName) { SyncRoster(mainCharacterName); });
         m_view->SetOnCharacterSelected([this] { SelectCharacter(); });
+        m_view->SetOnVisionChanged([this](bool isEnabled) { if (m_setVisionEnabled) m_setVisionEnabled(isEnabled); });   // 귀속재료 계산기 [화면 인식]과 같은 설정
         m_view->SetOnPriceRowSelected([this](bool isOrder, std::size_t row) { SelectPriceRow(isOrder, row); });   // 시세 표 행을 고르면 그 젬의 그래프
 
         LoadCharacterList();
@@ -263,6 +264,7 @@ namespace LostArkMultiTool::Views
         if (!m_view) return;
 
         m_view->Update(deltaSeconds);
+        if (m_isVisionEnabled) m_view->SetVisionChecked(m_isVisionEnabled());   // [화면 인식] 표시 맞추기 (계산기에서 바꿔도 같이)
 
         // 조회가 끝났으면 결과 반영, 자동 갱신 주기가 되면 조회 (다른 탭 · 트레이에 숨어 있어도 진행)
         if (m_refreshTask.IsReady()) FinishRefresh();
@@ -662,6 +664,41 @@ namespace LostArkMultiTool::Views
     }
 
     // 입력한 글자를 수량으로 (0 ~ 최대값) → 고른 캐릭터에 저장 (실패하면 되돌리고 안내) → 다시 계산
+    void ArkGemFinderManager::SetVisionControl(std::function<bool()> isEnabled, std::function<void(bool)> setEnabled)
+    {
+        m_isVisionEnabled = std::move(isEnabled);     // 상태
+        m_setVisionEnabled = std::move(setEnabled);   // 켜기 · 끄기
+    }
+
+    // 화면에서 읽은 귀속 젬 수량 → 그 캐릭터 칸 (손 입력과 같은 저장 · 다시 계산 · 그래프 기록, 계산기 선택도 그 캐릭터로)
+    ArkGemFinderManager::GemScanResult ArkGemFinderManager::ApplyScannedGem(const std::string& characterName, std::size_t gemIndex, std::size_t gradeIndex, int quantity)
+    {
+        if (!m_boundGemRepository || !m_view) return GemScanResult::GEM_NO_CHARACTER;                 // 초기화 전
+        Models::BoundGemCharacter* character{ m_boundGemRepository->GetData().FindCharacter(characterName) };   // 캐릭터
+        if (character == nullptr) return GemScanResult::GEM_NO_CHARACTER;                            // 원정대 동기화 전
+        const int clamped{ std::clamp(quantity, 0, Core::APPConstants::MAX_BOUND_GEM_COUNT) };      // 범위
+        const int previous{ character->m_quantities.GetQuantity(gemIndex, gradeIndex) };            // 지금 수량
+        if (const auto found{ std::ranges::find(m_characterNames, characterName) }; found != m_characterNames.end())   // 계산기에서도 그 캐릭터로
+        {
+            const std::size_t index{ static_cast<std::size_t>(found - m_characterNames.begin()) + FIRST_CHARACTER_INDEX };   // 선택 번호
+            if (m_view->GetSelectedCharacterIndex() != index) { m_view->SelectCharacterIndex(index); SelectCharacter(); }
+        }
+        if (previous == clamped) return GemScanResult::GEM_UNCHANGED;                                 // 같은 수량
+        character->m_quantities.SetQuantity(gemIndex, gradeIndex, clamped);                         // 바꾸기
+        try
+        {
+            m_boundGemRepository->Save();                                                            // 저장
+        }
+        catch (const std::exception&)
+        {
+            character->m_quantities.SetQuantity(gemIndex, gradeIndex, previous);                    // 되돌림
+            return GemScanResult::GEM_SAVE_FAILED;
+        }
+        RefreshBoundGems();                                                                           // 표 · 가치
+        RecordHistory();                                                                              // 오늘 가치 기록
+        return GemScanResult::GEM_APPLIED;                                                            // 넣음
+    }
+
     void ArkGemFinderManager::ChangeQuantity(std::size_t gemIndex, std::size_t gradeIndex, const std::wstring& text)
     {
         Models::BoundGemCharacter* character{ GetSelectedCharacter() };

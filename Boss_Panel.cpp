@@ -36,11 +36,22 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view DPS_FORMAT{ L"공대 DPS {}/초 · 남은 {}:{:02}" };     // 깎이는 속도 · 예상 남은 시간
         constexpr std::wstring_view DPS_WAITING_TEXT{ L"공대 DPS 계산 중..." };          // 기록이 모자람
         constexpr std::wstring_view EMPTY_TEXT{ L"보스 체력바가 보이면 여기에 표시돼요" };   // 조작 모드에서 보스가 없을 때
-        constexpr std::wstring_view TRILLION_FORMAT{ L"{}조 {}억" };                     // 조 단위
-        constexpr std::wstring_view TRILLION_ONLY_FORMAT{ L"{}조" };
-        constexpr std::wstring_view HUNDRED_MILLION_FORMAT{ L"{}억 {}만" };              // 억 단위
-        constexpr std::wstring_view HUNDRED_MILLION_ONLY_FORMAT{ L"{}억" };
-        constexpr std::wstring_view TEN_THOUSAND_FORMAT{ L"{}만" };                      // 만 단위
+        constexpr std::wstring_view UNIT_FORMAT{ L"{}{}" };                              // "831억" (쉼표 없이 네 자리씩)
+        constexpr std::wstring_view UNIT_SPACE{ L" " };                                  // 단위 사이
+        constexpr float ANCHOR_PADDING_X{ 8.0f };            // 체력 숫자 자리 좌우 여백 (DIP)
+        constexpr float ANCHOR_PADDING_Y{ 2.0f };            // 위아래 여백
+        constexpr float ANCHOR_RADIUS{ 4.0f };               // 덮개 모서리
+        constexpr float ANCHOR_BACK_ALPHA{ 0.92f };          // 덮개 바탕 불투명도 (게임 숫자를 가림)
+        constexpr float ANCHOR_FONT_RATIO{ 0.95f };          // 글자 크기 = 게임 숫자 높이 × 이 값
+        constexpr float MIN_ANCHOR_FONT{ 11.0f };            // 글자 크기 하한
+        constexpr float DPS_FONT_RATIO{ 0.8f };              // 아래 DPS 글자 크기 비율
+        constexpr float DPS_OFFSET_RATIO{ 1.9f };            // 아래 DPS 줄 위치 (숫자 높이 배수만큼 아래, 막대 아래)
+        constexpr float MEASURE_WIDTH{ 2000.0f };            // 글자 폭 잴 때 최대 폭
+        constexpr float ANCHOR_HALF{ 0.5f };                 // 절반
+        constexpr float ANCHOR_SIDES{ 2.0f };                // 양쪽
+        constexpr float ANCHOR_BORDER_WIDTH{ 1.0f };         // 조작 모드 테두리
+        constexpr float FULL_ALPHA{ 1.0f };                  // 불투명
+        constexpr std::wstring_view ANCHOR_FORMAT{ L"{} / {}  ({:.2f}%)" };   // 체력바 위 글자
         constexpr Core::TextStyle HEALTH_STYLE{ HEALTH_FONT_SIZE, Core::FontWeight::BOLD };                                  // 체력
         constexpr Core::TextStyle DETAIL_STYLE{ DETAIL_FONT_SIZE };                                                          // 둘째 줄 왼쪽
         constexpr Core::TextStyle DETAIL_RIGHT_STYLE{ DETAIL_FONT_SIZE, Core::FontWeight::NORMAL, Core::TextAlign::TRAILING };   // 둘째 줄 오른쪽
@@ -55,20 +66,29 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
     std::wstring BossPanel::FormatKoreanNumber(std::int64_t value)
     {
-        const auto number = [](std::int64_t part) { return Core::NumberFormat::FormatNumber(static_cast<double>(part), WHOLE_DECIMALS); };   // 쉼표 숫자
-        if (value >= TRILLION)                                                               // 조
+        struct KoreanUnit
         {
-            const std::int64_t rest = (value % TRILLION) / HUNDRED_MILLION;                  // 남은 억
-            return rest > 0 ? std::format(TRILLION_FORMAT, number(value / TRILLION), number(rest)) : std::format(TRILLION_ONLY_FORMAT, number(value / TRILLION));
-        }
-        if (value >= HUNDRED_MILLION)                                                        // 억
+            std::int64_t m_size;          // 단위 크기
+            std::wstring_view m_name;     // 단위 글자
+        };
+        constexpr std::array<KoreanUnit, 3> UNITS{ { { TRILLION, L"조" }, { HUNDRED_MILLION, L"억" }, { TEN_THOUSAND, L"만" } } };   // 큰 단위부터
+        if (value <= 0) return std::to_wstring(std::max<std::int64_t>(value, 0));                // 0
+        std::wstring text;                                                                       // 결과
+        std::int64_t rest = value;                                                               // 남은 값
+        for (const KoreanUnit& unit : UNITS)                                                     // 단위마다
         {
-            const std::int64_t rest = (value % HUNDRED_MILLION) / TEN_THOUSAND;              // 남은 만
-            return rest > 0 ? std::format(HUNDRED_MILLION_FORMAT, number(value / HUNDRED_MILLION), number(rest))
-                : std::format(HUNDRED_MILLION_ONLY_FORMAT, number(value / HUNDRED_MILLION));
+            const std::int64_t part = rest / unit.m_size;                                        // 이 단위 몫 (조는 네 자리를 넘을 수 있음)
+            rest %= unit.m_size;                                                                 // 나머지
+            if (part == 0) continue;                                                             // 0인 단위는 뺌
+            if (!text.empty()) text += UNIT_SPACE;                                               // 단위 사이 띄어쓰기
+            text += std::format(UNIT_FORMAT, part, unit.m_name);                                 // "831억"
         }
-        if (value >= TEN_THOUSAND) return std::format(TEN_THOUSAND_FORMAT, number(value / TEN_THOUSAND));   // 만
-        return number(value);                                                                // 그대로
+        if (rest > 0)                                                                            // 1의 자리까지
+        {
+            if (!text.empty()) text += UNIT_SPACE;
+            text += std::to_wstring(rest);                                                       // "458"
+        }
+        return text;                                                                             // "831억 1912만 458"
     }
 
     void BossPanel::Update(double deltaSeconds)
@@ -86,6 +106,54 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             m_history.push_back(HistoryPoint{ sample->m_capturedAt, sample->m_reading.m_current });
         while (!m_history.empty() && std::chrono::duration<double>(sample->m_capturedAt - m_history.front().m_time).count() > HISTORY_SECONDS)
             m_history.pop_front();                                                           // 오래된 기록 버림
+    }
+
+    void BossPanel::SetPixelScale(float dipPerPixel) noexcept
+    {
+        if (dipPerPixel > 0.0f) m_dipPerPixel = dipPerPixel;   // 배율
+    }
+
+    bool BossPanel::HandleInput(const Core::InputEvent&, bool)
+    {
+        return false;   // 게임 체력바에 고정 → 옮기거나 닫지 않음 (켜고 끄기는 도구 막대 · 설정 탭)
+    }
+
+    void BossPanel::Render(Core::Renderer& renderer, float backOpacity, bool isInteractive)
+    {
+        if (!m_sample || !m_sample->m_reading.m_textBounds)                                  // 체력바 위치를 모름
+        {
+            if (isInteractive) OverlayPanel::Render(renderer, backOpacity, isInteractive);   // 조작 모드에서는 안내 카드
+            return;
+        }
+        const Vision::BossHealthReading& reading = m_sample->m_reading;                      // 체력
+        const auto& text = *reading.m_textBounds;                                            // 게임 숫자 자리 (픽셀)
+        const Core::RectF native{ text.m_x * m_dipPerPixel, text.m_y * m_dipPerPixel,
+            (text.m_x + text.m_width) * m_dipPerPixel, (text.m_y + text.m_height) * m_dipPerPixel };   // DIP
+        const float height = native.GetHeight();                                             // 숫자 높이
+        const float centerX = (native.m_left + native.m_right) * ANCHOR_HALF;                       // 가운데
+        const double ratio = reading.m_maximum > 0 ? static_cast<double>(reading.m_current) / static_cast<double>(reading.m_maximum) : 0.0;   // 남은 비율
+        const std::wstring label = std::format(ANCHOR_FORMAT, FormatKoreanNumber(reading.m_current), FormatKoreanNumber(reading.m_maximum), ratio * PERCENT_SCALE);   // 글자
+        const Core::TextStyle style{ std::max(MIN_ANCHOR_FONT, height * ANCHOR_FONT_RATIO), Core::FontWeight::BOLD, Core::TextAlign::CENTER };   // 글자 모양
+        const float labelWidth = std::max(native.GetWidth(), renderer.MeasureString(label, style, MEASURE_WIDTH).m_width) + ANCHOR_PADDING_X * ANCHOR_SIDES;   // 덮개 폭 (게임 숫자보다 좁지 않게)
+        const Core::RectF cover{ centerX - labelWidth * ANCHOR_HALF, native.m_top - ANCHOR_PADDING_Y, centerX + labelWidth * ANCHOR_HALF, native.m_bottom + ANCHOR_PADDING_Y };   // 덮개
+
+        std::optional<Core::OpacityScope> fade;                                              // 요소 투명도
+        if (GetAlpha() < FULL_ALPHA) fade.emplace(renderer, GetAlpha());
+        renderer.FillRoundedRect(cover, ANCHOR_RADIUS, Core::WithAlpha(Theme::BACKGROUND_COLOR, std::max(ANCHOR_BACK_ALPHA, backOpacity)));   // 게임 숫자 가리기
+        if (isInteractive) renderer.DrawRoundedRect(cover, ANCHOR_RADIUS, Theme::ACCENT_COLOR, ANCHOR_BORDER_WIDTH);   // 조작 모드 표시
+        renderer.DrawString(label, cover, Theme::HEADER_TEXT_COLOR, style);                  // 조 · 억 · 만 · %
+
+        if (const auto dps = GetDamagePerSecond())                                           // 공대 DPS
+        {
+            const int remaining = static_cast<int>(static_cast<double>(reading.m_current) / *dps);   // 남은 초
+            const std::wstring dpsText = std::format(DPS_FORMAT, FormatKoreanNumber(static_cast<std::int64_t>(*dps)), remaining / SECONDS_PER_MINUTE, remaining % SECONDS_PER_MINUTE);
+            const Core::TextStyle dpsStyle{ std::max(MIN_ANCHOR_FONT, height * DPS_FONT_RATIO), Core::FontWeight::BOLD, Core::TextAlign::CENTER };   // 작은 글자
+            const float dpsWidth = renderer.MeasureString(dpsText, dpsStyle, MEASURE_WIDTH).m_width + ANCHOR_PADDING_X * ANCHOR_SIDES;   // 폭
+            const float dpsTop = native.m_top + height * DPS_OFFSET_RATIO;                   // 막대 아래
+            const Core::RectF dpsRect{ centerX - dpsWidth * ANCHOR_HALF, dpsTop, centerX + dpsWidth * ANCHOR_HALF, dpsTop + height + ANCHOR_PADDING_Y * ANCHOR_SIDES };   // 자리
+            renderer.FillRoundedRect(dpsRect, ANCHOR_RADIUS, Core::WithAlpha(Theme::BACKGROUND_COLOR, backOpacity));   // 바탕
+            renderer.DrawString(dpsText, dpsRect, Theme::HIGHLIGHT_TEXT_COLOR, dpsStyle);    // DPS · 남은 시간
+        }
     }
 
     bool BossPanel::IsContentAvailable() const noexcept

@@ -159,6 +159,56 @@ namespace LostArkMultiTool::Vision::OCRTextParser  // OCR 해석 네임스페이
         return bestValue;   // 숫자 (없으면 nullopt)
     }
 
+    std::optional<std::int64_t> ParseQuantity(std::wstring_view text)
+    {
+        constexpr std::wstring_view COUNT_UNIT{ L"개" };                                       // 수량 단위
+        constexpr std::array<std::wstring_view, 3> UNIT_MISREADS{ L"7h", L"7H", L"74" };      // OCR이 "개"를 이렇게 읽음 (17개 → 1774 · 1 77h)
+        constexpr std::size_t MAX_PLAIN_DIGITS{ 4 };                                           // 쉼표 없이 이어 붙여도 되는 자릿수 (1,000 이상은 쉼표가 있어야 함)
+        constexpr int DECIMAL_BASE{ 10 };                                                      // 십진수
+        std::wstring_view rest = text;                                                         // 읽을 글자
+        if (const std::size_t unit = rest.find(COUNT_UNIT); unit != std::wstring_view::npos) rest = rest.substr(0, unit);   // "개" 앞까지
+        else                                                                                   // "개"가 없으면 잘못 읽은 모양을 끝에서 떼어 냄
+        {
+            while (!rest.empty() && IsBlank(rest.back())) rest.remove_suffix(1);              // 끝 띄어쓰기
+            for (std::wstring_view misread : UNIT_MISREADS)                                    // 모양마다
+            {
+                if (rest.size() > misread.size() && rest.ends_with(misread)) { rest.remove_suffix(misread.size()); break; }   // 떼어 냄 (앞에 숫자가 남아야 함)
+            }
+        }
+        if (const auto grouped = ParseGroupedNumber(rest)) return grouped;                    // "1,234" · "417"
+        std::int64_t value = 0;                                                                // 묶음 검사 실패 → 숫자만 (짧은 수량)
+        std::size_t digits = 0;                                                                // 자릿수
+        for (wchar_t character : rest)                                                         // 글자마다
+        {
+            if (!IsDigit(character)) continue;                                                 // 숫자만
+            if (++digits > MAX_PLAIN_DIGITS) return std::nullopt;                              // 길면 쉼표 없이는 믿을 수 없음
+            value = value * DECIMAL_BASE + (character - L'0');                                 // 자릿수 추가
+        }
+        if (digits == 0) return std::nullopt;                                                  // 숫자 없음
+        return value;                                                                          // "1 7" → 17
+    }
+
+    std::optional<std::int64_t> FindQuantityAfter(const TextResult& text, std::wstring_view keyword, std::size_t maxDistance, std::optional<int> areaWidth)
+    {
+        const std::wstring compactKeyword = Compact(keyword);                      // 띄어쓰기 없는 keyword
+        std::optional<std::int64_t> bestValue;                                     // 가장 잘 맞는 줄의 수량
+        std::size_t bestDistance = std::numeric_limits<std::size_t>::max();        // 그 줄의 거리
+        for (const TextLine& line : text.m_lines)                                  // 줄마다
+        {
+            const auto [compact, positions] = CompactWithMap(line.m_text);         // 띄어쓰기 없는 줄
+            if (compact.empty()) continue;                                         // 빈 줄
+            const auto [distance, end] = FindBestMatch(compactKeyword, compact);   // keyword 위치
+            if (distance > maxDistance || distance >= bestDistance) continue;      // 안 맞거나 더 나쁜 줄
+            if (areaWidth && line.m_bounds.GetRight() >= *areaWidth - EDGE_MARGIN) continue;   // 영역 끝에 닿음 → 잘렸을 수 있음
+            const std::size_t originalEnd = end == 0 ? 0 : positions[end - 1] + 1; // keyword 끝 다음 위치
+            const auto value = ParseQuantity(std::wstring_view{ line.m_text }.substr(originalEnd));   // 뒤의 수량
+            if (!value) continue;                                                  // 수량 없음
+            bestValue = value;                                                     // 결과
+            bestDistance = distance;                                               // 거리
+        }
+        return bestValue;   // 수량 (없으면 nullopt)
+    }
+
     std::span<const MaterialName> GetMaterialNames() noexcept
     {
         return MATERIAL_NAMES;   // 재료 이름 표

@@ -40,6 +40,17 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] std::optional<std::wstring> GetBackgroundStatus() const override;
         void OnAPIKeyChanged() override;
 
+        // ===== 화면 인식 (귀속 젬 툴팁 → 지금 접속한 캐릭터) =====
+        enum class GemScanResult
+        {
+            GEM_APPLIED,         // 넣음
+            GEM_NO_CHARACTER,    // 계산기에 그 캐릭터가 없음 (원정대 동기화 필요)
+            GEM_UNCHANGED,       // 같은 수량
+            GEM_SAVE_FAILED      // 저장 실패 (되돌림)
+        };
+        [[nodiscard]] GemScanResult ApplyScannedGem(const std::string& characterName, std::size_t gemIndex, std::size_t gradeIndex, int quantity);   // 화면에서 읽은 수량 넣기
+        void SetVisionControl(std::function<bool()> isEnabled, std::function<void(bool)> setEnabled);   // [화면 인식] 상태 · 켜기 (Application이 귀속재료 계산기와 연결)
+
     private:
         friend class Core::Singleton<ArkGemFinderManager>;   // GetInstance만 생성 · 소멸할 수 있게
 
@@ -81,6 +92,8 @@ export namespace LostArkMultiTool::Views
         // 선언 순서 = 생성 순서 (화면은 서비스 결과를 쓰므로 반대 순서로 해제)
         std::unique_ptr<Core::ArkGemPriceService> m_service;
         std::unique_ptr<Core::BoundGemRepository> m_boundGemRepository;
+        std::function<bool()> m_isVisionEnabled;      // 화면 인식 켜짐 (귀속재료 계산기 설정)
+        std::function<void(bool)> m_setVisionEnabled; // 화면 인식 켜기 · 끄기
         std::unique_ptr<Core::PriceHistoryRepository> m_priceHistoryRepository;   // 젬 시세 일별 최저가 기록 (ArkGemFinderData.json)
         std::unique_ptr<ArkGemFinderView> m_view;
 

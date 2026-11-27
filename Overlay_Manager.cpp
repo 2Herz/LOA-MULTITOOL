@@ -333,6 +333,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         if (!m_isVisible) return;                                              // 안 보이면 패널 갱신도 쉼
 
         if (!m_isPlaced) PlaceDefaultPanels();                                 // 처음 보일 때 기본 위치
+        if (auto* boss = dynamic_cast<BossPanel*>(FindPanel(BossPanel::PANEL_ID)))   // 보스 체력: 게임 픽셀 → DIP (체력바에 고정)
+            boss->SetPixelScale(OverlayWindow::DEFAULT_DPI_VALUE / m_window->GetDPI());
         const Core::RectF area = GetOverlayArea();                             // 오버레이 영역
         bool isChanged = false;                                                // 저장할 변화
         for (const auto& panel : m_panels)                                     // 패널마다

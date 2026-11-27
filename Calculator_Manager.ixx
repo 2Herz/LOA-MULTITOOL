@@ -146,6 +146,7 @@ export namespace LostArkMultiTool::Views
         void ApplyScanResults();                              // 확정된 인식 결과 반영 (화면 스레드에서)
         void ApplyMaterialScan(const std::string& valueKey, double quantity);   // 재료 수량 → 계산기 칸
         void ApplyParadiseScan(double score);                 // 낙원력 → 낙원력 트래커 이번 주차
+        void ApplyGemScan(std::size_t gemIndex, std::size_t gradeIndex, int quantity);   // 귀속 젬 → 젬 시세 검색기 귀속 젬 계산기
         void SetCurrentCharacter(const std::string& name, CurrentCharacterSource source, std::optional<double> readItemLevel);   // 현재 캐릭터 바꾸기 (계산기 선택도 따라감)
         void ClearCurrentCharacter();                         // 현재 캐릭터 지우기 (로딩 화면 · 화면 인식 켜고 끄기)
         void SelectCharacterByName(const std::string& name);  // 이름으로 캐릭터 고르기 (이미 골랐으면 그대로)

@@ -40,7 +40,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         };
         const std::array<ElementSpec, OverlaySetupView::ELEMENT_COUNT> ELEMENT_SPECS{ {
             { CharacterPanel::PANEL_ID, L"현재 캐릭터", L"이름 · 직업 · 아이템 레벨 · 알아본 방법 (조작 모드에서 [변경]) · 기본: 왼쪽 위" },
-            { BossPanel::PANEL_ID, L"보스 체력", L"현재 · 최대 체력(조 · 억 · 만) · 남은 % · 공대 DPS · 남은 시간 (보스가 보일 때만) · 기본: 체력바 아래" },
+            { BossPanel::PANEL_ID, L"보스 체력", L"게임 체력바 위에 고정: 조 · 억 · 만 · 남은 %, 막대 아래 공대 DPS · 남은 시간 (보스가 보일 때만)" },
             { MaterialPanel::PANEL_ID, L"재료 시세 · 자산", L"재료 수량 · 단가 · 가치 · 캐릭터/원정대 자산 · 기본: 오른쪽 위" },
             { ParadisePanel::PANEL_ID, L"낙원력 주간 현황", L"이번 주차 캐릭터별 낙원력 (미기록 강조) · 기본: 오른쪽 위" },
             { MiniToolPanel::PANEL_ID, L"탭 미니 모드", L"멀티툴 탭을 게임 위에서 그대로 (◀ ▶ · 크기 조절) · 기본: 화면 가운데" },
@@ -357,7 +357,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             const bool hasElement = element != nullptr;                                                  // 오버레이가 준비됐는지
             row.m_visibleBox->SetEnabled(hasElement);
             row.m_alphaSlider->SetEnabled(hasElement);
-            row.m_resetButton->SetEnabled(hasElement);
+            row.m_resetButton->SetEnabled(hasElement && ELEMENT_SPECS[index].m_id != BossPanel::PANEL_ID);   // 보스 체력은 체력바에 고정 (옮길 위치 없음)
             if (!hasElement) continue;                                                                   // 없음
             row.m_visibleBox->SetChecked(element->m_isVisible);                                          // 표시
             row.m_alphaSlider->SetValue(element->m_alpha * PERCENT_SCALE);                               // 투명도

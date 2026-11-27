@@ -21,6 +21,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         OverlayWindow& operator=(const OverlayWindow&) = delete;   // 복사 대입 금지
 
         [[nodiscard]] void* GetNativeHandle() const noexcept;      // 창 핸들 (렌더러 연결용)
+        static constexpr float DEFAULT_DPI_VALUE{ 96.0f };         // 배율 100% DPI (픽셀 = DIP)
         [[nodiscard]] float GetDPI() const noexcept;               // 창이 놓인 모니터 배율 (DPI)
 
         void SetOnInput(std::function<void(const Core::InputEvent&)> onInput);   // 입력 알림 (DIP 좌표)

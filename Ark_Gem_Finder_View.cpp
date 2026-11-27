@@ -138,6 +138,8 @@ namespace LostArkMultiTool::Views
         constexpr float SYNC_BUTTON_WIDTH{ 120.0f };
         constexpr float CHARACTER_BOX_WIDTH{ 320.0f };
         constexpr float CHARACTER_BOX_MIN_WIDTH{ 160.0f };
+        constexpr float VISION_BOX_WIDTH{ 110.0f };        // [화면 인식] 체크 너비
+        constexpr std::wstring_view VISION_TEXT{ L"화면 인식" };   // [화면 인식] (게임에서 귀속 젬 툴팁을 읽어 현재 캐릭터에 넣음)
         constexpr float CALCULATOR_BAR_GAP{ 8.0f };      // 동기화 줄과 표 사이
         constexpr float CALCULATOR_WIDTH_RATIO{ 0.64f }; // 아래 영역 중 계산기 몫 (나머지 = 그래프)
         constexpr float PRICE_CHART_HEIGHT_RATIO{ 0.5f };   // 오른쪽 그래프 영역 중 시세 기록 그래프 몫 (나머지 = 귀속 젬 가치 그래프)
@@ -230,6 +232,7 @@ namespace LostArkMultiTool::Views
         , m_nameBox{ m_host.Emplace<UI::TextBox>(platform, std::wstring{ NAME_PLACEHOLDER }) }
         , m_syncButton{ m_host.Emplace<UI::Button>(std::wstring{ SYNC_TEXT }, UI::ButtonStyle::BUTTON_SECONDARY, nullptr) }
         , m_characterBox{ m_host.Emplace<UI::ComboBox>() }
+        , m_visionBox{ m_host.Emplace<UI::CheckBox>(std::wstring{ VISION_TEXT }, [this](bool isChecked) { if (m_onVisionChanged) m_onVisionChanged(isChecked); }) }
         , m_boundGemGrid{ m_host.Emplace<UI::Grid>(platform, MakeBoundGemColumns(), BOUND_ROW_COUNT) }
         , m_chart{ m_host.Emplace<UI::LineChart>() }
         , m_priceChart{ m_host.Emplace<UI::LineChart>() }
@@ -309,6 +312,21 @@ namespace LostArkMultiTool::Views
     void ArkGemFinderView::SetOnCharacterSelected(std::function<void()> onCharacterSelected)
     {
         m_onCharacterSelected = std::move(onCharacterSelected);
+    }
+
+    void ArkGemFinderView::SetOnVisionChanged(std::function<void(bool isEnabled)> onVisionChanged)
+    {
+        m_onVisionChanged = std::move(onVisionChanged);   // 알림 연결
+    }
+
+    void ArkGemFinderView::SetVisionChecked(bool isChecked) noexcept
+    {
+        m_visionBox.SetChecked(isChecked);   // 표시만 (알림 없음)
+    }
+
+    void ArkGemFinderView::SelectCharacterIndex(std::size_t index)
+    {
+        m_characterBox.SetSelectedIndex(index);   // 표시만 (매니저가 직접 SelectCharacter를 부름)
     }
 
     void ArkGemFinderView::SetOnPriceRowSelected(std::function<void(bool isOrder, std::size_t row)> onPriceRowSelected)
@@ -818,7 +836,9 @@ namespace LostArkMultiTool::Views
         m_syncButton.SetBounds(Core::RectF{ rosterX, rosterTop, rosterX + SYNC_BUTTON_WIDTH, rosterBottom });
         rosterX += SYNC_BUTTON_WIDTH + SECTION_GAP;
         const float characterRight{ std::min(rosterX + CHARACTER_BOX_WIDTH, innerRight) };
-        m_characterBox.SetBounds(Core::RectF{ rosterX, rosterTop, std::max(characterRight, rosterX + CHARACTER_BOX_MIN_WIDTH), rosterBottom });
+        const float characterBoxRight{ std::max(characterRight, rosterX + CHARACTER_BOX_MIN_WIDTH) };   // 캐릭터 선택 오른쪽
+        m_characterBox.SetBounds(Core::RectF{ rosterX, rosterTop, characterBoxRight, rosterBottom });
+        m_visionBox.SetBounds(Core::RectF{ characterBoxRight + SECTION_GAP, rosterTop, characterBoxRight + SECTION_GAP + VISION_BOX_WIDTH, rosterBottom });   // [화면 인식]
 
         // 표는 동기화 줄 아래 남은 높이
         const float gridTop{ rosterBottom + CALCULATOR_BAR_GAP };

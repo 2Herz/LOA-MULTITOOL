@@ -651,6 +651,9 @@ namespace LostArkMultiTool::Views
             tool.Initialize(*m_toolContext);
             ++m_initializedToolCount;
         }
+        ArkGemFinderManager::GetInstance().SetVisionControl(                                     // 젬 탭 [화면 인식] = 귀속재료 계산기 [화면 인식]
+            [] { return CalculatorManager::GetInstance().IsVisionEnabled(); },
+            [](bool isEnabled) { CalculatorManager::GetInstance().SetVisionEnabled(isEnabled); });
     }
 
     // 인게임 오버레이 준비: 탭 목록 넘기기 · 메뉴 버튼 글자 · 토스트를 게임 위에도

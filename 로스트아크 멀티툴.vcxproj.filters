@@ -1120,6 +1120,12 @@
     <ClCompile Include="Transfer_View.cpp">
       <Filter>4. 뷰\14. 이관계산기</Filter>
     </ClCompile>
+    <ClCompile Include="Gem_Tooltip_Detector.ixx">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Gem_Tooltip_Detector.cpp">
+      <Filter>3. 서비스\17. 화면인식</Filter>
+    </ClCompile>
     <ClCompile Include="Boss_Panel.ixx">
       <Filter>4. 뷰\15. 오버레이</Filter>
     </ClCompile>

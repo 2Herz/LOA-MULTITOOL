@@ -21,6 +21,7 @@ import LostArkMultiTool.Services.TransferCalculator;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Vision.BossHealthDetector;
 import LostArkMultiTool.Views.BossPanel;
+import LostArkMultiTool.Vision.GemTooltipDetector;
 import LostArkMultiTool.Vision.CharacterDetector;
 import LostArkMultiTool.Vision.DigitReader;
 import LostArkMultiTool.Vision.NameplateMemory;
@@ -814,10 +815,11 @@ namespace LostArkMultiTool::Core::SelfTest
                 && bracket && bracket->m_current == 41'559'560'229 && bracket->m_lines == SAMPLE_LINES && !broken && !reversed;
             reporter.Check(isParsed, "보스 체력 · 글자 해석 (쉼표 오인식 · X 오인식 · '/' 없음 · 현재 > 최대 제외)");
 
-            const bool isFormatted = Views::BossPanel::FormatKoreanNumber(SAMPLE_HEALTH) == L"831억 1,912만"
-                && Views::BossPanel::FormatKoreanNumber(1'234'000'000'000) == L"1조 2,340억"
+            const bool isFormatted = Views::BossPanel::FormatKoreanNumber(SAMPLE_HEALTH) == L"831억 1912만 458"
+                && Views::BossPanel::FormatKoreanNumber(1'234'056'789'012) == L"1조 2340억 5678만 9012"
+                && Views::BossPanel::FormatKoreanNumber(100'000'050'003) == L"1000억 5만 3"
                 && Views::BossPanel::FormatKoreanNumber(50'000) == L"5만";
-            reporter.Check(isFormatted, "보스 체력 · 조 · 억 · 만 단위 글자 (831억 1,912만)");
+            reporter.Check(isFormatted, "보스 체력 · 1의 자리까지 (831억 1912만 458 · 1조 2340억 5678만 9012)");
 
             const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
             if (!folder) { reporter.Note("보스 체력 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
@@ -856,6 +858,58 @@ namespace LostArkMultiTool::Core::SelfTest
             reporter.Check(voted && voted->m_maximum == SAMPLE_HEALTH && voted->m_current == BOSS_SAMPLES[1].m_current,
                 "보스 체력 · 최대 체력 투표 (한 장 오인식을 고침)",
                 voted ? std::format("{} / {}", voted->m_current, voted->m_maximum) : std::string{ "결과 없음" });
+        }
+
+        // 귀속 젬 툴팁 (v1.10.1): 실제 화면 샘플 다섯 장 (가공한 영웅 젬은 수량이 없어 건너뛰어야 함)
+        void CheckGemTooltips(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            const bool isKey = Vision::GemTooltipDetector::ParseValueKey(Vision::GemTooltipDetector::MakeValueKey(1, 2)) == std::optional{ std::pair<std::size_t, std::size_t>{ 1, 2 } }
+                && !Vision::GemTooltipDetector::ParseValueKey("Dest/top").has_value() && !Vision::GemTooltipDetector::ParseValueKey("Gem/9/0").has_value();
+            reporter.Check(isKey, "귀속 젬 · 값 이름 (Gem/젬/등급 · 범위 밖 · 다른 값 제외)");
+            const bool isQuantity = Vision::OCRTextParser::ParseQuantity(L": 417개") == 417 && Vision::OCRTextParser::ParseQuantity(L": 41774") == 417
+                && Vision::OCRTextParser::ParseQuantity(L": 1774") == 17 && Vision::OCRTextParser::ParseQuantity(L": 1 77h") == 17
+                && Vision::OCRTextParser::ParseQuantity(L": 163,439개") == 163439 && Vision::OCRTextParser::ParseQuantity(L": 74개") == 74;
+            reporter.Check(isQuantity, "수량 읽기 · '개'를 74 · 7h로 읽은 경우 (417개 → 41774 · 17개 → 1 77h)");
+
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
+            if (!folder) { reporter.Note("귀속 젬 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
+            struct GemSample
+            {
+                std::wstring_view m_file;                  // 파일
+                std::optional<std::string> m_valueKey;     // 기대 값 이름 (없으면 건너뛰어야 함)
+                std::int64_t m_quantity;                   // 기대 수량
+            };
+            const std::array samples{
+                GemSample{ L"gem_order_stable_common_2.png", Vision::GemTooltipDetector::MakeValueKey(0, 0), 2 },
+                GemSample{ L"gem_order_solid_common_1.png", Vision::GemTooltipDetector::MakeValueKey(1, 0), 1 },
+                GemSample{ L"gem_order_stable_common_417.png", Vision::GemTooltipDetector::MakeValueKey(0, 0), 417 },
+                GemSample{ L"gem_order_stable_rare_17.png", Vision::GemTooltipDetector::MakeValueKey(0, 1), 17 },
+                GemSample{ L"gem_order_solid_hero_processed.png", std::nullopt, 0 } };   // 질서 안정 · 불변, 고급 · 희귀, 가공한 영웅
+            std::vector<std::string> outcomes(samples.size());                         // 결과 글자
+            std::vector<bool> passes(samples.size());                                  // 통과
+            std::thread worker{ [&]                                                    // OCR 일꾼 스레드
+                {
+                    const Vision::VisionApartment apartment;                           // WinRT 준비
+                    const Vision::TextRecognizer recognizer;                           // OCR
+                    const Vision::ScreenLayoutStore layouts;                           // 배치 (안 씀)
+                    Vision::GemTooltipDetector detector;                               // 젬 인식기
+                    for (std::size_t index = 0; index < samples.size(); ++index)       // 샘플마다
+                    {
+                        const auto frame = Vision::ImageFile::Load(*folder / samples[index].m_file);   // 이미지
+                        if (!frame) { outcomes[index] = "파일을 못 읽음"; continue; }
+                        const Vision::PixelRect area{ 0, 0, frame->GetWidth(), frame->GetHeight() };   // 툴팁만 있는 그림 전체
+                        const auto text = recognizer.Recognize(*frame);                // OCR
+                        const Vision::TextResult empty;                                // 실패 때
+                        const Vision::DetectorContext context{ layouts, recognizer, text ? *text : empty, area, Vision::PixelPoint{ frame->GetWidth() / 2, frame->GetHeight() / 2 } };
+                        const auto result = detector.Detect(*frame, context);          // 읽기
+                        const std::optional<Vision::ScanValue> value = result && !result->m_values.empty() ? std::optional{ result->m_values.front() } : std::nullopt;
+                        outcomes[index] = value ? std::format("{} = {}", value->m_key, value->m_value) : std::string{ "건너뜀" };
+                        passes[index] = samples[index].m_valueKey ? (value && value->m_key == *samples[index].m_valueKey && value->m_value == samples[index].m_quantity) : !value;
+                    }
+                } };
+            worker.join();                                                             // 기다림
+            for (std::size_t index = 0; index < samples.size(); ++index)
+                reporter.Check(passes[index], "귀속 젬 샘플", std::format("{} : {}", std::string(samples[index].m_file.begin(), samples[index].m_file.end()), outcomes[index]));
         }
 
         // 설정 탭 부품 · 요소 투명도 · 프로그램 아이콘 (v1.9.3)
@@ -951,6 +1005,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckMiniToolPanel(reporter);                        // 인게임 오버레이 미니 모드
             CheckOverlaySetup(reporter);                         // 설정 탭 부품 · 요소 투명도 · 아이콘
             CheckBossHealth(reporter, reportPath);               // 보스 체력바
+            CheckGemTooltips(reporter, reportPath);              // 귀속 젬 툴팁
         }
         catch (const std::exception& exception)
         {

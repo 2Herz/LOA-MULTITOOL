@@ -55,6 +55,9 @@ export namespace LostArkMultiTool::Views
         void SetOnQuantityEdited(std::function<void(std::size_t gemIndex, std::size_t gradeIndex, const std::wstring& text)> onQuantityEdited);
         void SetOnSyncRoster(std::function<void(const std::wstring& mainCharacterName)> onSyncRoster);   // [원정대 동기화] · 이름 칸 Enter
         void SetOnCharacterSelected(std::function<void()> onCharacterSelected);                           // 캐릭터 선택을 바꿈
+        void SetOnVisionChanged(std::function<void(bool isEnabled)> onVisionChanged);                     // [화면 인식] 켜기 · 끄기
+        void SetVisionChecked(bool isChecked) noexcept;                                                   // [화면 인식] 표시 (알림 없음)
+        void SelectCharacterIndex(std::size_t index);                                                     // 캐릭터 고르기 (화면 인식이 현재 캐릭터로 바꿀 때, 알림 없음)
         // 시세 표에서 행을 골랐음 (isOrder = 질서의 젬인지, row = 그 분류 목록 안 번호, 그래프 대상)
         void SetOnPriceRowSelected(std::function<void(bool isOrder, std::size_t row)> onPriceRowSelected);
 
@@ -122,6 +125,7 @@ export namespace LostArkMultiTool::Views
         UI::TextBox& m_nameBox;          // 대표 캐릭터 이름
         UI::Button& m_syncButton;        // [원정대 동기화]
         UI::ComboBox& m_characterBox;    // 캐릭터 선택 (★ 원정대 전체 ★ + 캐릭터)
+        UI::CheckBox& m_visionBox;       // [화면 인식] (귀속재료 계산기와 같은 설정)
         UI::Grid& m_boundGemGrid;
         UI::LineChart& m_chart;          // 원정대 귀속 젬 총 가치 그래프
         UI::LineChart& m_priceChart;     // 고른 젬의 일별 최저가 그래프
@@ -151,6 +155,7 @@ export namespace LostArkMultiTool::Views
         std::function<void(std::size_t, std::size_t, const std::wstring&)> m_onQuantityEdited;
         std::function<void(const std::wstring&)> m_onSyncRoster;
         std::function<void()> m_onCharacterSelected;
+        std::function<void(bool)> m_onVisionChanged;   // [화면 인식] 알림
         std::function<void(bool, std::size_t)> m_onPriceRowSelected;
     };
 }

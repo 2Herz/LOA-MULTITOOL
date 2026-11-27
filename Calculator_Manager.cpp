@@ -27,6 +27,9 @@ import LostArkMultiTool.Services.JSONDataRepository;
 import LostArkMultiTool.Views.CalculatorView;
 import LostArkMultiTool.Views.UI.LineChart;
 import LostArkMultiTool.Views.TrackerManager;          // 낙원력을 기록할 트래커
+import LostArkMultiTool.Views.ArkGemFinderManager;     // 귀속 젬 계산기 (화면 인식 젬 값)
+import LostArkMultiTool.Models.BoundGemData;           // 젬 · 등급 이름
+import LostArkMultiTool.Vision.GemTooltipDetector;     // 귀속 젬 툴팁 인식기
 import LostArkMultiTool.Vision.CharacterDetector;      // 현재 캐릭터 인식 결과 이름
 import LostArkMultiTool.Vision.NameplateMemory;        // 이름표 모양 기억
 import LostArkMultiTool.Vision.OCRTextParser;          // 인식 값 이름 해석 ("Dest/top")
@@ -95,6 +98,9 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view VISION_SAVE_FAILED_TEXT{ L"화면 인식 설정을 저장하지 못했어요." };
         constexpr std::wstring_view SCAN_MATERIAL_FORMAT{ L"{} · {}{} {}개 반영" };          // 캐릭터 · 재료 · (상/하) · 수량
         constexpr std::wstring_view SCAN_PARADISE_FORMAT{ L"{} · 낙원력 {} 기록" };           // 캐릭터 · 낙원력
+        constexpr std::wstring_view SCAN_GEM_FORMAT{ L"{} · {} ({}) {}개 반영" };              // 캐릭터 · 젬 · 등급 · 수량
+        constexpr std::wstring_view SCAN_GEM_NO_CHARACTER_FORMAT{ L"귀속 젬 계산기에 '{}' 캐릭터가 없어요. 젬 시세 검색기에서 원정대 동기화를 먼저 해 주세요." };
+        constexpr std::wstring_view SCAN_GEM_SAVE_FAILED_TEXT{ L"귀속 젬 수량을 저장하지 못했어요." };
         constexpr std::wstring_view SCAN_PARADISE_NO_CHARACTER_FORMAT{ L"낙원력 트래커에 '{}' 캐릭터가 없어서 기록하지 못했어요." };
         constexpr std::wstring_view SCAN_PARADISE_NO_WEEK_TEXT{ L"낙원력 트래커에 이번 주차가 없어서 기록하지 못했어요." };
         constexpr std::wstring_view SCAN_PARADISE_DECREASED_FORMAT{ L"읽은 낙원력 {}이 기록보다 작아서 건너뛰었어요." };
@@ -294,6 +300,7 @@ namespace LostArkMultiTool::Views
         m_screenWatcher->AddDetector(std::make_unique<Vision::TooltipDetector>());    // 재료 툴팁
         m_screenWatcher->AddDetector(std::make_unique<Vision::ShardBarDetector>());   // 상단바 운명의 파편
         m_screenWatcher->AddDetector(std::make_unique<Vision::ParadiseDetector>());   // 현재 낙원력
+        m_screenWatcher->AddDetector(std::make_unique<Vision::GemTooltipDetector>()); // 귀속 젬 툴팁
         PushCharacterNames();                                               // 현재 캐릭터 비교용 원정대 이름 · 별칭
         m_screenWatcher->SetCharacterScanEnabled(m_visionSettings->IsCharacterAutoEnabled());   // 자동 인식을 껐으면 캐릭터 확인 안 함
         m_screenWatcher->SetCharacterInterval(std::chrono::seconds{ m_visionSettings->GetCharacterIntervalSeconds() });   // 확인 간격
@@ -583,7 +590,9 @@ namespace LostArkMultiTool::Views
             }
             for (const Vision::ScanValue& value : result.m_values)                // 값마다
             {
-                if (value.m_key == Vision::ParadiseDetector::VALUE_KEY) ApplyParadiseScan(static_cast<double>(value.m_value));   // 낙원력
+                if (const auto gem{ Vision::GemTooltipDetector::ParseValueKey(value.m_key) })   // 귀속 젬
+                    ApplyGemScan(gem->first, gem->second, static_cast<int>(value.m_value));
+                else if (value.m_key == Vision::ParadiseDetector::VALUE_KEY) ApplyParadiseScan(static_cast<double>(value.m_value));   // 낙원력
                 else ApplyMaterialScan(value.m_key, static_cast<double>(value.m_value));                                         // 재료 수량
             }
         }
@@ -619,6 +628,30 @@ namespace LostArkMultiTool::Views
             : (isTop ? TIER_TOP_LABEL : TIER_BOTTOM_LABEL) };                          // (상) · (하) (숨결 · 파편은 생략)
         m_context->m_notifier.ShowToast(std::format(SCAN_MATERIAL_FORMAT, Core::TextEncoding::UTF8ToWide(*name), MATERIAL_LABELS[materialIndex],
             tierLabel, Core::NumberFormat::FormatNumber(quantity, SCAN_NUMBER_DECIMALS)), Core::NoticeKind::NOTICE_SUCCESS);   // 반영 안내
+    }
+
+    // 귀속 젬 → 젬 시세 검색기의 귀속 젬 계산기 (현재 캐릭터 칸)
+    void CalculatorManager::ApplyGemScan(std::size_t gemIndex, std::size_t gradeIndex, int quantity)
+    {
+        const std::optional<std::string> name{ GetScanTarget() };                      // 현재 캐릭터 (모르면 안내 후 건너뜀)
+        if (!name.has_value()) return;                                                 // 반영 안 함
+        const std::wstring wideName{ Core::TextEncoding::UTF8ToWide(*name) };          // 안내용 이름
+        using GemScanResult = ArkGemFinderManager::GemScanResult;                      // 결과 종류
+        switch (ArkGemFinderManager::GetInstance().ApplyScannedGem(*name, gemIndex, gradeIndex, quantity))   // 젬 계산기에 넣기
+        {
+        case GemScanResult::GEM_APPLIED:                                               // 넣음
+            m_context->m_notifier.ShowToast(std::format(SCAN_GEM_FORMAT, wideName, Core::TextEncoding::UTF8ToWide(Models::BoundGemData::GEM_NAMES[gemIndex]),
+                Core::TextEncoding::UTF8ToWide(Models::BoundGemData::GRADE_NAMES[gradeIndex]), quantity), Core::NoticeKind::NOTICE_SUCCESS);
+            break;
+        case GemScanResult::GEM_NO_CHARACTER:                                          // 계산기에 없는 캐릭터
+            m_context->m_notifier.ShowToast(std::format(SCAN_GEM_NO_CHARACTER_FORMAT, wideName), Core::NoticeKind::NOTICE_WARNING);
+            break;
+        case GemScanResult::GEM_SAVE_FAILED:                                           // 저장 실패
+            m_context->m_notifier.ShowToast(std::wstring{ SCAN_GEM_SAVE_FAILED_TEXT }, Core::NoticeKind::NOTICE_WARNING);
+            break;
+        case GemScanResult::GEM_UNCHANGED:                                             // 같은 수량 → 조용히
+            break;
+        }
     }
 
     // 낙원력 → 낙원력 트래커의 고른 캐릭터 이번 주차

@@ -23,7 +23,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
     std::optional<ScanResult> TooltipDetector::Detect(const FrameImage&, const DetectorContext& context)
     {
-        const auto quantity = OCRTextParser::FindNumberAfter(context.m_hoverText, QUANTITY_KEYWORD, QUANTITY_MAX_DISTANCE, context.m_hoverArea.m_width);   // 전체 보유 수량
+        const auto quantity = OCRTextParser::FindQuantityAfter(context.m_hoverText, QUANTITY_KEYWORD, QUANTITY_MAX_DISTANCE, context.m_hoverArea.m_width);   // 전체 보유 수량 ("개"를 숫자로 읽어도 바로잡음)
         if (!quantity) return std::nullopt;                                                      // 재료 툴팁이 아님
 
         std::optional<OCRTextParser::MaterialMatch> best;                                        // 가장 잘 맞는 제목 줄의 재료

@@ -31,8 +31,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         void ClampInto(const Core::RectF& area) noexcept;             // 오버레이 영역 밖으로 나가지 않게
 
         virtual void Update(double deltaSeconds);                                                 // 프레임 갱신 (기본: 할 일 없음)
-        void Render(Core::Renderer& renderer, float backOpacity, bool isInteractive);             // 카드 · 머리말 · 내용 그리기
-        [[nodiscard]] bool HandleInput(const Core::InputEvent& event, bool isInteractive);        // 입력 (처리했으면 true)
+        virtual void Render(Core::Renderer& renderer, float backOpacity, bool isInteractive);     // 카드 · 머리말 · 내용 그리기 (게임 화면에 붙는 패널은 바꿔 그림)
+        [[nodiscard]] virtual bool HandleInput(const Core::InputEvent& event, bool isInteractive); // 입력 (처리했으면 true)
         [[nodiscard]] virtual Core::CursorShape GetCursor() const noexcept;                      // 마우스 커서 모양
         [[nodiscard]] bool IsChanged() noexcept;                                                  // 사용자가 옮기거나 닫았는지 (확인하면 초기화 → 설정 저장 신호)
         [[nodiscard]] virtual bool IsContentAvailable() const noexcept;                          // 지금 보여 줄 내용이 있는지 (없으면 평소엔 안 그림, 기본: 늘 있음)
