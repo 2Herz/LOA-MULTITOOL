@@ -4,6 +4,7 @@ import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.Renderer;  // 미리 보기 그림 형식 가져오기
 import LostArkMultiTool.Vision.BossHealthDetector;  // 보스 체력 형식 가져오기
 import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 별칭 형식 가져오기
+import LostArkMultiTool.Vision.BuffDetector;  // 버프 타이머 형식 가져오기
 import LostArkMultiTool.Vision.CombatAnalyzerDetector;  // 전투 분석기 형식 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.NameplateMemory;  // 이름표 모양 기억 가져오기
@@ -173,6 +174,13 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::chrono::steady_clock::time_point m_capturedAt;   // 읽은 시각
     };
 
+    // 마지막으로 읽은 버프 · 디버프 (시각 포함 → 남은 시간을 그 뒤로 줄여 보여 줌)
+    struct BuffSample
+    {
+        BuffReading m_reading;                                // 알아본 아이콘 · 남은 시간
+        std::chrono::steady_clock::time_point m_capturedAt;   // 읽은 시각
+    };
+
     // 상시 감시기
     class ScreenWatcher
     {
@@ -200,6 +208,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] std::optional<BossHealthSample> GetBossHealth() const;   // 마지막 보스 체력 (보스가 안 보인 지 오래면 nullopt)
         void SetCombatScanEnabled(bool isEnabled) noexcept;           // 전투 분석기 읽기 켜기 · 끄기 (딜 지분 패널이 켜져 있을 때만)
         [[nodiscard]] std::optional<CombatSample> GetCombatStats() const;      // 마지막 전투 분석기 (안 보인 지 오래면 nullopt)
+        void SetBuffScanEnabled(bool isEnabled) noexcept;             // 버프 · 디버프 읽기 켜기 · 끄기 (버프 타이머 패널이 켜져 있을 때만)
+        [[nodiscard]] std::optional<BuffSample> GetBuffs() const;     // 마지막 버프 · 디버프 (오래됐으면 nullopt)
 
         void Start();                                  // 감시 시작 (이미 감시 중이면 그대로)
         void Stop();                                   // 감시 멈춤 (스레드가 끝날 때까지 기다림)
@@ -234,6 +244,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::optional<BossHealthSample> m_bossHealth;                  // 마지막 보스 체력 (m_mutex로 보호)
         std::atomic<bool> m_isCombatScanEnabled{};                     // 전투 분석기 읽기
         std::optional<CombatSample> m_combatStats;                     // 마지막 전투 분석기 (m_mutex로 보호)
+        std::atomic<bool> m_isBuffScanEnabled{};                       // 버프 · 디버프 읽기
+        std::optional<BuffSample> m_buffs;                             // 마지막 버프 · 디버프 (m_mutex로 보호)
         WatcherDiagnostics m_diagnostics;                              // 감시 상태 (m_mutex로 보호)
         std::vector<std::wstring> m_characterNames;                    // 원정대 이름 (m_mutex로 보호)
         std::vector<CharacterAlias> m_characterAliases;                // 별칭 (m_mutex로 보호)

@@ -127,6 +127,8 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] std::optional<Vision::BossHealthSample> GetBossHealth() const;   // 마지막 보스 체력 (화면 인식이 꺼졌거나 보스가 없으면 nullopt)
         [[nodiscard]] std::optional<Vision::CombatSample> GetCombatStats() const;      // 마지막 전투 분석기 (화면 인식이 꺼졌거나 안 보이면 nullopt)
         void SetCombatScan(bool isEnabled);                                 // 전투 분석기 읽기 (딜 지분 패널이 보일 때만)
+        [[nodiscard]] std::optional<Vision::BuffSample> GetBuffs() const;   // 마지막 버프 · 디버프 (화면 인식이 꺼졌거나 오래됐으면 nullopt)
+        void SetBuffScan(bool isEnabled);                                   // 버프 · 디버프 읽기 (버프 타이머 패널이 보일 때만)
         void RequestRefresh();                                              // 시세 갱신 (단축키 Ctrl+Shift+F5)
 
     private:
@@ -199,5 +201,6 @@ export namespace LostArkMultiTool::Views
         bool m_isWaitNoticeShown{};                                 // "캐릭터 확인 중" 안내를 이미 띄웠는지 (확인될 때까지 한 번만)
         bool m_isPreviewWanted{};                                   // 설정 탭이 미리 보기를 원하는지 (감시를 다시 만들어도 유지)
         bool m_isCombatWanted{};                                    // 딜 지분 패널이 전투 분석기 읽기를 원하는지 (감시를 다시 만들어도 유지)
+        bool m_isBuffWanted{};                                      // 버프 타이머 패널이 버프 읽기를 원하는지 (감시를 다시 만들어도 유지)
     };
 }

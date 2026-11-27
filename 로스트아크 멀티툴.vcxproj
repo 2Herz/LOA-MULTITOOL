@@ -1789,6 +1789,42 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
     </ClCompile>
+    <ClCompile Include="Buff_Templates.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Buff_Templates.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Buff_Detector.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Buff_Detector.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Buff_Panel.ixx">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCppModule</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCppModule</CompileAs>
+    </ClCompile>
+    <ClCompile Include="Buff_Panel.cpp">
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Default</CompileAs>
+    </ClCompile>
     <ClCompile Include="Slot_Templates.ixx">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsCppModule</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">CompileAsCppModule</CompileAs>

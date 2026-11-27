@@ -22,6 +22,8 @@ import LostArkMultiTool.Services.JSONValue;
 import LostArkMultiTool.Services.TransferCalculator;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Vision.BossHealthDetector;
+import LostArkMultiTool.Vision.BuffDetector;  // 버프 타이머 인식기
+import LostArkMultiTool.Vision.BuffTemplates;  // 버프 종류
 import LostArkMultiTool.Views.BossPanel;
 import LostArkMultiTool.Vision.CombatAnalyzerDetector;  // 전투 분석기 인식기
 import LostArkMultiTool.Views.DamagePanel;  // 딜 지분 계산
@@ -1180,6 +1182,84 @@ namespace LostArkMultiTool::Core::SelfTest
         }
 
         // 창고 · 소지품 슬롯 (v1.10.3): 마우스 없이 융화 재료 · 숨결 수량 + 캐릭터 확인 전 값 붙잡기
+        // 버프 타이머 (v1.11.0): 암흑 수류탄 · 아드로핀 아이콘 알아보기 + 남은 시간 글자 + 오탐 + 처리 시간
+        void CheckBuffTimer(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            constexpr double PARSE_TOLERANCE{ 1e-9 };                                  // 소수 비교 허용 오차
+            const auto parsedTenths = Vision::BuffDetector::ParseSeconds("0.7s");      // 0.7초
+            const bool isParseOk = Vision::BuffDetector::ParseSeconds("18s") == 18.0 && Vision::BuffDetector::ParseSeconds("5m") == 300.0
+                && parsedTenths && std::abs(*parsedTenths - 0.7) < PARSE_TOLERANCE
+                && !Vision::BuffDetector::ParseSeconds("s") && !Vision::BuffDetector::ParseSeconds(".5s") && !Vision::BuffDetector::ParseSeconds("12");
+            reporter.Check(isParseOk, "버프 남은 시간 글자 해석 (18초 · 0.7초 · 5분 · 틀린 형식)");
+
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더 (Verify/screens)
+            if (!folder) { reporter.Note("버프 타이머 검사 건너뜀 (Verify/screens 없음)"); return; }
+            const std::filesystem::path buffFolder = folder->parent_path() / L"buffs";  // Verify/buffs
+            const auto kindName = [](Vision::BuffKind kind) -> std::string_view      // 종류 이름
+                {
+                    constexpr std::array<std::string_view, Vision::BUFF_KIND_COUNT> NAMES{ "암수", "아드로핀", "초각성기", "초각 스킬", "공증", "아덴" };
+                    return NAMES[static_cast<std::size_t>(kind)];
+                };
+            const auto fileName = [](const std::filesystem::path& path) { return Core::TextEncoding::WideToUTF8(path.filename().wstring()); };   // 파일 이름 (UTF-8)
+
+            // 1) 알아본 아이콘 (종류=남은 시간) · 오탐
+            struct BuffSampleCase { std::filesystem::path m_file; std::string_view m_expected; };
+            const std::array cases{
+                BuffSampleCase{ buffFolder / L"combat_grenade_1.webp", "암수=18" },          // 보스 디버프 2개 중 암수
+                BuffSampleCase{ buffFolder / L"combat_grenade_2.webp", "암수=8" },
+                BuffSampleCase{ buffFolder / L"combat_grenade_3.webp", "암수=0.7" },         // 소수점
+                BuffSampleCase{ buffFolder / L"combat_grenade_4.webp", "아드로핀=8" },       // 내 버프 4개 중 아드로핀
+                BuffSampleCase{ *folder / L"boss_hp_half.webp", "없음" },                    // 다른 디버프 · 버프만 (오탐 없어야 함)
+                BuffSampleCase{ *folder / L"boss_hp_low.webp", "없음" },
+                BuffSampleCase{ *folder / L"boss_hp.webp", "없음" },
+                BuffSampleCase{ *folder / L"storage.png", "없음" } };                        // 창고 화면
+            int passed = 0;                                                            // 맞은 수
+            double totalMs = 0.0;                                                      // 처리 시간 합
+            std::string failures;                                                      // 틀린 것
+            for (const BuffSampleCase& sample : cases)
+            {
+                const auto frame = Vision::ImageFile::Load(sample.m_file);            // 이미지
+                if (!frame) { failures += std::format(" [{} 못 읽음]", fileName(sample.m_file)); continue; }
+                const auto start = std::chrono::steady_clock::now();                  // 시간 재기
+                const Vision::BuffReading reading = Vision::BuffDetector::Detect(*frame);   // 읽기
+                totalMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+                std::string got;                                                       // 결과 글자
+                for (const Vision::BuffIcon& icon : reading.m_icons)
+                    got += std::format("{}{}={}", got.empty() ? "" : " ", kindName(icon.m_kind), icon.m_seconds ? std::format("{:g}", *icon.m_seconds) : std::string{ "?" });
+                if (got.empty()) got = "없음";
+                if (got == sample.m_expected) ++passed;
+                else failures += std::format(" [{}: {} (정답 {})]", fileName(sample.m_file), got, sample.m_expected);
+            }
+            reporter.Check(passed == static_cast<int>(cases.size()), "버프 타이머 아이콘 · 남은 시간 (암수 · 아드로핀 · 오탐 없음)",
+                std::format("{}/{} · 한 장 평균 {:.1f}ms{}", passed, cases.size(), totalMs / static_cast<double>(cases.size()), failures));
+
+            // 2) 모든 아이콘의 남은 시간 글자 (종류와 상관없이)
+            struct TextCase { std::filesystem::path m_file; bool m_isDebuff{}; int m_x{}; int m_y{}; std::string_view m_expected; };
+            const std::array texts{
+                TextCase{ *folder / L"boss_hp_half.webp", true, 932, 179, "4s" }, TextCase{ *folder / L"boss_hp_half.webp", true, 988, 179, "3s" },
+                TextCase{ *folder / L"boss_hp_half.webp", false, 744, 939, "25s" }, TextCase{ *folder / L"boss_hp_half.webp", false, 772, 939, "3s" },
+                TextCase{ *folder / L"boss_hp_low.webp", false, 743, 942, "3s" }, TextCase{ *folder / L"boss_hp_low.webp", false, 772, 942, "27s" },
+                TextCase{ buffFolder / L"combat_grenade_1.webp", true, 936, 180, "5s" }, TextCase{ buffFolder / L"combat_grenade_1.webp", false, 777, 940, "5m" },
+                TextCase{ buffFolder / L"combat_grenade_2.webp", false, 779, 945, "5m" }, TextCase{ buffFolder / L"combat_grenade_3.webp", false, 777, 939, "4m" },
+                TextCase{ buffFolder / L"combat_grenade_4.webp", false, 749, 938, "4m" } };
+            int textPassed = 0;                                                        // 맞은 수
+            std::string textFailures;                                                  // 틀린 것
+            for (const TextCase& sample : texts)
+            {
+                const auto frame = Vision::ImageFile::Load(sample.m_file);            // 이미지
+                if (!frame) continue;
+                const auto area = sample.m_isDebuff ? Vision::BuffDetector::GetDebuffArea(frame->GetWidth(), frame->GetHeight())
+                    : Vision::BuffDetector::GetBuffArea(frame->GetWidth(), frame->GetHeight());
+                const auto icons = Vision::BuffDetector::FindIcons(*frame, area, sample.m_isDebuff);   // 아이콘들
+                const auto nearest = std::ranges::min_element(icons, {}, [&sample](const Vision::PixelRect& icon) { return std::abs(icon.m_x - sample.m_x) + std::abs(icon.m_y - sample.m_y); });
+                const auto text = nearest != icons.end() ? Vision::BuffDetector::ReadText(*frame, *nearest) : std::nullopt;   // 글자
+                if (text && *text == sample.m_expected) ++textPassed;
+                else textFailures += std::format(" [{} ({}, {}): {} (정답 {})]", fileName(sample.m_file), sample.m_x, sample.m_y, text.value_or("없음"), sample.m_expected);
+            }
+            reporter.Check(textPassed == static_cast<int>(texts.size()), "버프 아이콘 아래 남은 시간 글자 (초 · 분 · 두 자리)",
+                std::format("{}/{}{}", textPassed, texts.size(), textFailures));
+        }
+
         void CheckMaterialSlots(Reporter& reporter, const std::filesystem::path& reportPath)
         {
             Vision::CharacterValueGate gate;                                           // 값 붙잡기 문
@@ -1406,6 +1486,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckGemTooltips(reporter, reportPath);              // 귀속 젬 툴팁
             CheckCombatAnalyzer(reporter, reportPath);           // 전투 분석기 · 딜 지분
             CheckMaterialSlots(reporter, reportPath);            // 창고 · 소지품 슬롯 · 값 붙잡기
+            CheckBuffTimer(reporter, reportPath);                // 버프 타이머
             CheckParadiseWeek(reporter);                         // 낙원력 이번 주차
             CheckVisionBenchmark(reporter, reportPath);          // 화면 인식 정답률 · 속도 측정
             CheckWatchCycleSpeed(reporter, reportPath);          // 감시 한 주기 예전 → 지금

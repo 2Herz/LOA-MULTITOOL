@@ -3,6 +3,7 @@
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.TextEncoding;  // 이름 UTF-8 바꾸기 가져오기
 import LostArkMultiTool.Vision.BossHealthDetector;  // 보스 체력바 인식기 가져오기
+import LostArkMultiTool.Vision.BuffDetector;  // 버프 타이머 인식기 가져오기
 import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 인식기 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.GameWindowFinder;  // 게임 창 찾기 가져오기
@@ -32,6 +33,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::chrono::milliseconds BOSS_KEEP_DURATION{ 3000 };       // 보스를 못 읽어도 이 시간까지는 마지막 값 유지 (잠깐 가려짐 · 오인식)
         constexpr std::chrono::milliseconds COMBAT_SCAN_INTERVAL{ 1000 };     // 전투 분석기 읽기 간격 (게임도 1초마다 갱신)
         constexpr std::chrono::milliseconds COMBAT_KEEP_DURATION{ 5000 };     // 전투 분석기를 못 읽어도 이 시간까지는 마지막 값 유지
+        constexpr std::chrono::milliseconds BUFF_SCAN_INTERVAL{ 250 };        // 버프 · 디버프 읽기 간격 (픽셀 계산만이라 가벼움, 남은 시간이 1초씩 줄어서 자주)
+        constexpr std::chrono::milliseconds BUFF_KEEP_DURATION{ 1500 };       // 이 시간 넘게 못 읽었으면 지난 값을 버림 (게임이 뒤로 감 등)
         constexpr std::chrono::milliseconds FRAME_SCAN_INTERVAL{ 1000 };      // 주기 인식기(창고 · 소지품 슬롯) 간격 (Release 1080p 한 장 약 55ms)
         constexpr std::chrono::milliseconds GATE_CHECK_DELAY{ 300 };          // 값을 붙잡으면 이만큼 뒤에 캐릭터를 다시 확인 (빨리 내보내려고)
         constexpr int PREVIEW_MAX_WIDTH{ 640 };                               // 미리 보기 그림 가로 상한 (줄여서 메모리 · 시간 절약)
@@ -283,6 +286,18 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return m_combatStats;                                                                     // 복사본
     }
 
+    void ScreenWatcher::SetBuffScanEnabled(bool isEnabled) noexcept
+    {
+        m_isBuffScanEnabled = isEnabled;   // 다음 주기부터
+    }
+
+    std::optional<BuffSample> ScreenWatcher::GetBuffs() const
+    {
+        const std::scoped_lock lock{ m_mutex };                                                   // 보호
+        if (!m_buffs || std::chrono::steady_clock::now() - m_buffs->m_capturedAt > BUFF_KEEP_DURATION) return std::nullopt;   // 오래됨
+        return m_buffs;                                                                           // 복사본
+    }
+
     WatcherDiagnostics ScreenWatcher::GetDiagnostics() const
     {
         const std::scoped_lock lock{ m_mutex };   // 보호
@@ -377,6 +392,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         auto nextFullScan = std::chrono::steady_clock::now();                      // 다음 화면 전체 OCR 시각
         auto nextBossScan = std::chrono::steady_clock::now();                      // 다음 보스 체력 읽기 시각
         auto nextCombatScan = std::chrono::steady_clock::now();                    // 다음 전투 분석기 읽기 시각
+        auto nextBuffScan = std::chrono::steady_clock::now();                      // 다음 버프 · 디버프 읽기 시각
         BossHealthTracker bossTracker;                                             // 보스 체력 투표 (오인식 걸러내기)
         RegionChangeDetector bossChange;                                               // 보스 체력바 영역 변경 감지
         std::optional<BossHealthReading> lastBossReading;                          // 그 영역에서 마지막으로 읽은 값 (같은 화면이면 다시 씀)
@@ -443,6 +459,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                     || (m_isPreviewEnabled && planNow >= nextPreview)                   // 미리 보기
                     || (m_isBossScanEnabled && planNow >= nextBossScan)                 // 보스 체력
                     || (m_isCombatScanEnabled && planNow >= nextCombatScan)             // 전투 분석기
+                    || (m_isBuffScanEnabled && planNow >= nextBuffScan)                 // 버프 · 디버프
                     || (m_isCharacterScanEnabled && planNow >= nextCharacterScan)       // 캐릭터 확인
                     || (!m_frameDetectors.empty() && planNow >= nextFrameScan);         // 창고 슬롯
                 auto frame = capture.TakeLatestFrame(isFrameNeeded);               // 최신 프레임 (할 일이 없으면 쌓인 프레임만 비우고 복사 안 함)
@@ -488,6 +505,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                         const std::scoped_lock lock{ m_mutex };                    // 보호
                         m_combatStats = CombatSample{ *combat, steadyNow };        // 기록
                     }
+                }
+                if (frame && m_isBuffScanEnabled && steadyNow >= nextBuffScan)     // 버프 · 디버프 (커서와 상관없이, OCR 없는 픽셀 계산)
+                {
+                    nextBuffScan = steadyNow + BUFF_SCAN_INTERVAL;                 // 다음 시각
+                    BuffReading buffs = BuffDetector::Detect(*frame);              // 읽기 (잠금 밖에서)
+                    const std::scoped_lock lock{ m_mutex };                        // 보호
+                    m_buffs = BuffSample{ std::move(buffs), steadyNow };           // 기록 (아무것도 없으면 빈 목록 = 버프 끝남)
                 }
                 if (frame && m_isCharacterScanEnabled && steadyNow >= nextCharacterScan)   // 캐릭터 확인할 때 (커서와 상관없이)
                 {

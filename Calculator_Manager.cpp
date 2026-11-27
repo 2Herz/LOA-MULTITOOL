@@ -309,6 +309,7 @@ namespace LostArkMultiTool::Views
         m_screenWatcher->SetCharacterInterval(std::chrono::seconds{ m_visionSettings->GetCharacterIntervalSeconds() });   // 확인 간격
         m_screenWatcher->SetPreviewEnabled(m_isPreviewWanted);              // 설정 탭 미리 보기
         m_screenWatcher->SetCombatScanEnabled(m_isCombatWanted);            // 딜 지분 패널 전투 분석기
+        m_screenWatcher->SetBuffScanEnabled(m_isBuffWanted);                // 버프 타이머 패널 버프 · 디버프
         m_screenWatcher->Start();                                           // 감시 스레드 시작
     }
 
@@ -552,6 +553,18 @@ namespace LostArkMultiTool::Views
         if (m_isCombatWanted == isEnabled) return;                                  // 그대로
         m_isCombatWanted = isEnabled;                                               // 기억 (감시를 다시 만들 때도)
         if (m_screenWatcher) m_screenWatcher->SetCombatScanEnabled(isEnabled);      // 감시 반영
+    }
+
+    std::optional<Vision::BuffSample> CalculatorManager::GetBuffs() const
+    {
+        return m_screenWatcher ? m_screenWatcher->GetBuffs() : std::nullopt;        // 감시 중일 때만
+    }
+
+    void CalculatorManager::SetBuffScan(bool isEnabled)
+    {
+        if (m_isBuffWanted == isEnabled) return;                                    // 그대로
+        m_isBuffWanted = isEnabled;                                                 // 기억 (감시를 다시 만들 때도)
+        if (m_screenWatcher) m_screenWatcher->SetBuffScanEnabled(isEnabled);        // 감시 반영
     }
 
     void CalculatorManager::RequestRefresh()
