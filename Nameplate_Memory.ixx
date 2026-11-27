@@ -47,6 +47,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
 
         // 모양으로 캐릭터 찾기 (가장 닮은 캐릭터, MATCH_SCORE 미만이거나 두 캐릭터가 비슷하게 닮으면 nullopt) → UTF-8 이름
         [[nodiscard]] std::optional<std::string> Match(const NameplateShape& shape) const;
+        // Match와 같지만 점수도 함께 (SAME_SHAPE_SCORE 미만이면 다른 캐릭터와 헷갈릴 수 있어 글자로 다시 확인)
+        [[nodiscard]] std::optional<std::pair<std::string, double>> MatchWithScore(const NameplateShape& shape) const;
         void Learn(const std::string& name, const NameplateShape& shape);   // 이 캐릭터의 모양으로 기억 (저장까지)
         void SetPending(const NameplateShape& shape);                       // 못 알아본 모양 (직접 고를 때 쓰려고 잠깐 기억)
         [[nodiscard]] bool LearnPending(const std::string& name, std::chrono::seconds maxAge);   // 잠깐 기억한 모양을 이 캐릭터로 (오래됐으면 false)

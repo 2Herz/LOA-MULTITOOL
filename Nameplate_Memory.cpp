@@ -266,6 +266,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
     std::optional<std::string> NameplateMemory::Match(const NameplateShape& shape) const
     {
+        const auto matched = MatchWithScore(shape);                                // 점수와 함께
+        if (!matched) return std::nullopt;                                         // 없음
+        return matched->first;                                                     // 캐릭터
+    }
+
+    std::optional<std::pair<std::string, double>> NameplateMemory::MatchWithScore(const NameplateShape& shape) const
+    {
         const std::scoped_lock lock{ m_mutex };                                    // 보호
         const Entry* bestEntry = nullptr;                                          // 가장 닮은 캐릭터
         double bestScore = 0.0;                                                    // 그 점수
@@ -279,7 +286,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
         if (bestEntry == nullptr || bestScore < MATCH_SCORE) return std::nullopt;  // 닮은 게 없음
         if (bestScore - secondScore < AMBIGUOUS_MARGIN) return std::nullopt;       // 두 캐릭터가 비슷하게 닮음 → 애매
-        return bestEntry->m_name;                                                  // 캐릭터
+        return std::pair{ bestEntry->m_name, bestScore };                          // 캐릭터 · 점수
     }
 
     void NameplateMemory::Learn(const std::string& name, const NameplateShape& shape)

@@ -743,6 +743,10 @@ namespace LostArkMultiTool::Core::SelfTest
                     const bool isPicked = manual->LearnPending(Core::TextEncoding::WideToUTF8(L"외숡모"), PENDING_AGE)
                         && manual->Match(blob->m_shape) == std::optional<std::string>{ Core::TextEncoding::WideToUTF8(L"외숡모") };   // 고른 캐릭터로 기억
                     outcomes.emplace_back("[변경]으로 고르면 그 이름표 모양을 기억", isPicked);
+                    const Vision::CharacterDetector wrongMemory{ roster, {}, manual };    // 이 이름표 모양이 다른 캐릭터(외숡모)로 기억된 상태
+                    const auto verified = plateFrame ? std::optional{ wrongMemory.Detect(*plateFrame, recognizer, false, true) } : std::nullopt;   // 로딩 직후 확인
+                    outcomes.emplace_back("로딩 직후 다시 확인 → 모양이 다른 캐릭터로 기억돼 있어도 이름표 글자로 핢머니 : " + describe(verified),
+                        verified && verified->m_signal == Vision::CharacterSignal::SIGNAL_NAME && verified->m_name == L"핢머니");
 
                     const auto info = read(L"character_info.webp");                      // 캐릭터 정보 창 ("Lv." 줄 위 이름)
                     const bool isInfoRead = info && (info->m_signal == Vision::CharacterSignal::SIGNAL_NAME ? info->m_name == L"핢머니"
@@ -950,9 +954,11 @@ namespace LostArkMultiTool::Core::SelfTest
                 std::string_view m_expected;                                           // 기대 값 ("키=값 ...")
             };
             constexpr std::array samples{
-                SlotSample{ L"storage.png", "Bing/level=3024 Fusion/level=1178 Yong/level=2720" },             // 창고 (파괴석 · 수호석 9999+는 건너뜀)
-                SlotSample{ L"tooltip_guard_top_bound.png", "Fusion/level=207 Yong/level=1423" },             // 툴팁이 일부 가린 창고
-                SlotSample{ L"storage_inventory.webp", "Bing/level=920 Yong/level=590" },                      // 창고 + 소지품 (불꽃 빛이 숫자에 섞인 590)
+                SlotSample{ L"storage.png", "Bing/level=3024 Fusion/top=1178 Yong/level=2720" },             // 창고 (파괴석 · 수호석 9999+는 건너뜀)
+                SlotSample{ L"tooltip_guard_top_bound.png", "Fusion/bottom=4 Fusion/top=207 Yong/level=1423" },             // 툴팁이 일부 가린 창고
+                SlotSample{ L"storage_inventory.webp", "Bing/level=920 Fusion/bottom=100 Yong/level=590" },                      // 창고 + 소지품 (불꽃 빛이 숫자에 섞인 590)
+                SlotSample{ L"storage_fusion.png", "Bing/level=1030 Fusion/bottom=2017 Yong/level=418" },       // 일반 아비도스 융화 재료 (파란 바탕)
+                SlotSample{ L"tooltip_fusion_bound.png", "없음" },                                             // 툴팁 (위 끝에 잘려 숫자가 안 보이는 슬롯은 건너뜀)
                 SlotSample{ L"boss_hp.webp", "없음" },                                                          // 1080p 전투 화면 (창고 없음 → 오탐 없어야 함)
                 SlotSample{ L"character_info.webp", "없음" } };                                                 // 1080p 캐릭터 정보 창
             std::vector<std::string> outcomes(samples.size());                         // 결과 글자

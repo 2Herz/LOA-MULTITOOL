@@ -1,0 +1,66 @@
+{
+  "runs": [
+    {
+      "date": "2026-11-06T22:00:45.645409+00:00",
+      "input_tokens": 246406,
+      "output_tokens": 0,
+      "files": 115
+    },
+    {
+      "date": "2026-11-06T22:05:44.357350+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 115
+    },
+    {
+      "date": "2026-11-06T22:17:32.341033+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 230
+    },
+    {
+      "date": "2026-11-06T22:23:53.120131+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 231
+    },
+    {
+      "date": "2026-11-07T15:03:11.047074+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 231
+    },
+    {
+      "date": "2026-11-07T15:39:04.240377+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 250
+    },
+    {
+      "date": "2026-11-07T20:19:58.352697+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 256
+    },
+    {
+      "date": "2026-11-07T21:09:58.647533+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 256
+    },
+    {
+      "date": "2026-11-07T21:43:52.370883+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 256
+    },
+    {
+      "date": "2026-11-08T04:29:53.750305+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 260
+    }
+  ],
+  "total_input_tokens": 246406,
+  "total_output_tokens": 0
+}

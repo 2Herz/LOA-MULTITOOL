@@ -457,7 +457,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                     }
                     const auto scanStart = std::chrono::steady_clock::now();      // 처리 시간 재기
                     const bool isFullScanAllowed = steadyNow >= nextFullScan;      // 화면 전체 OCR 해도 되는지
-                    const CharacterReading reading = characterDetector->Detect(*frame, text, isFullScanAllowed);   // 로딩 · 이름표 (+ 가끔 화면 전체)
+                    const bool isVerifyRequired = lastCharacterName.empty();       // 로딩 직후 · 시작 직후 → 이름표 글자로 다시 확인 (다른 캐릭터 모양과 헷갈리지 않게)
+                    const CharacterReading reading = characterDetector->Detect(*frame, text, isFullScanAllowed, isVerifyRequired);   // 로딩 · 이름표 (+ 가끔 화면 전체)
                     if (isFullScanAllowed && reading.m_signal != CharacterSignal::SIGNAL_NAME) nextFullScan = steadyNow + FULL_SCAN_INTERVAL;   // 화면 전체를 봤으면 한동안 쉼 (이름표 모양으로 알아보면 화면 전체는 안 봄)
                     {
                         const std::scoped_lock lock{ m_mutex };                    // 보호

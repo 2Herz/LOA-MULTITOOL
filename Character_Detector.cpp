@@ -379,7 +379,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return reading;   // 결과 (못 찾으면 SIGNAL_NONE + 정보 창 레벨 · 별칭 후보)
     }
 
-    CharacterReading CharacterDetector::Detect(const FrameImage& frame, const TextRecognizer& text, bool isFullScanAllowed) const
+    CharacterReading CharacterDetector::Detect(const FrameImage& frame, const TextRecognizer& text, bool isFullScanAllowed, bool isVerifyRequired) const
     {
         const int width = frame.GetWidth();                                                          // 프레임 가로
         const int height = frame.GetHeight();                                                        // 프레임 세로
@@ -394,20 +394,28 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             };
         if (blob)
         {
-            // 2) 기억한 모양과 비교 (OCR 없음)
+            // 2) 기억한 모양과 비교 (아주 똑같으면 OCR 없이 끝, 덜 닮았거나 로딩 직후면 아래에서 글자로 다시 확인)
+            std::optional<std::wstring> shapeName;                                                   // 모양으로 찾은 캐릭터
+            bool isExactShape = false;                                                               // 기억한 모양과 거의 같음
             if (m_memory)
             {
-                if (const auto known = m_memory->Match(blob->m_shape))                               // 닮은 모양
+                if (const auto known = m_memory->MatchWithScore(blob->m_shape))                      // 닮은 모양
                 {
-                    std::wstring name = Core::TextEncoding::UTF8ToWide(*known);                     // 넓은 글자
+                    std::wstring name = Core::TextEncoding::UTF8ToWide(known->first);               // 넓은 글자
                     if (std::ranges::find(m_names, name) != m_names.end())                          // 원정대 캐릭터
                     {
-                        CharacterReading known_reading = toResult(std::move(name), CharacterSource::SOURCE_NAMEPLATE);   // 결과
-                        known_reading.m_plateBounds = blob->m_bounds;                               // 이름표 위치
-                        return known_reading;
+                        shapeName = std::move(name);                                                 // 후보
+                        isExactShape = known->second >= NameplateMemory::SAME_SHAPE_SCORE;           // 거의 같음
                     }
                 }
             }
+            const auto shapeResult = [&]                                                             // 모양 결과
+                {
+                    CharacterReading known_reading = toResult(*shapeName, CharacterSource::SOURCE_NAMEPLATE);   // 결과
+                    known_reading.m_plateBounds = blob->m_bounds;                                    // 이름표 위치
+                    return known_reading;
+                };
+            if (shapeName && isExactShape && !isVerifyRequired) return shapeResult();               // 확실 → OCR 없이
 
             // 3) 처음 보는 모양 → 이름표만 잘라 3배 OCR (겹받침 이름은 자모 단위로 맞춤)
             const int padding = std::max(1, static_cast<int>(blob->m_bounds.m_height * PLATE_PADDING_RATIO));   // 여백
@@ -433,6 +441,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 }
                 if (longest.size() >= MIN_NAME_LENGTH && longest.size() <= MAX_NAME_LENGTH) reading.m_unknownName = longest;   // 별칭 후보
             }
+            if (shapeName && (isExactShape || !isVerifyRequired)) return shapeResult();             // 글자는 못 읽음 → 모양 결과 (로딩 직후엔 거의 같은 모양만)
             if (m_memory) m_memory->SetPending(blob->m_shape);                                       // 직접 고르면 기억하도록 대기
             reading.m_hasUnknownPlate = true;                                                        // 누군지 모르는 내 이름표
             reading.m_plateBounds = blob->m_bounds;                                                  // 이름표 위치

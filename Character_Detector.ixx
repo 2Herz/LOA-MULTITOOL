@@ -67,7 +67,8 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] bool HasNames() const noexcept;                  // 비교할 이름이 있는지
 
         // 프레임 한 장 읽기 (감시 스레드에서만), isFullScanAllowed가 false면 화면 전체 OCR(정보 창 찾기)을 건너뜀 (무거워서 가끔만)
-        [[nodiscard]] CharacterReading Detect(const FrameImage& frame, const TextRecognizer& text, bool isFullScanAllowed = true) const;
+        // isVerifyRequired: 로딩 직후처럼 캐릭터가 바뀌었을 수 있을 때 → 모양이 아주 똑같지 않으면 이름표 글자로 다시 확인
+        [[nodiscard]] CharacterReading Detect(const FrameImage& frame, const TextRecognizer& text, bool isFullScanAllowed = true, bool isVerifyRequired = false) const;
 
         // OCR 결과 해석 (위치는 프레임 기준, frame이 있으면 이름표 글자색도 봄, 자체 검사용으로도 공개)
         [[nodiscard]] CharacterReading Parse(const TextResult& text, int frameWidth, int frameHeight, const FrameImage* frame = nullptr) const;

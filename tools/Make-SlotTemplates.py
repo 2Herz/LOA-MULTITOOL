@@ -9,11 +9,12 @@ ICON_WIDTH = 44   # 아이콘 템플릿 가로
 ICON_HEIGHT = 28  # 아이콘 템플릿 세로
 SCREENS = 'Verify/screens/'  # 샘플 폴더
 
-# 아이콘: (값 이름 키, 재료 구분 꼬리, 샘플, 왼쪽, 위쪽)
+# 아이콘: (값 이름 키, 재료 구분 꼬리, 샘플, 왼쪽, 위쪽, 변수 이름)
 ICONS = [
-    ('Fusion', 'level', 'storage.png', 383, 97),    # 아비도스 융화 재료 (금색)
-    ('Yong', 'level', 'storage.png', 177, 306),     # 용암의 숨결 (빨간 불꽃)
-    ('Bing', 'level', 'storage.png', 228, 306),     # 빙하의 숨결 (파란 결정)
+    ('Fusion', 'top', 'storage.png', 383, 97, 'FUSION_TOP'),             # 상급 아비도스 융화 재료 (금색)
+    ('Fusion', 'bottom', 'storage_fusion.png', 382, 98, 'FUSION_BOTTOM'),  # 아비도스 융화 재료 (파란 바탕 · 주황 보석, 툴팁으로 확인)
+    ('Yong', 'level', 'storage.png', 177, 306, 'YONG'),       # 용암의 숨결 (빨간 불꽃)
+    ('Bing', 'level', 'storage.png', 228, 306, 'BING'),       # 빙하의 숨결 (파란 결정)
 ]
 
 # 숫자 글자 샘플: (샘플, 위, 아래, 왼쪽, 오른쪽, 답)
@@ -27,6 +28,7 @@ BANDS = [
     ('tooltip_guard_top_bound.png', 88, 100, 379, 428, '207'),
     ('tooltip_guard_top_bound.png', 297, 309, 68, 114, '1423'),
     ('storage_inventory.webp', 250, 262, 116, 158, '920'),
+    ('storage_fusion.png', 84, 97, 378, 424, '2017'),
 ]
 GLYPH_ROWS = 10  # 글자 줄 창 높이 (Material_Slot_Detector와 같음)
 
@@ -80,9 +82,9 @@ def main():
     out('    namespace  // 이 파일 전용 데이터')
     out('    {')
     icon_names = []
-    for key, tier, sample, left, top in ICONS:
+    for key, tier, sample, left, top, variable in ICONS:
         image = load(sample)[top:top + ICON_HEIGHT, left:left + ICON_WIDTH]
-        name = f'{key.upper()}_ICON_PIXELS'
+        name = f'{variable}_ICON_PIXELS'
         icon_names.append((key, tier, name))
         out(f'        constexpr std::array<std::uint8_t, {ICON_WIDTH * ICON_HEIGHT * 3}> {name}{{   // {key} 아이콘 RGB ({ICON_WIDTH}x{ICON_HEIGHT}, {sample} ({left}, {top}))')
         for row_index, row in enumerate(image):
