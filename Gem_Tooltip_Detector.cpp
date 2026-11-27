@@ -14,7 +14,14 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
     {
         constexpr std::wstring_view QUANTITY_KEYWORD{ L"전체 보유 수량" };   // 수량 줄 글자
         constexpr std::size_t QUANTITY_MAX_DISTANCE{ 2 };                    // 수량 줄 글자 오인식 허용
-        constexpr std::wstring_view BOUND_MARK{ L"귀속" };                   // "캐릭터 귀속됨"
+        constexpr std::wstring_view BOUND_MARK{ L"귀속" };                   // "캐릭터 귀속됨" (없으면 거래 가능 젬)
+        constexpr std::wstring_view PROCESS_MARK{ L"가공" };                 // 가공 정보 ("젬 가공 가능 횟수")
+        constexpr std::array<std::wstring_view, 5> INFO_MARKS{ L"포인트", L"횟수", L"의지력", L"Lv", L"%" };   // 가공 젬 구분에 쓰는 정보 줄 (창고 칸 숫자는 빼려고)
+        constexpr char KIND_BOUND{ 'B' };                                    // 귀속 묶음
+        constexpr char KIND_TRADABLE{ 'T' };                                 // 거래 가능 묶음
+        constexpr char KIND_PROCESSED{ 'P' };                                // 가공 젬
+        constexpr char PROCESSED_GROUP_SEPARATOR{ '.' };                     // 구분 글자 안 줄 구분
+        constexpr int PROCESSED_COUNT{ 1 };                                  // 가공 젬은 한 개씩
         constexpr std::wstring_view GRADE_LINE_TEXT{ L"아크그리드젬" };       // 등급 줄 (띄어쓰기 없이)
         constexpr std::size_t GRADE_LINE_MAX_DISTANCE{ 2 };                  // 등급 줄 오인식 허용
         constexpr std::size_t NAME_MAX_DISTANCE{ 1 };                        // 젬 이름 한 글자 오인식 허용 (이름끼리는 두 글자 이상 다름)
@@ -36,24 +43,55 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return SCREEN_NAME;   // "gem_tooltip"
     }
 
-    std::string GemTooltipDetector::MakeValueKey(std::size_t gemIndex, std::size_t gradeIndex)
+    std::string GemTooltipDetector::MakeValueKey(std::size_t gemIndex, std::size_t gradeIndex, Models::GemStockKind kind, std::string_view processedKey)
     {
-        return std::format("{}{}{}{}", VALUE_PREFIX, gemIndex, KEY_SEPARATOR, gradeIndex);   // "Gem/0/1"
+        const char kindMark = kind == Models::GemStockKind::STOCK_BOUND ? KIND_BOUND
+            : kind == Models::GemStockKind::STOCK_TRADABLE ? KIND_TRADABLE : KIND_PROCESSED;          // 종류 글자
+        std::string key = std::format("{}{}{}{}{}{}", VALUE_PREFIX, gemIndex, KEY_SEPARATOR, gradeIndex, KEY_SEPARATOR, kindMark);   // "Gem/0/1/B"
+        if (kind == Models::GemStockKind::STOCK_PROCESSED) { key += KEY_SEPARATOR; key += processedKey; }   // "Gem/0/1/P/4.99"
+        return key;
     }
 
-    std::optional<std::pair<std::size_t, std::size_t>> GemTooltipDetector::ParseValueKey(std::string_view valueKey)
+    std::string GemTooltipDetector::MakeProcessedKey(const TextResult& text)
+    {
+        std::string key;                                                                    // 결과
+        for (const TextLine& line : text.m_lines)                                           // 줄마다
+        {
+            if (std::ranges::none_of(INFO_MARKS, [&line](std::wstring_view mark) { return line.m_text.contains(mark); })) continue;   // 정보 줄만
+            std::string digits;                                                             // 이 줄 숫자
+            for (wchar_t character : line.m_text)
+                if (character >= L'0' && character <= L'9') digits += static_cast<char>(character);   // 숫자만 (OCR 띄어쓰기 · 점 차이에 흔들리지 않게)
+            if (digits.empty()) continue;                                                   // 숫자 없는 줄
+            if (!key.empty()) key += PROCESSED_GROUP_SEPARATOR;                             // 줄 구분
+            key += digits;                                                                  // 덧붙임
+        }
+        return key;                                                                         // "4.99.9101.1.1.013…"
+    }
+
+    std::optional<GemValueKey> GemTooltipDetector::ParseValueKey(std::string_view valueKey)
     {
         if (!valueKey.starts_with(VALUE_PREFIX)) return std::nullopt;                       // 젬 값이 아님
-        const std::string_view rest = valueKey.substr(VALUE_PREFIX.size());                 // "0/1"
-        const std::size_t separator = rest.find(KEY_SEPARATOR);                             // 가운데
+        const std::string_view rest = valueKey.substr(VALUE_PREFIX.size());                 // "0/1/B"
+        const std::size_t separator = rest.find(KEY_SEPARATOR);                             // 젬 뒤
         if (separator == std::string_view::npos) return std::nullopt;                       // 모양이 다름
-        std::size_t gem = 0;                                                                // 젬 번호
-        std::size_t grade = 0;                                                              // 등급 번호
-        const auto gemResult = std::from_chars(rest.data(), rest.data() + separator, gem, DECIMAL_BASE);   // 젬
-        const auto gradeResult = std::from_chars(rest.data() + separator + 1, rest.data() + rest.size(), grade, DECIMAL_BASE);   // 등급
-        if (gemResult.ec != std::errc{} || gradeResult.ec != std::errc{}) return std::nullopt;   // 숫자가 아님
-        if (gem >= Models::BoundGemData::GEM_COUNT || grade >= Models::BoundGemData::GRADE_COUNT) return std::nullopt;   // 범위 밖
-        return std::pair{ gem, grade };                                                      // (젬, 등급)
+        const std::size_t kindSeparator = rest.find(KEY_SEPARATOR, separator + 1);          // 등급 뒤 (없으면 귀속)
+        const std::size_t gradeEnd = kindSeparator == std::string_view::npos ? rest.size() : kindSeparator;   // 등급 끝
+        GemValueKey key;                                                                    // 결과
+        const auto gemResult = std::from_chars(rest.data(), rest.data() + separator, key.m_gemIndex, DECIMAL_BASE);   // 젬
+        const auto gradeResult = std::from_chars(rest.data() + separator + 1, rest.data() + gradeEnd, key.m_gradeIndex, DECIMAL_BASE);   // 등급
+        if (gemResult.ec != std::errc{} || gradeResult.ec != std::errc{} || gradeResult.ptr != rest.data() + gradeEnd) return std::nullopt;   // 숫자가 아님
+        if (key.m_gemIndex >= Models::BoundGemData::GEM_COUNT || key.m_gradeIndex >= Models::BoundGemData::GRADE_COUNT) return std::nullopt;   // 범위 밖
+        if (kindSeparator == std::string_view::npos) return key;                            // 예전 모양 "Gem/0/1" → 귀속
+        const std::string_view kindText = rest.substr(kindSeparator + 1);                   // "B" · "T" · "P/구분"
+        if (kindText.size() == 1 && kindText.front() == KIND_BOUND) return key;            // 귀속
+        if (kindText.size() == 1 && kindText.front() == KIND_TRADABLE) { key.m_kind = Models::GemStockKind::STOCK_TRADABLE; return key; }   // 거래 가능
+        if (kindText.size() > 2 && kindText.front() == KIND_PROCESSED && kindText[1] == KEY_SEPARATOR)   // 가공 젬
+        {
+            key.m_kind = Models::GemStockKind::STOCK_PROCESSED;
+            key.m_processedKey = std::string{ kindText.substr(2) };                         // 구분 글자
+            return key;
+        }
+        return std::nullopt;                                                                // 모르는 종류
     }
 
     std::optional<std::size_t> GemTooltipDetector::MatchGemName(std::wstring_view line)
@@ -82,19 +120,29 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
     std::optional<ScanResult> GemTooltipDetector::Detect(const FrameImage&, const DetectorContext& context)
     {
         const auto quantity = OCRTextParser::FindQuantityAfter(context.m_hoverText, QUANTITY_KEYWORD, QUANTITY_MAX_DISTANCE, context.m_hoverArea.m_width);   // 전체 보유 수량 ("개"를 숫자로 읽어도 바로잡음)
-        if (!quantity) return std::nullopt;                                                 // 수량이 있는 툴팁이 아님
         std::optional<std::size_t> gem;                                                     // 젬 종류
         std::optional<std::size_t> grade;                                                   // 등급
         bool isBound = false;                                                               // 캐릭터 귀속
+        bool isProcessing = false;                                                          // 가공 정보
         for (const TextLine& line : context.m_hoverText.m_lines)                            // 줄마다
         {
             if (!gem) gem = MatchGemName(line.m_text);                                      // 제목 (위에서 처음 맞는 줄)
             if (!grade) grade = MatchGrade(line.m_text);                                    // 등급 줄
             isBound = isBound || line.m_text.contains(BOUND_MARK);                          // 귀속 표시
+            isProcessing = isProcessing || line.m_text.contains(PROCESS_MARK);              // 가공 표시
         }
-        if (!gem || !grade || !isBound) return std::nullopt;                                // 귀속 젬 툴팁이 아님
+        if (!gem || !grade) return std::nullopt;                                            // 젬 툴팁이 아님
         ScanResult result;                                                                  // 결과
-        result.m_values.push_back(ScanValue{ MakeValueKey(*gem, *grade), *quantity });     // "Gem/0/1" = 수량
+        if (quantity)                                                                       // 묶음 젬 → 전체 보유 수량
+        {
+            const auto kind = isBound ? Models::GemStockKind::STOCK_BOUND : Models::GemStockKind::STOCK_TRADABLE;   // 귀속 · 거래 가능
+            result.m_values.push_back(ScanValue{ MakeValueKey(*gem, *grade, kind), *quantity });   // "Gem/0/1/B" = 수량
+            return result;
+        }
+        if (!isProcessing) return std::nullopt;                                             // 수량도 가공 정보도 없음 (거래소 목록 등)
+        const std::string processedKey = MakeProcessedKey(context.m_hoverText);             // 이 젬 구분 글자
+        if (processedKey.empty()) return std::nullopt;                                      // 정보 줄을 못 읽음
+        result.m_values.push_back(ScanValue{ MakeValueKey(*gem, *grade, Models::GemStockKind::STOCK_PROCESSED, processedKey), PROCESSED_COUNT });   // 가공 젬 한 개
         return result;                                                                      // 젬 결과
     }
 }

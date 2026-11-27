@@ -30,6 +30,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::chrono::milliseconds FULL_SCAN_INTERVAL{ 6000 };       // 화면 전체 OCR(정보 창 찾기) 간격 (1초 안팎으로 무거워서 가끔만)
         constexpr std::chrono::milliseconds BOSS_SCAN_INTERVAL{ 500 };        // 보스 체력 읽기 간격 (작은 영역 · 흑백이라 가벼움)
         constexpr std::chrono::milliseconds BOSS_KEEP_DURATION{ 3000 };       // 보스를 못 읽어도 이 시간까지는 마지막 값 유지 (잠깐 가려짐 · 오인식)
+        constexpr std::chrono::milliseconds COMBAT_SCAN_INTERVAL{ 1000 };     // 전투 분석기 읽기 간격 (게임도 1초마다 갱신)
+        constexpr std::chrono::milliseconds COMBAT_KEEP_DURATION{ 5000 };     // 전투 분석기를 못 읽어도 이 시간까지는 마지막 값 유지
         constexpr int PREVIEW_MAX_WIDTH{ 640 };                               // 미리 보기 그림 가로 상한 (줄여서 메모리 · 시간 절약)
         constexpr double AVERAGE_WEIGHT{ 0.3 };                               // 처리 시간 평균: 새 값 비중 (지수 이동 평균)
         constexpr double MILLISECONDS_PER_SECOND{ 1000.0 };                   // 초 → 밀리초
@@ -192,6 +194,18 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return m_bossHealth;                                                                      // 복사본
     }
 
+    void ScreenWatcher::SetCombatScanEnabled(bool isEnabled) noexcept
+    {
+        m_isCombatScanEnabled = isEnabled;   // 다음 주기부터
+    }
+
+    std::optional<CombatSample> ScreenWatcher::GetCombatStats() const
+    {
+        const std::scoped_lock lock{ m_mutex };                                                   // 보호
+        if (!m_combatStats || std::chrono::steady_clock::now() - m_combatStats->m_capturedAt > COMBAT_KEEP_DURATION) return std::nullopt;   // 오래됨
+        return m_combatStats;                                                                     // 복사본
+    }
+
     WatcherDiagnostics ScreenWatcher::GetDiagnostics() const
     {
         const std::scoped_lock lock{ m_mutex };   // 보호
@@ -275,6 +289,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         auto nextPreview = std::chrono::steady_clock::now();                       // 다음 미리 보기 그림 시각
         auto nextFullScan = std::chrono::steady_clock::now();                      // 다음 화면 전체 OCR 시각
         auto nextBossScan = std::chrono::steady_clock::now();                      // 다음 보스 체력 읽기 시각
+        auto nextCombatScan = std::chrono::steady_clock::now();                    // 다음 전투 분석기 읽기 시각
         BossHealthTracker bossTracker;                                             // 보스 체력 투표 (오인식 걸러내기)
         auto lastBossSeen = std::chrono::steady_clock::now();                      // 마지막으로 체력바를 읽은 시각
         std::uint64_t previewVersion = 0;                                          // 미리 보기 그림 버전
@@ -359,6 +374,15 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                         }
                     }
                     else if (steadyNow - lastBossSeen > BOSS_KEEP_DURATION) bossTracker.Reset();   // 보스가 사라짐 → 투표 새로
+                }
+                if (frame && m_isCombatScanEnabled && steadyNow >= nextCombatScan) // 전투 분석기 (커서와 상관없이)
+                {
+                    nextCombatScan = steadyNow + COMBAT_SCAN_INTERVAL;             // 다음 시각
+                    if (const auto combat = CombatAnalyzerDetector::Detect(*frame, text))   // 피해량 · DPS 읽기
+                    {
+                        const std::scoped_lock lock{ m_mutex };                    // 보호
+                        m_combatStats = CombatSample{ *combat, steadyNow };        // 기록
+                    }
                 }
                 if (frame && m_isCharacterScanEnabled && steadyNow >= nextCharacterScan)   // 캐릭터 확인할 때 (커서와 상관없이)
                 {

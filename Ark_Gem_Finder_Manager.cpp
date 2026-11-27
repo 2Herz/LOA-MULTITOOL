@@ -671,32 +671,36 @@ namespace LostArkMultiTool::Views
     }
 
     // 화면에서 읽은 귀속 젬 수량 → 그 캐릭터 칸 (손 입력과 같은 저장 · 다시 계산 · 그래프 기록, 계산기 선택도 그 캐릭터로)
-    ArkGemFinderManager::GemScanResult ArkGemFinderManager::ApplyScannedGem(const std::string& characterName, std::size_t gemIndex, std::size_t gradeIndex, int quantity)
+    ArkGemFinderManager::GemScanOutcome ArkGemFinderManager::ApplyScannedGem(const std::string& characterName, std::size_t gemIndex, std::size_t gradeIndex,
+        Models::GemStockKind kind, int quantity, std::string_view processedKey)
     {
-        if (!m_boundGemRepository || !m_view) return GemScanResult::GEM_NO_CHARACTER;                 // 초기화 전
+        if (!m_boundGemRepository || !m_view) return GemScanOutcome{};                                // 초기화 전
         Models::BoundGemCharacter* character{ m_boundGemRepository->GetData().FindCharacter(characterName) };   // 캐릭터
-        if (character == nullptr) return GemScanResult::GEM_NO_CHARACTER;                            // 원정대 동기화 전
-        const int clamped{ std::clamp(quantity, 0, Core::APPConstants::MAX_BOUND_GEM_COUNT) };      // 범위
+        if (character == nullptr) return GemScanOutcome{};                                           // 원정대 동기화 전
         const int previous{ character->m_quantities.GetQuantity(gemIndex, gradeIndex) };            // 지금 수량
+        const Models::GemScanSlot previousSlot{ character->m_quantities.GetScanSlot(gemIndex, gradeIndex) };   // 지금 내역 (되돌리기용)
         if (const auto found{ std::ranges::find(m_characterNames, characterName) }; found != m_characterNames.end())   // 계산기에서도 그 캐릭터로
         {
             const std::size_t index{ static_cast<std::size_t>(found - m_characterNames.begin()) + FIRST_CHARACTER_INDEX };   // 선택 번호
             if (m_view->GetSelectedCharacterIndex() != index) { m_view->SelectCharacterIndex(index); SelectCharacter(); }
         }
-        if (previous == clamped) return GemScanResult::GEM_UNCHANGED;                                 // 같은 수량
-        character->m_quantities.SetQuantity(gemIndex, gradeIndex, clamped);                         // 바꾸기
+        const int total{ character->m_quantities.ApplyScan(gemIndex, gradeIndex, kind, quantity, processedKey, Core::APPConstants::MAX_BOUND_GEM_COUNT) };   // 내역 반영 → 합계
+        if (character->m_quantities.GetScanSlot(gemIndex, gradeIndex) == previousSlot && previous == total)
+            return GemScanOutcome{ GemScanResult::GEM_UNCHANGED, total };                            // 같은 내역 · 수량
         try
         {
-            m_boundGemRepository->Save();                                                            // 저장
+            m_boundGemRepository->Save();                                                            // 저장 (내역이 바뀌면 수량이 같아도 저장)
         }
         catch (const std::exception&)
         {
             character->m_quantities.SetQuantity(gemIndex, gradeIndex, previous);                    // 되돌림
-            return GemScanResult::GEM_SAVE_FAILED;
+            character->m_quantities.SetScanSlot(gemIndex, gradeIndex, previousSlot);
+            return GemScanOutcome{ GemScanResult::GEM_SAVE_FAILED, previous };
         }
+        if (previous == total) return GemScanOutcome{ GemScanResult::GEM_UNCHANGED, total };         // 내역만 바뀜 → 조용히
         RefreshBoundGems();                                                                           // 표 · 가치
         RecordHistory();                                                                              // 오늘 가치 기록
-        return GemScanResult::GEM_APPLIED;                                                            // 넣음
+        return GemScanOutcome{ GemScanResult::GEM_APPLIED, total };                                   // 넣음
     }
 
     void ArkGemFinderManager::ChangeQuantity(std::size_t gemIndex, std::size_t gradeIndex, const std::wstring& text)
@@ -706,9 +710,11 @@ namespace LostArkMultiTool::Views
 
         Models::BoundGemData& data{ character->m_quantities };
         const int previous{ data.GetQuantity(gemIndex, gradeIndex) };
+        const Models::GemScanSlot previousSlot{ data.GetScanSlot(gemIndex, gradeIndex) };   // 화면 인식 내역 (되돌리기용)
         const double parsed{ std::clamp(Core::NumberFormat::ParseNumber(text), 0.0, static_cast<double>(Core::APPConstants::MAX_BOUND_GEM_COUNT)) };
 
         data.SetQuantity(gemIndex, gradeIndex, static_cast<int>(parsed));
+        if (static_cast<int>(parsed) != previous) data.ClearScan(gemIndex, gradeIndex);   // 손으로 바꾸면 화면 인식 내역은 다시 시작
         bool isSaved{ true };
         try
         {
@@ -718,6 +724,7 @@ namespace LostArkMultiTool::Views
         {
             isSaved = false;
             data.SetQuantity(gemIndex, gradeIndex, previous);
+            data.SetScanSlot(gemIndex, gradeIndex, previousSlot);   // 내역도 되돌림
             m_context->m_notifier.ShowMessage(std::wstring{ SAVE_ERROR_TITLE }, std::wstring{ SAVE_ERROR_TEXT } + ToWideMessage(error.what()),
                 Core::NoticeKind::NOTICE_ERROR, nullptr);
         }

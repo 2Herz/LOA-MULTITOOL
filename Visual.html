@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.10.1 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
+      <div class="sub">C++23 모듈 · v1.10.2 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-27</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -503,6 +503,7 @@ const MODULES = [
    "LostArkMultiTool.Core.Singleton",
    "LostArkMultiTool.Core.ToolContext",
    "LostArkMultiTool.Core.ToolManager",
+   "LostArkMultiTool.Models.BoundGemData",
    "LostArkMultiTool.Models.BoundGemRosterData",
    "LostArkMultiTool.Models.CharacterInfo",
    "LostArkMultiTool.Models.MarketItem",
@@ -518,7 +519,6 @@ const MODULES = [
    "LostArkMultiTool.Core.Platform",
    "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Models.ArkGemQuote",
-   "LostArkMultiTool.Models.BoundGemData",
    "LostArkMultiTool.Models.PriceHistory",
    "LostArkMultiTool.Models.RateLimitState",
    "LostArkMultiTool.Services.JSONBoundGemRepository",
@@ -527,13 +527,14 @@ const MODULES = [
    "LostArkMultiTool.Views.PriceHistoryChart",
    "LostArkMultiTool.Views.UI.LineChart"
   ],
-  "lines": 116,
-  "cppLines": 796,
+  "lines": 124,
+  "cppLines": 803,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\7. 젬 시세 검색기 매니저",
   "desc": "젬 시세 검색기 최상위 매니저 (이 툴의 화면구성 · 렌더링 · 모델을 묶어서 관리)",
   "types": [
-   "ArkGemFinderManager"
+   "ArkGemFinderManager",
+   "GemScanOutcome"
   ]
  },
  {
@@ -777,7 +778,7 @@ const MODULES = [
    "LostArkMultiTool.Views.Theme"
   ],
   "lines": 52,
-  "cppLines": 204,
+  "cppLines": 210,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "오버레이 보스 체력 패널: 체력바 숫자를 조 · 억 · 만 단위로, 남은 비율(소수 둘째 자리) · 줄 수 · 공대 DPS · 예상 남은 시간",
@@ -791,12 +792,13 @@ const MODULES = [
   "module": "LostArkMultiTool.Models.BoundGemData",
   "imports": [],
   "cppImports": [],
-  "lines": 35,
-  "cppLines": 19,
+  "lines": 63,
+  "cppLines": 62,
   "hasCpp": true,
   "filter": "2. 모델\\1. 데이터\\9. 젬",
-  "desc": "귀속 젬 보유 수량 (젬 6종 × 등급 3단계, 귀속 젬 계산기의 저장 데이터)",
+  "desc": "화면 인식으로 읽은 젬 수량의 종류 (계산기 칸 = 귀속 + 거래 가능 + 가공 젬 개수)",
   "types": [
+   "GemScanSlot",
    "BoundGemData"
   ]
  },
@@ -873,6 +875,7 @@ const MODULES = [
    "LostArkMultiTool.Models.CharacterInfo",
    "LostArkMultiTool.Views.CalculatorView",
    "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.GemTooltipDetector",
    "LostArkMultiTool.Vision.NameplateMemory",
    "LostArkMultiTool.Vision.ScreenWatcher",
    "LostArkMultiTool.Vision.VisionSettings"
@@ -897,14 +900,13 @@ const MODULES = [
    "LostArkMultiTool.Views.TrackerManager",
    "LostArkMultiTool.Views.UI.LineChart",
    "LostArkMultiTool.Vision.CharacterDetector",
-   "LostArkMultiTool.Vision.GemTooltipDetector",
    "LostArkMultiTool.Vision.OCRTextParser",
    "LostArkMultiTool.Vision.ParadiseDetector",
    "LostArkMultiTool.Vision.ShardBarDetector",
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
-  "lines": 200,
-  "cppLines": 1147,
+  "lines": 204,
+  "cppLines": 1165,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\7. 매니저\\2. 객체\\1. 귀속재료 계산기 매니저",
   "desc": "인게임 오버레이 재료 패널 한 줄",
@@ -1057,6 +1059,27 @@ const MODULES = [
   "desc": "켜고 끄는 상자 + 글자 (원본 CheckBox: \"시세갱신\" 자동 갱신 켜기)",
   "types": [
    "CheckBox"
+  ]
+ },
+ {
+  "file": "Combat_Analyzer_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.CombatAnalyzerDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.BossHealthDetector",
+   "LostArkMultiTool.Vision.OCRTextParser"
+  ],
+  "lines": 30,
+  "cppLines": 103,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "게임 전투 분석기(오른쪽 아래)의 \"피해량 · DPS\" 읽기 → 보스 체력과 합쳐 딜 지분 계산",
+  "types": [
+   "CombatReading",
+   "CombatAnalyzerDetector"
   ]
  },
  {
@@ -1425,6 +1448,30 @@ const MODULES = [
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "처리하지 못한 예외 · 강제 종료(terminate) 때 크래시 덤프(.dmp)를 로그 폴더에 남기는 도구",
   "types": []
+ },
+ {
+  "file": "Damage_Panel.ixx",
+  "module": "LostArkMultiTool.Views.DamagePanel",
+  "imports": [
+   "LostArkMultiTool.Core.Input",
+   "LostArkMultiTool.Core.Renderer",
+   "LostArkMultiTool.Views.OverlayPanel",
+   "LostArkMultiTool.Vision.ScreenWatcher"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Views.BossPanel",
+   "LostArkMultiTool.Views.Theme"
+  ],
+  "lines": 66,
+  "cppLines": 175,
+  "hasCpp": true,
+  "filter": "4. 뷰\\15. 오버레이",
+  "desc": "오버레이 딜 지분 패널: 전투 분석기의 내 피해량 · DPS + 보스 체력 → 지분 · 몇 인분 · 단계",
+  "types": [
+   "DamageShareSource",
+   "DamageShare",
+   "DamagePanel"
+  ]
  },
  {
   "file": "Data_Repository.ixx",
@@ -1863,21 +1910,22 @@ const MODULES = [
   "file": "Gem_Tooltip_Detector.ixx",
   "module": "LostArkMultiTool.Vision.GemTooltipDetector",
   "imports": [
+   "LostArkMultiTool.Models.BoundGemData",
    "LostArkMultiTool.Vision.FrameImage",
-   "LostArkMultiTool.Vision.ScreenWatcher"
+   "LostArkMultiTool.Vision.ScreenWatcher",
+   "LostArkMultiTool.Vision.TextRecognizer"
   ],
   "cppImports": [
    "LostArkMultiTool.Core.TextEncoding",
-   "LostArkMultiTool.Models.BoundGemData",
-   "LostArkMultiTool.Vision.OCRTextParser",
-   "LostArkMultiTool.Vision.TextRecognizer"
+   "LostArkMultiTool.Vision.OCRTextParser"
   ],
-  "lines": 29,
-  "cppLines": 101,
+  "lines": 45,
+  "cppLines": 149,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
-  "desc": "창고 · 소지품의 귀속 젬에 마우스를 올렸을 때 뜨는 툴팁 읽기 (귀속재료 툴팁과 같은 방식)",
+  "desc": "창고 · 소지품의 젬에 마우스를 올렸을 때 뜨는 툴팁 읽기 (귀속재료 툴팁과 같은 방식)",
   "types": [
+   "GemValueKey",
    "GemTooltipDetector"
   ]
  },
@@ -2072,7 +2120,7 @@ const MODULES = [
    "LostArkMultiTool.Services.JSONValue"
   ],
   "lines": 32,
-  "cppLines": 176,
+  "cppLines": 202,
   "hasCpp": true,
   "filter": "3. 서비스\\1. JSON",
   "desc": "귀속 젬 보유 수량 JSON 저장소 (BoundGemData.json, 사용자 데이터 폴더)",
@@ -2534,7 +2582,7 @@ const MODULES = [
   ],
   "cppImports": [],
   "lines": 60,
-  "cppLines": 261,
+  "cppLines": 263,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "OCR이 읽은 글자에서 필요한 값 꺼내기 (상태 없는 함수 모음)",
@@ -2562,6 +2610,7 @@ const MODULES = [
    "LostArkMultiTool.Views.BossPanel",
    "LostArkMultiTool.Views.CalculatorManager",
    "LostArkMultiTool.Views.CharacterPanel",
+   "LostArkMultiTool.Views.DamagePanel",
    "LostArkMultiTool.Views.MaterialPanel",
    "LostArkMultiTool.Views.MiniToolPanel",
    "LostArkMultiTool.Views.ParadisePanel",
@@ -2571,7 +2620,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.GameWindowFinder"
   ],
   "lines": 114,
-  "cppLines": 521,
+  "cppLines": 542,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이 매니저 (프로그램에 하나 → 싱글톤, 탭이 아니라 Application이 직접 부름)",
@@ -2655,8 +2704,8 @@ const MODULES = [
    "LostArkMultiTool.Core.APPConstants",
    "LostArkMultiTool.Services.JSONValue"
   ],
-  "lines": 56,
-  "cppLines": 144,
+  "lines": 62,
+  "cppLines": 157,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "인게임 오버레이 설정 (사용자 데이터 폴더 OverlaySettings.json)",
@@ -3353,6 +3402,7 @@ const MODULES = [
    "LostArkMultiTool.Core.Renderer",
    "LostArkMultiTool.Vision.BossHealthDetector",
    "LostArkMultiTool.Vision.CharacterDetector",
+   "LostArkMultiTool.Vision.CombatAnalyzerDetector",
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.NameplateMemory",
    "LostArkMultiTool.Vision.ScreenLayout",
@@ -3363,8 +3413,8 @@ const MODULES = [
    "LostArkMultiTool.Vision.GameWindowFinder",
    "LostArkMultiTool.Vision.ScreenCaptureService"
   ],
-  "lines": 188,
-  "cppLines": 503,
+  "lines": 200,
+  "cppLines": 527,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "게임 화면 상시 감시 (\"마우스를 올려 두면 읽기\")",
@@ -3406,6 +3456,7 @@ const MODULES = [
    "LostArkMultiTool.Core.Renderer",
    "LostArkMultiTool.Core.TextEncoding",
    "LostArkMultiTool.Core.ToolManager",
+   "LostArkMultiTool.Models.BoundGemData",
    "LostArkMultiTool.Models.CharacterArmory",
    "LostArkMultiTool.Models.CombatCoefficientData",
    "LostArkMultiTool.Models.RefineData",
@@ -3416,6 +3467,7 @@ const MODULES = [
    "LostArkMultiTool.Views.BossPanel",
    "LostArkMultiTool.Views.CharacterPanel",
    "LostArkMultiTool.Views.DX11Renderer",
+   "LostArkMultiTool.Views.DamagePanel",
    "LostArkMultiTool.Views.MainWindow",
    "LostArkMultiTool.Views.MiniToolPanel",
    "LostArkMultiTool.Views.OverlayPlaceholderTool",
@@ -3423,6 +3475,7 @@ const MODULES = [
    "LostArkMultiTool.Views.UI.Slider",
    "LostArkMultiTool.Vision.BossHealthDetector",
    "LostArkMultiTool.Vision.CharacterDetector",
+   "LostArkMultiTool.Vision.CombatAnalyzerDetector",
    "LostArkMultiTool.Vision.DigitReader",
    "LostArkMultiTool.Vision.FrameImage",
    "LostArkMultiTool.Vision.GemTooltipDetector",
@@ -3439,7 +3492,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 1020,
+  "cppLines": 1102,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",

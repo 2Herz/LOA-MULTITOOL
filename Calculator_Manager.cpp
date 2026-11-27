@@ -98,7 +98,8 @@ namespace LostArkMultiTool::Views
         constexpr std::wstring_view VISION_SAVE_FAILED_TEXT{ L"화면 인식 설정을 저장하지 못했어요." };
         constexpr std::wstring_view SCAN_MATERIAL_FORMAT{ L"{} · {}{} {}개 반영" };          // 캐릭터 · 재료 · (상/하) · 수량
         constexpr std::wstring_view SCAN_PARADISE_FORMAT{ L"{} · 낙원력 {} 기록" };           // 캐릭터 · 낙원력
-        constexpr std::wstring_view SCAN_GEM_FORMAT{ L"{} · {} ({}) {}개 반영" };              // 캐릭터 · 젬 · 등급 · 수량
+        constexpr std::wstring_view SCAN_GEM_FORMAT{ L"{} · {} ({}) {}개 반영 ({})" };         // 캐릭터 · 젬 · 등급 · 합계 · 읽은 종류
+        constexpr std::array<std::wstring_view, 3> GEM_KIND_LABELS{ L"귀속", L"거래 가능", L"가공 젬 +1" };   // GemStockKind 순서
         constexpr std::wstring_view SCAN_GEM_NO_CHARACTER_FORMAT{ L"귀속 젬 계산기에 '{}' 캐릭터가 없어요. 젬 시세 검색기에서 원정대 동기화를 먼저 해 주세요." };
         constexpr std::wstring_view SCAN_GEM_SAVE_FAILED_TEXT{ L"귀속 젬 수량을 저장하지 못했어요." };
         constexpr std::wstring_view SCAN_PARADISE_NO_CHARACTER_FORMAT{ L"낙원력 트래커에 '{}' 캐릭터가 없어서 기록하지 못했어요." };
@@ -305,6 +306,7 @@ namespace LostArkMultiTool::Views
         m_screenWatcher->SetCharacterScanEnabled(m_visionSettings->IsCharacterAutoEnabled());   // 자동 인식을 껐으면 캐릭터 확인 안 함
         m_screenWatcher->SetCharacterInterval(std::chrono::seconds{ m_visionSettings->GetCharacterIntervalSeconds() });   // 확인 간격
         m_screenWatcher->SetPreviewEnabled(m_isPreviewWanted);              // 설정 탭 미리 보기
+        m_screenWatcher->SetCombatScanEnabled(m_isCombatWanted);            // 딜 지분 패널 전투 분석기
         m_screenWatcher->Start();                                           // 감시 스레드 시작
     }
 
@@ -537,6 +539,18 @@ namespace LostArkMultiTool::Views
         return m_screenWatcher ? m_screenWatcher->GetBossHealth() : std::nullopt;   // 감시 중일 때만
     }
 
+    std::optional<Vision::CombatSample> CalculatorManager::GetCombatStats() const
+    {
+        return m_screenWatcher ? m_screenWatcher->GetCombatStats() : std::nullopt;  // 감시 중일 때만
+    }
+
+    void CalculatorManager::SetCombatScan(bool isEnabled)
+    {
+        if (m_isCombatWanted == isEnabled) return;                                  // 그대로
+        m_isCombatWanted = isEnabled;                                               // 기억 (감시를 다시 만들 때도)
+        if (m_screenWatcher) m_screenWatcher->SetCombatScanEnabled(isEnabled);      // 감시 반영
+    }
+
     void CalculatorManager::RequestRefresh()
     {
         if (m_view) StartRefresh(false);   // [시세 갱신]과 같은 흐름 (끝나면 알림)
@@ -590,8 +604,8 @@ namespace LostArkMultiTool::Views
             }
             for (const Vision::ScanValue& value : result.m_values)                // 값마다
             {
-                if (const auto gem{ Vision::GemTooltipDetector::ParseValueKey(value.m_key) })   // 귀속 젬
-                    ApplyGemScan(gem->first, gem->second, static_cast<int>(value.m_value));
+                if (const auto gem{ Vision::GemTooltipDetector::ParseValueKey(value.m_key) })   // 젬
+                    ApplyGemScan(*gem, static_cast<int>(value.m_value));
                 else if (value.m_key == Vision::ParadiseDetector::VALUE_KEY) ApplyParadiseScan(static_cast<double>(value.m_value));   // 낙원력
                 else ApplyMaterialScan(value.m_key, static_cast<double>(value.m_value));                                         // 재료 수량
             }
@@ -631,17 +645,21 @@ namespace LostArkMultiTool::Views
     }
 
     // 귀속 젬 → 젬 시세 검색기의 귀속 젬 계산기 (현재 캐릭터 칸)
-    void CalculatorManager::ApplyGemScan(std::size_t gemIndex, std::size_t gradeIndex, int quantity)
+    void CalculatorManager::ApplyGemScan(const Vision::GemValueKey& key, int quantity)
     {
+        const std::size_t gemIndex{ key.m_gemIndex };                                  // 젬
+        const std::size_t gradeIndex{ key.m_gradeIndex };                              // 등급
         const std::optional<std::string> name{ GetScanTarget() };                      // 현재 캐릭터 (모르면 안내 후 건너뜀)
         if (!name.has_value()) return;                                                 // 반영 안 함
         const std::wstring wideName{ Core::TextEncoding::UTF8ToWide(*name) };          // 안내용 이름
         using GemScanResult = ArkGemFinderManager::GemScanResult;                      // 결과 종류
-        switch (ArkGemFinderManager::GetInstance().ApplyScannedGem(*name, gemIndex, gradeIndex, quantity))   // 젬 계산기에 넣기
+        const auto outcome{ ArkGemFinderManager::GetInstance().ApplyScannedGem(*name, gemIndex, gradeIndex, key.m_kind, quantity, key.m_processedKey) };   // 젬 계산기에 넣기
+        switch (outcome.m_result)
         {
         case GemScanResult::GEM_APPLIED:                                               // 넣음
             m_context->m_notifier.ShowToast(std::format(SCAN_GEM_FORMAT, wideName, Core::TextEncoding::UTF8ToWide(Models::BoundGemData::GEM_NAMES[gemIndex]),
-                Core::TextEncoding::UTF8ToWide(Models::BoundGemData::GRADE_NAMES[gradeIndex]), quantity), Core::NoticeKind::NOTICE_SUCCESS);
+                Core::TextEncoding::UTF8ToWide(Models::BoundGemData::GRADE_NAMES[gradeIndex]), outcome.m_total,
+                GEM_KIND_LABELS[static_cast<std::size_t>(key.m_kind)]), Core::NoticeKind::NOTICE_SUCCESS);
             break;
         case GemScanResult::GEM_NO_CHARACTER:                                          // 계산기에 없는 캐릭터
             m_context->m_notifier.ShowToast(std::format(SCAN_GEM_NO_CHARACTER_FORMAT, wideName), Core::NoticeKind::NOTICE_WARNING);

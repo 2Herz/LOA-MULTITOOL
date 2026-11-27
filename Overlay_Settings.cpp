@@ -16,6 +16,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::string_view KEY_CAPTURE_HIDDEN{ "HideFromCapture" };   // 캡처 · 방송에서 숨기기 키
         constexpr std::string_view KEY_OPACITY{ "Opacity" };        // 불투명도 키
         constexpr std::string_view KEY_MINI_TOOL{ "MiniTool" };     // 미니 탭 키
+        constexpr std::string_view KEY_RAID_SIZE{ "RaidSize" };     // 딜 지분 인원 키
         constexpr std::string_view KEY_PANELS{ "Panels" };          // 패널 목록 키
         constexpr std::string_view KEY_ID{ "Id" };                  // 패널 이름 키
         constexpr std::string_view KEY_VISIBLE{ "Visible" };        // 보임 키
@@ -57,6 +58,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 m_isCaptureHidden = ReadBool(root, KEY_CAPTURE_HIDDEN, false);                             // 캡처 숨기기 (없으면 꺼짐)
                 SetOpacity(static_cast<float>(ReadNumber(root, KEY_OPACITY, DEFAULT_OPACITY)));             // 불투명도
                 m_miniToolIndex = static_cast<std::size_t>(std::max(ReadNumber(root, KEY_MINI_TOOL, 0.0), 0.0));   // 미니 탭
+                SetRaidSize(static_cast<int>(ReadNumber(root, KEY_RAID_SIZE, DEFAULT_RAID_SIZE)));         // 딜 지분 인원
                 for (const JSONValue& item : root.FindMember(KEY_PANELS).GetItems())                       // 패널마다
                 {
                     const JSONValue& id = item.FindMember(KEY_ID);                                         // 이름
@@ -109,6 +111,16 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_miniToolIndex = index;   // 바꾸기
     }
 
+    int OverlaySettings::GetRaidSize() const noexcept
+    {
+        return m_raidSize;   // 8 · 4
+    }
+
+    void OverlaySettings::SetRaidSize(int raidSize) noexcept
+    {
+        m_raidSize = raidSize == SMALL_RAID_SIZE ? SMALL_RAID_SIZE : DEFAULT_RAID_SIZE;   // 4가 아니면 8
+    }
+
     std::optional<OverlayPanelState> OverlaySettings::FindPanel(std::string_view id) const
     {
         const auto found = std::ranges::find(m_panels, id, &OverlayPanelState::m_id);   // 이름으로 찾기
@@ -136,8 +148,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 { JSONValue::CreateString(panel.m_id), JSONValue::CreateBool(panel.m_isVisible), JSONValue::CreateNumber(panel.m_x),
                   JSONValue::CreateNumber(panel.m_y), JSONValue::CreateNumber(panel.m_width), JSONValue::CreateNumber(panel.m_height),
                   JSONValue::CreateNumber(panel.m_alpha) }));   // 한 패널
-        m_fileStore.Save(Services::WriteJSONText(JSONValue::CreateObject(MakeKeys({ KEY_ENABLED, KEY_CAPTURE_HIDDEN, KEY_OPACITY, KEY_MINI_TOOL, KEY_PANELS }),
+        m_fileStore.Save(Services::WriteJSONText(JSONValue::CreateObject(MakeKeys({ KEY_ENABLED, KEY_CAPTURE_HIDDEN, KEY_OPACITY, KEY_MINI_TOOL, KEY_RAID_SIZE, KEY_PANELS }),
             { JSONValue::CreateBool(m_isEnabled), JSONValue::CreateBool(m_isCaptureHidden), JSONValue::CreateNumber(m_opacity),
-              JSONValue::CreateNumber(static_cast<double>(m_miniToolIndex)), JSONValue::CreateArray(std::move(panels)) })));   // 저장
+              JSONValue::CreateNumber(static_cast<double>(m_miniToolIndex)), JSONValue::CreateNumber(static_cast<double>(m_raidSize)),
+              JSONValue::CreateArray(std::move(panels)) })));   // 저장
     }
 }

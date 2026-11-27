@@ -11,6 +11,7 @@ module LostArkMultiTool.Core.SelfTest;
 import std;
 import LostArkMultiTool.Core.APPConstants;
 import LostArkMultiTool.Core.CombatRegression;
+import LostArkMultiTool.Models.BoundGemData;  // 젬 수량 종류별 합계
 import LostArkMultiTool.Models.CombatCoefficientData;
 import LostArkMultiTool.Models.RefineData;
 import LostArkMultiTool.Models.CharacterArmory;
@@ -21,6 +22,8 @@ import LostArkMultiTool.Services.TransferCalculator;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Vision.BossHealthDetector;
 import LostArkMultiTool.Views.BossPanel;
+import LostArkMultiTool.Vision.CombatAnalyzerDetector;  // 전투 분석기 인식기
+import LostArkMultiTool.Views.DamagePanel;  // 딜 지분 계산
 import LostArkMultiTool.Vision.GemTooltipDetector;
 import LostArkMultiTool.Vision.CharacterDetector;
 import LostArkMultiTool.Vision.DigitReader;
@@ -582,6 +585,7 @@ namespace LostArkMultiTool::Core::SelfTest
         constexpr std::array VISION_SAMPLES{
             VisionSample{ L"tooltip_dest_top.png", 0.5, 0.5, "Dest/top", 163439 },      // 파괴석 결정 툴팁
             VisionSample{ L"tooltip_guard_top.png", 0.5, 0.5, "Guard/top", 363321 },    // 수호석 결정 툴팁
+            VisionSample{ L"tooltip_guard_top_bound.png", 0.5, 0.5, "Guard/top", 17482 },   // 수호석 결정 (귀속) 툴팁 ("1 7 482개"로 띄어 읽음)
             VisionSample{ L"tooltip_leap_top.png", 0.5, 0.5, "Leap/top", 12501 },       // 위대한 돌파석 툴팁
             VisionSample{ L"paradise.webp", 0.85, 0.1, "paradise", 29492422 },          // 낙원 UI (현재 낙원력 숫자 근처)
             VisionSample{ L"topbar_shard.webp", 0.5, 0.9, "Shard/level", 24615414 } };  // 상단바 운명의 파편 (커서가 화면 아래쪽이어도 읽어야 함)
@@ -860,23 +864,93 @@ namespace LostArkMultiTool::Core::SelfTest
                 voted ? std::format("{} / {}", voted->m_current, voted->m_maximum) : std::string{ "결과 없음" });
         }
 
-        // 귀속 젬 툴팁 (v1.10.1): 실제 화면 샘플 다섯 장 (가공한 영웅 젬은 수량이 없어 건너뛰어야 함)
+        // 전투 분석기 · 딜 지분 (v1.10.2): 단위 글자 해석 · 보스 샘플 세 장 · 지분 계산
+        void CheckCombatAnalyzer(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            using Vision::CombatAnalyzerDetector;
+            const bool isAmount = CombatAnalyzerDetector::ParseAmount(L"460,99익") == 46'099'000'000
+                && CombatAnalyzerDetector::ParseAmount(L"3.51역") == 351'000'000
+                && CombatAnalyzerDetector::ParseAmount(L"4,827.14만") == 48'271'400
+                && CombatAnalyzerDetector::ParseAmount(L"12,345") == 12'345
+                && !CombatAnalyzerDetector::ParseAmount(L"-").has_value();
+            reporter.Check(isAmount, "전투 분석기 · 억 · 만 단위 글자 (460,99익 · 3.51역 · 4,827.14만 · 12,345 · -)");
+
+            constexpr std::int64_t SAMPLE_HEALTH{ 83'119'120'458 };                    // 샘플 최대 체력
+            constexpr std::int64_t HALF_CURRENT{ 37'019'552'389 };                     // 절반 샘플 현재 체력
+            constexpr double SHARE_TOLERANCE{ 0.0001 };                                // 지분 비교 허용 오차
+            const auto solo = Views::DamagePanel::Calculate(46'099'000'000, HALF_CURRENT, SAMPLE_HEALTH, Views::DamagePanel::RAID_SIZE_EIGHT);   // 혼자 깎은 절반
+            const auto quarter = Views::DamagePanel::Calculate(25, 0, 100, Views::DamagePanel::RAID_SIZE_FOUR);                                  // 4인 25%
+            const auto strong = Views::DamagePanel::Calculate(17, 0, 100, Views::DamagePanel::RAID_SIZE_EIGHT);                                  // 8인 17%
+            const bool isShare = solo && std::abs(solo->m_depletedShare - 1.0) < SHARE_TOLERANCE && solo->m_stage == 2
+                && quarter && std::abs(quarter->m_portions - 0.75) < SHARE_TOLERANCE && quarter->m_stage == 0
+                && strong && strong->m_stage == 1 && std::abs(strong->m_portions - 1.02) < SHARE_TOLERANCE
+                && !Views::DamagePanel::Calculate(10, 100, 100, Views::DamagePanel::RAID_SIZE_EIGHT).has_value();
+            reporter.Check(isShare, "딜 지분 · 깎인 체력 대비 · 몇 인분 · 단계 (8인 15% · 20%, 4인 30% · 40%)");
+
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
+            if (!folder) { reporter.Note("전투 분석기 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
+            struct CombatSampleFile
+            {
+                std::wstring_view m_file;                    // 파일
+                std::optional<std::int64_t> m_damage;        // 기대 피해량
+                std::optional<std::int64_t> m_dps;           // 기대 DPS
+            };
+            const std::array samples{
+                CombatSampleFile{ L"boss_hp.webp", std::nullopt, std::nullopt },                       // 전투 시작 전 ("-")
+                CombatSampleFile{ L"boss_hp_half.webp", 46'099'000'000, 351'000'000 },                 // 460.99억 · 3.51억
+                CombatSampleFile{ L"boss_hp_low.webp", 78'298'000'000, 343'000'000 } };                // 782.98억 · 3.43억
+            std::vector<std::optional<Vision::CombatReading>> readings(samples.size());   // 읽은 값
+            std::thread worker{ [&]                                                    // OCR 일꾼 스레드
+                {
+                    const Vision::VisionApartment apartment;                           // WinRT 준비
+                    const Vision::TextRecognizer recognizer;                           // OCR
+                    for (std::size_t index = 0; index < samples.size(); ++index)       // 샘플마다
+                        if (const auto frame = Vision::ImageFile::Load(*folder / samples[index].m_file)) readings[index] = CombatAnalyzerDetector::Detect(*frame, recognizer);
+                } };
+            worker.join();                                                             // 기다림
+            for (std::size_t index = 0; index < samples.size(); ++index)
+            {
+                const auto& reading = readings[index];                                 // 읽은 값
+                const bool isPassed = samples[index].m_damage ? (reading && reading->m_damage == samples[index].m_damage && reading->m_dps == samples[index].m_dps) : !reading;
+                const std::string outcome = reading ? std::format("피해량 {} · DPS {}", reading->m_damage.value_or(-1), reading->m_dps.value_or(-1)) : std::string{ "값 없음" };
+                reporter.Check(isPassed, "전투 분석기 샘플", std::format("{} : {}", std::string(samples[index].m_file.begin(), samples[index].m_file.end()), outcome));
+            }
+        }
+
+        // 젬 툴팁 (v1.10.1~): 실제 화면 샘플 다섯 장 (가공 중인 영웅 젬은 v1.10.2부터 한 개로 셈)
         void CheckGemTooltips(Reporter& reporter, const std::filesystem::path& reportPath)
         {
-            const bool isKey = Vision::GemTooltipDetector::ParseValueKey(Vision::GemTooltipDetector::MakeValueKey(1, 2)) == std::optional{ std::pair<std::size_t, std::size_t>{ 1, 2 } }
-                && !Vision::GemTooltipDetector::ParseValueKey("Dest/top").has_value() && !Vision::GemTooltipDetector::ParseValueKey("Gem/9/0").has_value();
-            reporter.Check(isKey, "귀속 젬 · 값 이름 (Gem/젬/등급 · 범위 밖 · 다른 값 제외)");
+            using Models::GemStockKind;
+            const auto processedKey = Vision::GemTooltipDetector::ParseValueKey(Vision::GemTooltipDetector::MakeValueKey(2, 1, GemStockKind::STOCK_PROCESSED, "4.99.1"));
+            const bool isKey = Vision::GemTooltipDetector::ParseValueKey(Vision::GemTooltipDetector::MakeValueKey(1, 2)) == std::optional{ Vision::GemValueKey{ 1, 2 } }
+                && Vision::GemTooltipDetector::ParseValueKey(Vision::GemTooltipDetector::MakeValueKey(1, 2, GemStockKind::STOCK_TRADABLE)) == std::optional{ Vision::GemValueKey{ 1, 2, GemStockKind::STOCK_TRADABLE } }
+                && processedKey == std::optional{ Vision::GemValueKey{ 2, 1, GemStockKind::STOCK_PROCESSED, "4.99.1" } }
+                && Vision::GemTooltipDetector::ParseValueKey("Gem/1/2") == std::optional{ Vision::GemValueKey{ 1, 2 } }
+                && !Vision::GemTooltipDetector::ParseValueKey("Dest/top").has_value() && !Vision::GemTooltipDetector::ParseValueKey("Gem/9/0").has_value()
+                && !Vision::GemTooltipDetector::ParseValueKey("Gem/1/2/X").has_value();
+            reporter.Check(isKey, "젬 · 값 이름 (귀속 · 거래 가능 · 가공 · 예전 모양 · 범위 밖 · 다른 값 제외)");
+            Models::BoundGemData stock;                                                // 종류별 합계
+            stock.SetQuantity(0, 0, 5);                                                // 예전에 손으로 넣은 5개 (내역 없음)
+            const int afterBound = stock.ApplyScan(0, 0, GemStockKind::STOCK_BOUND, 3, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT);       // 귀속 3
+            const int afterTradable = stock.ApplyScan(0, 0, GemStockKind::STOCK_TRADABLE, 2, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT); // + 거래 가능 2
+            const int afterProcessed = stock.ApplyScan(0, 0, GemStockKind::STOCK_PROCESSED, 1, "4.99", Core::APPConstants::MAX_BOUND_GEM_COUNT);   // + 가공 1
+            const int afterSame = stock.ApplyScan(0, 0, GemStockKind::STOCK_PROCESSED, 1, "4.99", Core::APPConstants::MAX_BOUND_GEM_COUNT);        // 같은 가공 젬 다시
+            const int afterBoundAgain = stock.ApplyScan(0, 0, GemStockKind::STOCK_BOUND, 4, {}, Core::APPConstants::MAX_BOUND_GEM_COUNT);  // 귀속 4로 바뀜
+            reporter.Check(afterBound == 3 && afterTradable == 5 && afterProcessed == 6 && afterSame == 6 && afterBoundAgain == 7 && stock.GetQuantity(0, 0) == 7,
+                "젬 수량 · 귀속 + 거래 가능 + 가공 젬 합계 (같은 가공 젬은 한 번만)",
+                std::format("{} → {} → {} → {} → {}", afterBound, afterTradable, afterProcessed, afterSame, afterBoundAgain));
             const bool isQuantity = Vision::OCRTextParser::ParseQuantity(L": 417개") == 417 && Vision::OCRTextParser::ParseQuantity(L": 41774") == 417
                 && Vision::OCRTextParser::ParseQuantity(L": 1774") == 17 && Vision::OCRTextParser::ParseQuantity(L": 1 77h") == 17
-                && Vision::OCRTextParser::ParseQuantity(L": 163,439개") == 163439 && Vision::OCRTextParser::ParseQuantity(L": 74개") == 74;
-            reporter.Check(isQuantity, "수량 읽기 · '개'를 74 · 7h로 읽은 경우 (417개 → 41774 · 17개 → 1 77h)");
+                && Vision::OCRTextParser::ParseQuantity(L": 163,439개") == 163439 && Vision::OCRTextParser::ParseQuantity(L": 74개") == 74
+                && Vision::OCRTextParser::ParseQuantity(L": 1 7 482개") == 17482 && !Vision::OCRTextParser::ParseQuantity(L": 1 7 482").has_value();
+            reporter.Check(isQuantity, "수량 읽기 · '개'를 74 · 7h로 읽은 경우 (417개 → 41774 · 17개 → 1 77h) · 쉼표를 놓친 경우 (1 7 482개)");
 
             const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
             if (!folder) { reporter.Note("귀속 젬 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
             struct GemSample
             {
                 std::wstring_view m_file;                  // 파일
-                std::optional<std::string> m_valueKey;     // 기대 값 이름 (없으면 건너뛰어야 함)
+                std::optional<std::string> m_valueKey;     // 기대 값 이름 (없으면 건너뛰어야 함, "Gem/0/1/P/"처럼 /로 끝나면 앞부분만 비교)
                 std::int64_t m_quantity;                   // 기대 수량
             };
             const std::array samples{
@@ -884,7 +958,7 @@ namespace LostArkMultiTool::Core::SelfTest
                 GemSample{ L"gem_order_solid_common_1.png", Vision::GemTooltipDetector::MakeValueKey(1, 0), 1 },
                 GemSample{ L"gem_order_stable_common_417.png", Vision::GemTooltipDetector::MakeValueKey(0, 0), 417 },
                 GemSample{ L"gem_order_stable_rare_17.png", Vision::GemTooltipDetector::MakeValueKey(0, 1), 17 },
-                GemSample{ L"gem_order_solid_hero_processed.png", std::nullopt, 0 } };   // 질서 안정 · 불변, 고급 · 희귀, 가공한 영웅
+                GemSample{ L"gem_order_solid_hero_processed.png", Vision::GemTooltipDetector::MakeValueKey(1, 2, Models::GemStockKind::STOCK_PROCESSED, {}), 1 } };   // 질서 안정 · 불변, 고급 · 희귀, 가공 중인 영웅 (한 개)
             std::vector<std::string> outcomes(samples.size());                         // 결과 글자
             std::vector<bool> passes(samples.size());                                  // 통과
             std::thread worker{ [&]                                                    // OCR 일꾼 스레드
@@ -904,7 +978,13 @@ namespace LostArkMultiTool::Core::SelfTest
                         const auto result = detector.Detect(*frame, context);          // 읽기
                         const std::optional<Vision::ScanValue> value = result && !result->m_values.empty() ? std::optional{ result->m_values.front() } : std::nullopt;
                         outcomes[index] = value ? std::format("{} = {}", value->m_key, value->m_value) : std::string{ "건너뜀" };
-                        passes[index] = samples[index].m_valueKey ? (value && value->m_key == *samples[index].m_valueKey && value->m_value == samples[index].m_quantity) : !value;
+                        const auto isKeyMatched = [&](const std::string& expected)    // 값 이름 비교 (가공 젬은 구분 글자 앞까지)
+                            {
+                                if (!value) return false;
+                                if (expected.ends_with('/')) return value->m_key.starts_with(expected) && value->m_key.size() > expected.size();
+                                return value->m_key == expected;
+                            };
+                        passes[index] = samples[index].m_valueKey ? (isKeyMatched(*samples[index].m_valueKey) && value->m_value == samples[index].m_quantity) : !value;
                     }
                 } };
             worker.join();                                                             // 기다림
@@ -1006,6 +1086,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckOverlaySetup(reporter);                         // 설정 탭 부품 · 요소 투명도 · 아이콘
             CheckBossHealth(reporter, reportPath);               // 보스 체력바
             CheckGemTooltips(reporter, reportPath);              // 귀속 젬 툴팁
+            CheckCombatAnalyzer(reporter, reportPath);           // 전투 분석기 · 딜 지분
         }
         catch (const std::exception& exception)
         {

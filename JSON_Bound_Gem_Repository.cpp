@@ -21,6 +21,16 @@ namespace LostArkMultiTool::Services
         constexpr std::string_view KEY_GRADE{ "Grade" };
         constexpr std::string_view KEY_COUNT{ "Count" };
         constexpr std::string_view KEY_HISTORY{ "History" };   // { "yyyy-MM-dd": 원정대 총 가치 }
+        constexpr std::string_view KEY_SCAN_BOUND{ "ScanBound" };         // 화면 인식 귀속 묶음 수량
+        constexpr std::string_view KEY_SCAN_TRADABLE{ "ScanTradable" };   // 화면 인식 거래 가능 묶음 수량
+        constexpr std::string_view KEY_SCAN_PROCESSED{ "ScanProcessed" }; // 화면 인식 가공 젬 구분 글자 목록
+
+        // 숫자 항목 → 수량 (없으면 nullopt)
+        [[nodiscard]] std::optional<int> ReadScanCount(const JSONValue& value)
+        {
+            if (value.GetType() != JSONType::NUMBER_VALUE) return std::nullopt;   // 없음
+            return static_cast<int>(std::clamp(value.GetNumber(), 0.0, static_cast<double>(Core::APPConstants::MAX_BOUND_GEM_COUNT)));   // 범위
+        }
 
         // 이름 목록에서 번호 찾기 (없으면 nullopt → 모르는 항목은 건너뜀)
         template <std::size_t Count>
@@ -43,6 +53,12 @@ namespace LostArkMultiTool::Services
 
                 const double count{ std::clamp(entry.FindMember(KEY_COUNT).GetNumber(), 0.0, static_cast<double>(Core::APPConstants::MAX_BOUND_GEM_COUNT)) };
                 data.SetQuantity(*gemIndex, *gradeIndex, static_cast<int>(count));
+                Models::GemScanSlot slot;                                                            // 화면 인식 내역 (예전 파일은 없음)
+                slot.m_bound = ReadScanCount(entry.FindMember(KEY_SCAN_BOUND));
+                slot.m_tradable = ReadScanCount(entry.FindMember(KEY_SCAN_TRADABLE));
+                for (const JSONValue& key : entry.FindMember(KEY_SCAN_PROCESSED).GetItems())
+                    if (key.GetType() == JSONType::STRING_VALUE && !key.GetString().empty()) slot.m_processed.push_back(key.GetString());
+                data.SetScanSlot(*gemIndex, *gradeIndex, std::move(slot));
             }
             return data;
         }
@@ -90,11 +106,21 @@ namespace LostArkMultiTool::Services
                     const int quantity{ data.GetQuantity(gemIndex, gradeIndex) };
                     if (quantity <= 0) continue;
 
-                    entries.push_back(JSONValue::CreateObject(
-                        { std::string{ KEY_NAME }, std::string{ KEY_GRADE }, std::string{ KEY_COUNT } },
-                        { JSONValue::CreateString(std::string{ Models::BoundGemData::GEM_NAMES[gemIndex] }),
-                          JSONValue::CreateString(std::string{ Models::BoundGemData::GRADE_NAMES[gradeIndex] }),
-                          JSONValue::CreateNumber(static_cast<double>(quantity)) }));
+                    std::vector<std::string> keys{ std::string{ KEY_NAME }, std::string{ KEY_GRADE }, std::string{ KEY_COUNT } };
+                    std::vector<JSONValue> values{ JSONValue::CreateString(std::string{ Models::BoundGemData::GEM_NAMES[gemIndex] }),
+                        JSONValue::CreateString(std::string{ Models::BoundGemData::GRADE_NAMES[gradeIndex] }),
+                        JSONValue::CreateNumber(static_cast<double>(quantity)) };
+                    const Models::GemScanSlot& slot{ data.GetScanSlot(gemIndex, gradeIndex) };   // 화면 인식 내역 (있을 때만)
+                    if (slot.m_bound) { keys.emplace_back(KEY_SCAN_BOUND); values.push_back(JSONValue::CreateNumber(static_cast<double>(*slot.m_bound))); }
+                    if (slot.m_tradable) { keys.emplace_back(KEY_SCAN_TRADABLE); values.push_back(JSONValue::CreateNumber(static_cast<double>(*slot.m_tradable))); }
+                    if (!slot.m_processed.empty())
+                    {
+                        std::vector<JSONValue> processed;
+                        for (const std::string& key : slot.m_processed) processed.push_back(JSONValue::CreateString(key));
+                        keys.emplace_back(KEY_SCAN_PROCESSED);
+                        values.push_back(JSONValue::CreateArray(std::move(processed)));
+                    }
+                    entries.push_back(JSONValue::CreateObject(std::move(keys), std::move(values)));
                 }
             }
             return JSONValue::CreateArray(std::move(entries));

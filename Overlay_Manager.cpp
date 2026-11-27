@@ -10,6 +10,7 @@ import LostArkMultiTool.Vision.GameWindowFinder;  // 게임 창 찾기 가져오
 import LostArkMultiTool.Views.BossPanel;  // 보스 체력 패널
 import LostArkMultiTool.Views.CalculatorManager;  // 재료 요약 · 현재 캐릭터 · 보스 체력
 import LostArkMultiTool.Views.CharacterPanel;  // 현재 캐릭터 패널
+import LostArkMultiTool.Views.DamagePanel;  // 딜 지분 패널
 import LostArkMultiTool.Views.DX11Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Views.MaterialPanel;  // 재료 패널
 import LostArkMultiTool.Views.MiniToolPanel;  // 탭 미니 모드 패널
@@ -57,6 +58,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr Core::TextStyle TOOLBAR_STYLE{ TOOLBAR_FONT_SIZE, Core::FontWeight::BOLD, Core::TextAlign::CENTER };   // 단추 글꼴
         constexpr Core::TextStyle HINT_STYLE{ TOOLBAR_FONT_SIZE, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };    // 안내 글꼴
         constexpr std::wstring_view TOOLBAR_CHARACTER_TEXT{ L"현재 캐릭터" };   // 단추 글자
+        constexpr std::wstring_view TOOLBAR_DAMAGE_TEXT{ L"딜 지분" };          // 딜 지분 단추 글자
+        constexpr float DAMAGE_PANEL_BOTTOM_RATIO{ 0.74f };  // 딜 지분 패널 아래쪽 (게임 전투 분석기 바로 위, 화면 세로 비율)
         constexpr std::wstring_view TOOLBAR_BOSS_TEXT{ L"보스 체력" };
         constexpr std::wstring_view REFRESH_HOTKEY_FAILED_TEXT{ L"시세 갱신 단축키(Ctrl+Shift+F5)를 다른 프로그램이 쓰고 있어요. 그 프로그램의 단축키를 바꾸거나 계산기의 [시세 갱신]을 눌러 주세요." };
         constexpr std::wstring_view TOOLBAR_MATERIAL_TEXT{ L"재료 시세" };
@@ -103,6 +106,12 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_panels.push_back(std::make_unique<MaterialPanel>([] { return CalculatorManager::GetInstance().GetOverlaySummary(); }));
         m_panels.push_back(std::make_unique<ParadisePanel>([] { return TrackerManager::GetInstance().GetOverlaySummary(); }));
         m_panels.push_back(std::make_unique<BossPanel>([] { return CalculatorManager::GetInstance().GetBossHealth(); }));   // 보스 체력
+        auto damage = std::make_unique<DamagePanel>(
+            [] { const auto& calculator = CalculatorManager::GetInstance(); return DamageShareSource{ calculator.GetBossHealth(), calculator.GetCombatStats() }; },   // 보스 체력 · 전투 분석기
+            [this] { return m_settings->GetRaidSize(); },                                       // 8인 · 4인
+            [this](int raidSize) { m_settings->SetRaidSize(raidSize); SaveSettings(); });       // 바꾸면 저장
+        damage->SetVisible(false);                                                       // 처음엔 숨김 (도구 막대로 켬)
+        m_panels.push_back(std::move(damage));                                           // 딜 지분
         m_panels.push_back(std::make_unique<CharacterPanel>(
             [] { return CalculatorManager::GetInstance().GetCurrentCharacter(); },                        // 현재 캐릭터 요약
             [](std::size_t index) { CalculatorManager::GetInstance().PickCurrentCharacter(index); },      // [변경]으로 고름
@@ -116,6 +125,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_BOSS_TEXT },
             [this] { if (auto* panel = FindPanel(BossPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
             [this] { const auto* panel = FindPanel(BossPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });   // 보스 체력 패널 켜기 · 끄기
+        m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_DAMAGE_TEXT },
+            [this] { if (auto* panel = FindPanel(DamagePanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
+            [this] { const auto* panel = FindPanel(DamagePanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });  // 딜 지분 패널 켜기 · 끄기
         m_toolbar.push_back(ToolbarButton{ std::wstring{ TOOLBAR_MATERIAL_TEXT },
             [this] { if (auto* panel = FindPanel(MaterialPanel::PANEL_ID)) { panel->SetVisible(!panel->IsVisible()); SavePanelStates(); } },
             [this] { const auto* panel = FindPanel(MaterialPanel::PANEL_ID); return panel != nullptr && panel->IsVisible(); } });   // 재료 패널 켜기 · 끄기
@@ -330,6 +342,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         m_findElapsed += deltaSeconds;                                         // 시간 누적
         m_renderElapsed += deltaSeconds;
         TrackGameWindow();                                                     // 게임 창 따라가기
+        const auto* damagePanel = FindPanel(DamagePanel::PANEL_ID);            // 딜 지분 패널
+        CalculatorManager::GetInstance().SetCombatScan(m_isVisible && damagePanel != nullptr && damagePanel->IsVisible());   // 보일 때만 전투 분석기 읽기
         if (!m_isVisible) return;                                              // 안 보이면 패널 갱신도 쉼
 
         if (!m_isPlaced) PlaceDefaultPanels();                                 // 처음 보일 때 기본 위치
@@ -436,6 +450,13 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 const float bossLeft = area.m_left + (area.GetWidth() - size.m_width) * HALF;   // 가로 가운데
                 const float bossTop = area.m_top + area.GetHeight() * BOSS_PANEL_TOP_RATIO;     // 체력바 아래
                 panel->SetBounds(Core::RectF{ bossLeft, bossTop, bossLeft + size.m_width, bossTop + size.m_height });
+                continue;                                                      // 오른쪽 쌓기에서 뺌
+            }
+            if (panel->GetId() == DamagePanel::PANEL_ID)                       // 딜 지분은 오른쪽 아래 (게임 전투 분석기 바로 위)
+            {
+                const float left = area.m_right - PANEL_MARGIN - size.m_width; // 오른쪽 정렬
+                const float bottom = area.m_top + area.GetHeight() * DAMAGE_PANEL_BOTTOM_RATIO;   // 전투 분석기 위
+                panel->SetBounds(Core::RectF{ left, bottom - size.m_height, left + size.m_width, bottom });
                 continue;                                                      // 오른쪽 쌓기에서 뺌
             }
             if (panel->GetId() == CharacterPanel::PANEL_ID)                    // 현재 캐릭터는 왼쪽 위

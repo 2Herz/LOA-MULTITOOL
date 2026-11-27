@@ -29,6 +29,9 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         static constexpr float MIN_ELEMENT_ALPHA{ 0.1f };  // 요소 투명도 최소 (10%)
         static constexpr float MAX_ELEMENT_ALPHA{ 1.0f };  // 요소 투명도 최대 (100%)
 
+        static constexpr int DEFAULT_RAID_SIZE{ 8 };      // 딜 지분 기본 인원 (8인)
+        static constexpr int SMALL_RAID_SIZE{ 4 };        // 4인
+
         OverlaySettings();   // 생성자 (저장 파일을 읽음, 없으면 기본값)
 
         [[nodiscard]] bool IsEnabled() const noexcept;                          // 오버레이 켜짐
@@ -39,6 +42,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         void SetOpacity(float opacity) noexcept;                                // 불투명도 (범위 제한)
         [[nodiscard]] std::size_t GetMiniToolIndex() const noexcept;            // 미니 모드 탭 번호
         void SetMiniToolIndex(std::size_t index) noexcept;                      // 미니 모드 탭 바꾸기
+        [[nodiscard]] int GetRaidSize() const noexcept;                         // 딜 지분 인원 (8 · 4)
+        void SetRaidSize(int raidSize) noexcept;                                // 인원 바꾸기 (4가 아니면 8)
         [[nodiscard]] std::optional<OverlayPanelState> FindPanel(std::string_view id) const;   // 패널 상태 (없으면 nullopt)
         void SetPanel(OverlayPanelState state);                                 // 패널 상태 저장 (이름 기준 교체)
         void RemovePanel(std::string_view id);                                  // 패널 상태 지우기 (기본 위치로 되돌릴 때)
@@ -50,6 +55,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         bool m_isCaptureHidden{};                     // 캡처 · 방송에서 숨기기
         float m_opacity{ DEFAULT_OPACITY };           // 불투명도
         std::size_t m_miniToolIndex{};                // 미니 모드 탭
+        int m_raidSize{ DEFAULT_RAID_SIZE };          // 딜 지분 인원
         std::vector<OverlayPanelState> m_panels;      // 패널 상태들
     };
 }

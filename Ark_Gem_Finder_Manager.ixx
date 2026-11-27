@@ -11,6 +11,7 @@ import LostArkMultiTool.Core.Renderer;
 import LostArkMultiTool.Core.Singleton;
 import LostArkMultiTool.Core.ToolContext;
 import LostArkMultiTool.Core.ToolManager;
+import LostArkMultiTool.Models.BoundGemData;  // 젬 수량 종류
 import LostArkMultiTool.Models.BoundGemRosterData;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Models.MarketItem;
@@ -48,7 +49,14 @@ export namespace LostArkMultiTool::Views
             GEM_UNCHANGED,       // 같은 수량
             GEM_SAVE_FAILED      // 저장 실패 (되돌림)
         };
-        [[nodiscard]] GemScanResult ApplyScannedGem(const std::string& characterName, std::size_t gemIndex, std::size_t gradeIndex, int quantity);   // 화면에서 읽은 수량 넣기
+        struct GemScanOutcome
+        {
+            GemScanResult m_result{ GemScanResult::GEM_NO_CHARACTER };   // 결과
+            int m_total{};                                               // 반영 뒤 칸 수량 (귀속 + 거래 가능 + 가공 젬)
+        };
+        // 화면에서 읽은 수량 넣기 (종류별로 기억해 칸 = 합계, 가공 젬은 processedKey로 한 번만 셈)
+        [[nodiscard]] GemScanOutcome ApplyScannedGem(const std::string& characterName, std::size_t gemIndex, std::size_t gradeIndex,
+            Models::GemStockKind kind, int quantity, std::string_view processedKey);
         void SetVisionControl(std::function<bool()> isEnabled, std::function<void(bool)> setEnabled);   // [화면 인식] 상태 · 켜기 (Application이 귀속재료 계산기와 연결)
 
     private:

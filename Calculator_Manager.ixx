@@ -14,6 +14,7 @@ import LostArkMultiTool.Models.Character;
 import LostArkMultiTool.Models.CharacterInfo;
 import LostArkMultiTool.Views.CalculatorView;
 import LostArkMultiTool.Vision.FrameImage;       // 픽셀 사각형
+import LostArkMultiTool.Vision.GemTooltipDetector; // 젬 값 이름
 import LostArkMultiTool.Vision.NameplateMemory;  // 이름표 모양 기억
 import LostArkMultiTool.Vision.ScreenWatcher;    // 화면 인식 감시기
 import LostArkMultiTool.Vision.VisionSettings;   // 화면 인식 켜기 설정
@@ -124,6 +125,8 @@ export namespace LostArkMultiTool::Views
         [[nodiscard]] std::optional<VisionStatusSnapshot> GetVisionStatus() const;   // 화면 인식 상태 (꺼져 있으면 nullopt)
         [[nodiscard]] std::size_t GetRosterCount() const noexcept;           // 원정대 캐릭터 수
         [[nodiscard]] std::optional<Vision::BossHealthSample> GetBossHealth() const;   // 마지막 보스 체력 (화면 인식이 꺼졌거나 보스가 없으면 nullopt)
+        [[nodiscard]] std::optional<Vision::CombatSample> GetCombatStats() const;      // 마지막 전투 분석기 (화면 인식이 꺼졌거나 안 보이면 nullopt)
+        void SetCombatScan(bool isEnabled);                                 // 전투 분석기 읽기 (딜 지분 패널이 보일 때만)
         void RequestRefresh();                                              // 시세 갱신 (단축키 Ctrl+Shift+F5)
 
     private:
@@ -146,7 +149,7 @@ export namespace LostArkMultiTool::Views
         void ApplyScanResults();                              // 확정된 인식 결과 반영 (화면 스레드에서)
         void ApplyMaterialScan(const std::string& valueKey, double quantity);   // 재료 수량 → 계산기 칸
         void ApplyParadiseScan(double score);                 // 낙원력 → 낙원력 트래커 이번 주차
-        void ApplyGemScan(std::size_t gemIndex, std::size_t gradeIndex, int quantity);   // 귀속 젬 → 젬 시세 검색기 귀속 젬 계산기
+        void ApplyGemScan(const Vision::GemValueKey& key, int quantity);   // 젬 (귀속 · 거래 가능 · 가공) → 젬 시세 검색기 귀속 젬 계산기
         void SetCurrentCharacter(const std::string& name, CurrentCharacterSource source, std::optional<double> readItemLevel);   // 현재 캐릭터 바꾸기 (계산기 선택도 따라감)
         void ClearCurrentCharacter();                         // 현재 캐릭터 지우기 (로딩 화면 · 화면 인식 켜고 끄기)
         void SelectCharacterByName(const std::string& name);  // 이름으로 캐릭터 고르기 (이미 골랐으면 그대로)
@@ -195,5 +198,6 @@ export namespace LostArkMultiTool::Views
         std::chrono::steady_clock::time_point m_lastUnknownAt;      // 그 글자를 읽은 시각 (오래되면 별칭으로 쓰지 않음)
         bool m_isWaitNoticeShown{};                                 // "캐릭터 확인 중" 안내를 이미 띄웠는지 (확인될 때까지 한 번만)
         bool m_isPreviewWanted{};                                   // 설정 탭이 미리 보기를 원하는지 (감시를 다시 만들어도 유지)
+        bool m_isCombatWanted{};                                    // 딜 지분 패널이 전투 분석기 읽기를 원하는지 (감시를 다시 만들어도 유지)
     };
 }

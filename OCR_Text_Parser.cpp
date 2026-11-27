@@ -163,10 +163,12 @@ namespace LostArkMultiTool::Vision::OCRTextParser  // OCR 해석 네임스페이
     {
         constexpr std::wstring_view COUNT_UNIT{ L"개" };                                       // 수량 단위
         constexpr std::array<std::wstring_view, 3> UNIT_MISREADS{ L"7h", L"7H", L"74" };      // OCR이 "개"를 이렇게 읽음 (17개 → 1774 · 1 77h)
-        constexpr std::size_t MAX_PLAIN_DIGITS{ 4 };                                           // 쉼표 없이 이어 붙여도 되는 자릿수 (1,000 이상은 쉼표가 있어야 함)
+        constexpr std::size_t MAX_PLAIN_DIGITS{ 4 };                                           // "개"가 없을 때 쉼표 없이 이어 붙여도 되는 자릿수 (1,000 이상은 쉼표가 있어야 함)
+        constexpr std::size_t MAX_UNIT_DIGITS{ 9 };                                            // "개"가 보이면 (잘못 읽은 74가 끼지 않음) 쉼표를 놓쳐도 이어 붙임
         constexpr int DECIMAL_BASE{ 10 };                                                      // 십진수
         std::wstring_view rest = text;                                                         // 읽을 글자
-        if (const std::size_t unit = rest.find(COUNT_UNIT); unit != std::wstring_view::npos) rest = rest.substr(0, unit);   // "개" 앞까지
+        std::size_t maxDigits = MAX_PLAIN_DIGITS;                                              // 이어 붙일 자릿수 상한
+        if (const std::size_t unit = rest.find(COUNT_UNIT); unit != std::wstring_view::npos) { rest = rest.substr(0, unit); maxDigits = MAX_UNIT_DIGITS; }   // "개" 앞까지
         else                                                                                   // "개"가 없으면 잘못 읽은 모양을 끝에서 떼어 냄
         {
             while (!rest.empty() && IsBlank(rest.back())) rest.remove_suffix(1);              // 끝 띄어쓰기
@@ -181,7 +183,7 @@ namespace LostArkMultiTool::Vision::OCRTextParser  // OCR 해석 네임스페이
         for (wchar_t character : rest)                                                         // 글자마다
         {
             if (!IsDigit(character)) continue;                                                 // 숫자만
-            if (++digits > MAX_PLAIN_DIGITS) return std::nullopt;                              // 길면 쉼표 없이는 믿을 수 없음
+            if (++digits > maxDigits) return std::nullopt;                                     // 길면 쉼표 없이는 믿을 수 없음
             value = value * DECIMAL_BASE + (character - L'0');                                 // 자릿수 추가
         }
         if (digits == 0) return std::nullopt;                                                  // 숫자 없음
