@@ -19,6 +19,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::int64_t m_maximum{};     // 최대 체력
         std::optional<int> m_lines;   // 남은 줄 수 ("X 100" → 100, 못 읽으면 nullopt)
         std::optional<PixelRect> m_textBounds;   // 체력 글자 줄 위치 (프레임 기준, 줄 수를 다시 읽을 때 씀)
+        std::optional<std::array<std::uint8_t, 3>> m_barColor;   // 체력 숫자 뒤 막대 색 (R · G · B, 오버레이 덮개를 게임 색으로 칠할 때)
     };
 
     // 여러 번 읽은 보스 체력을 모아 믿을 만한 값만 내는 추적기 (감시 스레드 전용)

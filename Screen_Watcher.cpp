@@ -32,7 +32,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::chrono::milliseconds BOSS_KEEP_DURATION{ 3000 };       // 보스를 못 읽어도 이 시간까지는 마지막 값 유지 (잠깐 가려짐 · 오인식)
         constexpr std::chrono::milliseconds COMBAT_SCAN_INTERVAL{ 1000 };     // 전투 분석기 읽기 간격 (게임도 1초마다 갱신)
         constexpr std::chrono::milliseconds COMBAT_KEEP_DURATION{ 5000 };     // 전투 분석기를 못 읽어도 이 시간까지는 마지막 값 유지
-        constexpr std::chrono::milliseconds FRAME_SCAN_INTERVAL{ 2000 };      // 주기 인식기(창고 · 소지품 슬롯) 간격
+        constexpr std::chrono::milliseconds FRAME_SCAN_INTERVAL{ 1000 };      // 주기 인식기(창고 · 소지품 슬롯) 간격 (Release 1080p 한 장 약 55ms)
         constexpr std::chrono::milliseconds GATE_CHECK_DELAY{ 300 };          // 값을 붙잡으면 이만큼 뒤에 캐릭터를 다시 확인 (빨리 내보내려고)
         constexpr int PREVIEW_MAX_WIDTH{ 640 };                               // 미리 보기 그림 가로 상한 (줄여서 메모리 · 시간 절약)
         constexpr double AVERAGE_WEIGHT{ 0.3 };                               // 처리 시간 평균: 새 값 비중 (지수 이동 평균)

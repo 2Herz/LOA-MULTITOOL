@@ -92,7 +92,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
     {
     public:
         using Clock = std::chrono::steady_clock;                                   // 시계
-        static constexpr std::chrono::milliseconds MAX_HOLD{ 8000 };              // 오래 기다린 값을 내보내는 시간
+        static constexpr std::chrono::milliseconds MAX_HOLD{ 3000 };              // 오래 기다린 값을 내보내는 시간 (캐릭터를 바꾸면 반드시 로딩 화면을 거쳐 버려지므로 짧게)
         static constexpr std::size_t MAX_PENDING{ 32 };                           // 붙잡아 둘 결과 수 상한 (넘으면 오래된 것부터 버림)
 
         void Hold(ScanResult result, Clock::time_point now);                      // 붙잡기

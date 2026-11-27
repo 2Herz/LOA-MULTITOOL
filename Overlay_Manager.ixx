@@ -72,6 +72,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
 
         void HandleInput(const Core::InputEvent& event);   // 오버레이 창 입력
         void HandleHotkey(int hotkeyId);                    // 전역 단축키
+        void TogglePanel(std::string_view id);              // 패널 켜기 · 끄기 (오버레이가 꺼져 있으면 켜고 보임, 저장)
         void SetInteractive(bool isInteractive);            // 조작 모드 켜기 · 끄기
         void TrackGameWindow();                              // 게임 창 찾기 · 위치 맞추기 · 보이기 결정
         void LoadPanelStates();                              // 설정 → 패널 위치 · 표시

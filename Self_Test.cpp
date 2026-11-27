@@ -863,6 +863,14 @@ namespace LostArkMultiTool::Core::SelfTest
             reporter.Check(voted && voted->m_maximum == SAMPLE_HEALTH && voted->m_current == BOSS_SAMPLES[1].m_current,
                 "보스 체력 · 최대 체력 투표 (한 장 오인식을 고침)",
                 voted ? std::format("{} / {}", voted->m_current, voted->m_maximum) : std::string{ "결과 없음" });
+            const auto describeColor = [](const std::optional<Vision::BossHealthReading>& reading)   // 막대 색 글자
+                { return reading && reading->m_barColor ? std::format("{},{},{}", (*reading->m_barColor)[0], (*reading->m_barColor)[1], (*reading->m_barColor)[2]) : std::string{ "없음" }; };
+            const auto isWarm = [](const std::optional<Vision::BossHealthReading>& reading)     // 빨강 · 주황 · 노랑 쪽 (빨강 > 파랑)
+                { return reading && reading->m_barColor && (*reading->m_barColor)[0] > (*reading->m_barColor)[2]; };
+            const auto isBlue = [](const std::optional<Vision::BossHealthReading>& reading)     // 파랑 쪽 (파랑 > 빨강)
+                { return reading && reading->m_barColor && (*reading->m_barColor)[2] > (*reading->m_barColor)[0]; };
+            reporter.Check(isWarm(readings[0]) && isWarm(readings[1]) && isBlue(readings[2]), "보스 체력 · 숫자 뒤 막대 색 (주황 · 노랑 · 파랑 → 오버레이 덮개 색)",
+                std::format("{} / {} / {}", describeColor(readings[0]), describeColor(readings[1]), describeColor(readings[2])));
         }
 
         // 전투 분석기 · 딜 지분 (v1.10.2): 단위 글자 해석 · 보스 샘플 세 장 · 지분 계산
@@ -944,6 +952,7 @@ namespace LostArkMultiTool::Core::SelfTest
             constexpr std::array samples{
                 SlotSample{ L"storage.png", "Bing/level=3024 Fusion/level=1178 Yong/level=2720" },             // 창고 (파괴석 · 수호석 9999+는 건너뜀)
                 SlotSample{ L"tooltip_guard_top_bound.png", "Fusion/level=207 Yong/level=1423" },             // 툴팁이 일부 가린 창고
+                SlotSample{ L"storage_inventory.webp", "Bing/level=920 Yong/level=590" },                      // 창고 + 소지품 (불꽃 빛이 숫자에 섞인 590)
                 SlotSample{ L"boss_hp.webp", "없음" },                                                          // 1080p 전투 화면 (창고 없음 → 오탐 없어야 함)
                 SlotSample{ L"character_info.webp", "없음" } };                                                 // 1080p 캐릭터 정보 창
             std::vector<std::string> outcomes(samples.size());                         // 결과 글자

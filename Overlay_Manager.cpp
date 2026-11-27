@@ -29,6 +29,10 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr int HOTKEY_TOGGLE_OVERLAY{ 1 };            // 단축키 번호: 오버레이 켜기 · 끄기
         constexpr int HOTKEY_TOGGLE_INTERACT{ 2 };           // 단축키 번호: 조작 모드
         constexpr int HOTKEY_REFRESH_PRICES{ 3 };            // 단축키 번호: 시세 갱신
+        constexpr int HOTKEY_TOGGLE_MATERIAL{ 4 };           // 단축키 번호: 재료 시세 패널
+        constexpr int HOTKEY_TOGGLE_DAMAGE{ 5 };             // 단축키 번호: 딜 지분 패널
+        constexpr unsigned KEY_BACKQUOTE{ 0xC0 };            // ` 키 (VK_OEM_3)
+        constexpr unsigned KEY_D{ 'D' };                     // D 키
         constexpr unsigned KEY_F5{ 0x74 };                   // F5 키 (VK_F5)
         constexpr float BOSS_PANEL_TOP_RATIO{ 0.15f };       // 보스 체력 패널 위쪽 (게임 체력바 바로 아래, 화면 세로 비율)
         constexpr unsigned MODIFIER_CONTROL{ 0x0002 };       // MOD_CONTROL (Ctrl)
@@ -61,6 +65,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view TOOLBAR_DAMAGE_TEXT{ L"딜 지분" };          // 딜 지분 단추 글자
         constexpr float DAMAGE_PANEL_BOTTOM_RATIO{ 0.74f };  // 딜 지분 패널 아래쪽 (게임 전투 분석기 바로 위, 화면 세로 비율)
         constexpr std::wstring_view TOOLBAR_BOSS_TEXT{ L"보스 체력" };
+        constexpr std::wstring_view PANEL_HOTKEY_FAILED_TEXT{ L"패널 단축키(Ctrl+Shift+` · Ctrl+Shift+D)를 다른 프로그램이 쓰고 있어요. 조작 모드 도구 막대로 켜 주세요." };
         constexpr std::wstring_view REFRESH_HOTKEY_FAILED_TEXT{ L"시세 갱신 단축키(Ctrl+Shift+F5)를 다른 프로그램이 쓰고 있어요. 그 프로그램의 단축키를 바꾸거나 계산기의 [시세 갱신]을 눌러 주세요." };
         constexpr std::wstring_view TOOLBAR_MATERIAL_TEXT{ L"재료 시세" };
         constexpr std::wstring_view TOOLBAR_PARADISE_TEXT{ L"낙원력" };
@@ -93,6 +98,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         if (!isOverlayKey || !isInteractKey) m_pendingNotice = std::wstring{ HOTKEY_FAILED_TEXT };                              // 등록 실패 안내
         else if (!m_window->RegisterHotkey(HOTKEY_REFRESH_PRICES, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_F5))                   // Ctrl+Shift+F5
             m_pendingNotice = std::wstring{ REFRESH_HOTKEY_FAILED_TEXT };                                                       // 등록 실패 안내
+        const bool isMaterialKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_MATERIAL, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_BACKQUOTE);   // Ctrl+Shift+`
+        const bool isDamageKey = m_window->RegisterHotkey(HOTKEY_TOGGLE_DAMAGE, MODIFIER_CONTROL | MODIFIER_SHIFT, KEY_D);              // Ctrl+Shift+D
+        if ((!isMaterialKey || !isDamageKey) && !m_pendingNotice) m_pendingNotice = std::wstring{ PANEL_HOTKEY_FAILED_TEXT };   // 등록 실패 안내 (먼저 난 안내가 있으면 그것만)
         [[maybe_unused]] const bool isCaptureApplied = m_window->SetCaptureHidden(m_settings->IsCaptureHidden());              // 캡처 · 방송에서 숨기기 (옛 윈도우면 그대로)
 
         // 패널들 (컴포넌트): 탭 미니 모드(큰 패널이라 맨 아래에 그림), 재료 시세 · 총자산, 낙원력 주간 현황
@@ -296,6 +304,22 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         if (hotkeyId == HOTKEY_TOGGLE_OVERLAY) SetEnabled(!IsEnabled());                             // 켜기 · 끄기
         else if (hotkeyId == HOTKEY_TOGGLE_INTERACT && IsEnabled()) SetInteractive(!m_window->IsInteractive());   // 조작 모드
         else if (hotkeyId == HOTKEY_REFRESH_PRICES && m_onRefreshHotkey) m_onRefreshHotkey();                       // 시세 갱신
+        else if (hotkeyId == HOTKEY_TOGGLE_MATERIAL) TogglePanel(MaterialPanel::PANEL_ID);                          // 재료 시세 패널
+        else if (hotkeyId == HOTKEY_TOGGLE_DAMAGE) TogglePanel(DamagePanel::PANEL_ID);                              // 딜 지분 패널
+    }
+
+    void OverlayManager::TogglePanel(std::string_view id)
+    {
+        OverlayPanel* panel = FindPanel(id);                                   // 패널
+        if (panel == nullptr) return;                                          // 없음
+        if (!IsEnabled())                                                      // 오버레이가 꺼져 있으면 켜고 그 패널을 보임
+        {
+            SetEnabled(true);
+            panel->SetVisible(true);
+        }
+        else panel->SetVisible(!panel->IsVisible());                           // 켜기 · 끄기
+        m_isDirty = true;                                                      // 바로 다시 그림
+        SavePanelStates();                                                     // 저장
     }
 
     void OverlayManager::SetInteractive(bool isInteractive)

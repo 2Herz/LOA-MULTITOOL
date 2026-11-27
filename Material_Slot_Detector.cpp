@@ -19,7 +19,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr double OVERLAP_RATIO{ 0.5 };          // 서로 다른 아이콘이 이만큼 겹치면 점수 높은 쪽만
         constexpr int BAND_TOP_OFFSET{ 13 };            // 숫자 띠 위쪽 = 아이콘 위쪽 - 13
         constexpr int BAND_BOTTOM_OFFSET{ 1 };          // 숫자 띠 아래쪽 = 아이콘 위쪽 - 1
-        constexpr int BAND_SIDE_MARGIN{ 4 };            // 숫자 띠 좌우 여유
+        constexpr int BAND_SIDE_MARGIN{ 4 };            // 숫자 띠 왼쪽 여유
+        constexpr int BAND_RIGHT_TRIM{ 2 };             // 숫자 띠 오른쪽 = 아이콘 오른쪽 - 2 (슬롯 테두리가 '1'처럼 읽히지 않게)
+        constexpr int GLYPH_ROWS{ 10 };                 // 글자 줄 창 높이 (가장 글자가 많은 10줄만 남겨 아이콘 빛 지우기)
         constexpr int TEXT_MIN_LEVEL{ 150 };            // 흰 글자: 세 채널 모두 이 값 이상
         constexpr int TEXT_MAX_SPREAD{ 70 };            // 흰 글자: 채널 차이 이 값 이하 (노란 · 파란 아이콘 빛 거르기)
         constexpr int GLYPH_MIN_HEIGHT{ 7 };            // 글자 높이 하한
@@ -253,6 +255,18 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                     const int high = std::max({ red, green, blue });                         // 가장 밝은 채널
                     ink[static_cast<std::size_t>(y) * width + x] = low >= TEXT_MIN_LEVEL && high - low <= TEXT_MAX_SPREAD;   // 흰 글자
                 }
+            int bestTop = 0;                                                                 // 글자 줄 창 위쪽
+            int bestCount = -1;                                                              // 그 창의 글자 칸 수
+            for (int top = 0; top + GLYPH_ROWS <= std::max(height, GLYPH_ROWS); ++top)      // 창마다
+            {
+                int count = 0;                                                               // 칸 수
+                for (int y = top; y < std::min(top + GLYPH_ROWS, height); ++y)
+                    for (int x = 0; x < width; ++x) count += ink[static_cast<std::size_t>(y) * width + x] ? 1 : 0;
+                if (count > bestCount) { bestCount = count; bestTop = top; }                 // 더 많음
+            }
+            for (int y = 0; y < height; ++y)                                                 // 창 밖 줄은 지움 (숫자 아래 · 위로 붙은 빛 때문에 숫자가 이어지지 않게)
+                if (y < bestTop || y >= bestTop + GLYPH_ROWS)
+                    for (int x = 0; x < width; ++x) ink[static_cast<std::size_t>(y) * width + x] = false;
             const auto isInkColumn = [&](int x) { for (int y = 0; y < height; ++y) if (ink[static_cast<std::size_t>(y) * width + x]) return true; return false; };
             std::vector<Glyph> glyphs;                                                       // 결과
             for (int x = 0; x < width;)                                                      // 열마다
@@ -317,7 +331,11 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             char bestSymbol = '\0';                                                          // 그 글자
             for (const SlotGlyphTemplate& pattern : GetSlotGlyphs())                         // 템플릿마다
                 if (const double score = CompareGlyph(glyphs[index], pattern); score > bestScore) { bestScore = score; bestSymbol = pattern.m_symbol; }
-            if (bestScore < GLYPH_MIN_SCORE) return std::nullopt;                            // 모르는 글자
+            if (bestScore < GLYPH_MIN_SCORE)                                                 // 모르는 글자
+            {
+                if (text.empty()) continue;                                                  // 숫자 앞 아이콘 빛 → 건너뜀
+                return std::nullopt;                                                         // 숫자 사이 → 믿을 수 없음
+            }
             text += bestSymbol;                                                              // 추가
         }
         return text;                                                                         // "2720"
@@ -379,7 +397,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 std::erase_if(found, [&](const SlotReading& other) { return GetOverlap(other.m_iconBounds, bounds) > OVERLAP_RATIO; });   // 덜 맞는 것은 지움
 
                 const PixelRect bandRect = ClampRect(PixelRect{ bestX - BAND_SIDE_MARGIN, bestY - BAND_TOP_OFFSET,
-                    pattern.m_width + BAND_SIDE_MARGIN * 2, BAND_TOP_OFFSET - BAND_BOTTOM_OFFSET }, frame.GetWidth(), frame.GetHeight());   // 숫자 띠
+                    pattern.m_width + BAND_SIDE_MARGIN - BAND_RIGHT_TRIM, BAND_TOP_OFFSET - BAND_BOTTOM_OFFSET }, frame.GetWidth(), frame.GetHeight());   // 숫자 띠 (테두리 앞까지)
                 if (bandRect.IsEmpty()) continue;                                            // 화면 위 끝
                 const auto text = ReadCount(frame.Crop(bandRect));                           // 숫자
                 if (!text || text->empty() || text->contains(OVERFLOW_MARK) || text->size() > MAX_COUNT_DIGITS) continue;   // 못 읽음 · 넘침

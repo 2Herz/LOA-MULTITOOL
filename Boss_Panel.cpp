@@ -52,6 +52,18 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr float ANCHOR_BORDER_WIDTH{ 1.0f };         // 조작 모드 테두리
         constexpr float FULL_ALPHA{ 1.0f };                  // 불투명
         constexpr std::wstring_view ANCHOR_FORMAT{ L"{} / {}  ({:.2f}%)" };   // 체력바 위 글자
+        constexpr float SHADOW_OFFSET{ 1.0f };               // 글자 그림자 거리 (게임 글자처럼 검은 테두리 느낌)
+        constexpr Core::Color GAME_TEXT_COLOR{ 1.0f, 1.0f, 1.0f, 1.0f };     // 게임 체력 글자 (흰색)
+        constexpr Core::Color GAME_SHADOW_COLOR{ 0.0f, 0.0f, 0.0f, 0.85f };  // 게임 글자 그림자 (검정)
+        constexpr float COLOR_SCALE{ 255.0f };               // 0 ~ 255 → 0 ~ 1
+
+        // 흰 글자 + 검은 그림자 (게임 체력바 글자 모양)
+        void DrawGameText(Core::Renderer& renderer, std::wstring_view text, const Core::RectF& rect, const Core::TextStyle& style)
+        {
+            const Core::RectF shadow{ rect.m_left + SHADOW_OFFSET, rect.m_top + SHADOW_OFFSET, rect.m_right + SHADOW_OFFSET, rect.m_bottom + SHADOW_OFFSET };   // 그림자 자리
+            renderer.DrawString(text, shadow, GAME_SHADOW_COLOR, style);    // 그림자
+            renderer.DrawString(text, rect, GAME_TEXT_COLOR, style);        // 글자
+        }
         constexpr Core::TextStyle HEALTH_STYLE{ HEALTH_FONT_SIZE, Core::FontWeight::BOLD };                                  // 체력
         constexpr Core::TextStyle DETAIL_STYLE{ DETAIL_FONT_SIZE };                                                          // 둘째 줄 왼쪽
         constexpr Core::TextStyle DETAIL_RIGHT_STYLE{ DETAIL_FONT_SIZE, Core::FontWeight::NORMAL, Core::TextAlign::TRAILING };   // 둘째 줄 오른쪽
@@ -139,9 +151,12 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
         std::optional<Core::OpacityScope> fade;                                              // 요소 투명도
         if (GetAlpha() < FULL_ALPHA) fade.emplace(renderer, GetAlpha());
-        renderer.FillRoundedRect(cover, ANCHOR_RADIUS, Core::WithAlpha(Theme::BACKGROUND_COLOR, std::max(ANCHOR_BACK_ALPHA, backOpacity)));   // 게임 숫자 가리기
+        const Core::Color coverColor = reading.m_barColor
+            ? Core::Color{ (*reading.m_barColor)[0] / COLOR_SCALE, (*reading.m_barColor)[1] / COLOR_SCALE, (*reading.m_barColor)[2] / COLOR_SCALE, FULL_ALPHA }   // 게임 막대 색 그대로
+            : Core::WithAlpha(Theme::BACKGROUND_COLOR, std::max(ANCHOR_BACK_ALPHA, backOpacity));   // 막대 색을 모르면 어두운 바탕
+        renderer.FillRoundedRect(cover, ANCHOR_RADIUS, coverColor);                          // 게임 숫자 가리기 (막대와 같은 색)
         if (isInteractive) renderer.DrawRoundedRect(cover, ANCHOR_RADIUS, Theme::ACCENT_COLOR, ANCHOR_BORDER_WIDTH);   // 조작 모드 표시
-        renderer.DrawString(label, cover, Theme::HEADER_TEXT_COLOR, style);                  // 조 · 억 · 만 · %
+        DrawGameText(renderer, label, cover, style);                                         // 조 · 억 · 만 · % (게임 글자 모양)
 
         if (const auto dps = GetDamagePerSecond())                                           // 공대 DPS
         {
@@ -151,8 +166,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             const float dpsWidth = renderer.MeasureString(dpsText, dpsStyle, MEASURE_WIDTH).m_width + ANCHOR_PADDING_X * ANCHOR_SIDES;   // 폭
             const float dpsTop = native.m_top + height * DPS_OFFSET_RATIO;                   // 막대 아래
             const Core::RectF dpsRect{ centerX - dpsWidth * ANCHOR_HALF, dpsTop, centerX + dpsWidth * ANCHOR_HALF, dpsTop + height + ANCHOR_PADDING_Y * ANCHOR_SIDES };   // 자리
-            renderer.FillRoundedRect(dpsRect, ANCHOR_RADIUS, Core::WithAlpha(Theme::BACKGROUND_COLOR, backOpacity));   // 바탕
-            renderer.DrawString(dpsText, dpsRect, Theme::HIGHLIGHT_TEXT_COLOR, dpsStyle);    // DPS · 남은 시간
+            DrawGameText(renderer, dpsText, dpsRect, dpsStyle);                              // DPS · 남은 시간 (바탕 없이 게임 글자 모양)
         }
     }
 

@@ -24,10 +24,11 @@ BANDS = [
     ('storage.png', 450, 463, 515, 535, '50'),
     ('storage.png', 184, 200, 460, 486, '6'),
     ('storage.png', 84, 96, 12, 64, '9999+'),
-    ('storage.png', 293, 305, 140, 170, '37'),
     ('tooltip_guard_top_bound.png', 88, 100, 379, 428, '207'),
     ('tooltip_guard_top_bound.png', 297, 309, 68, 114, '1423'),
+    ('storage_inventory.webp', 250, 262, 116, 158, '920'),
 ]
+GLYPH_ROWS = 10  # 글자 줄 창 높이 (Material_Slot_Detector와 같음)
 
 
 def load(name):
@@ -37,7 +38,15 @@ def load(name):
 def mask(area):
     low = area.min(axis=2)
     high = area.max(axis=2)
-    return (low >= 150) & (high - low <= 70)   # 흰 글자 (Material_Slot_Detector와 같은 기준)
+    bits = (low >= 150) & (high - low <= 70)   # 흰 글자 (Material_Slot_Detector와 같은 기준)
+    best_count, best_top = -1, 0                # 글자가 가장 많은 10줄 창만 남김 (아래 · 위 아이콘 빛 지우기)
+    for top in range(0, max(1, bits.shape[0] - GLYPH_ROWS + 1)):
+        count = int(bits[top:top + GLYPH_ROWS].sum())
+        if count > best_count:
+            best_count, best_top = count, top
+    kept = np.zeros_like(bits)
+    kept[best_top:best_top + GLYPH_ROWS] = bits[best_top:best_top + GLYPH_ROWS]
+    return kept
 
 
 def segments(bits):

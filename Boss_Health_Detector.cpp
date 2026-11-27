@@ -117,6 +117,33 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             reading->m_textBounds->m_x += area.m_x - MASK_PADDING;
             reading->m_textBounds->m_y += area.m_y - MASK_PADDING;
         }
+        if (reading->m_textBounds)                                              // 숫자 뒤 막대 색 (흰 글자 · 검은 테두리를 뺀 픽셀 평균)
+        {
+            constexpr int TEXT_LEVEL{ 150 };                                    // 이 값 이상이면 흰 글자
+            constexpr int OUTLINE_LEVEL{ 60 };                                  // 이 값 미만이면 글자 테두리 · 그림자
+            constexpr int RGB_COUNT{ 3 };                                       // 채널 수
+            constexpr int CHANNEL_RED{ 2 };                                     // BGRA 빨강
+            constexpr int CHANNEL_GREEN{ 1 };                                   // BGRA 초록
+            constexpr int CHANNEL_BLUE{ 0 };                                    // BGRA 파랑
+            const PixelRect bounds = ClampRect(*reading->m_textBounds, frame.GetWidth(), frame.GetHeight());   // 숫자 줄
+            std::array<std::int64_t, RGB_COUNT> sum{};                          // 합
+            std::int64_t count = 0;                                             // 픽셀 수
+            const auto pixels = frame.GetPixels();                              // BGRA
+            for (int y = bounds.m_y; y < bounds.GetBottom(); ++y)
+                for (int x = bounds.m_x; x < bounds.GetRight(); ++x)
+                {
+                    const std::size_t offset = (static_cast<std::size_t>(y) * frame.GetWidth() + x) * FrameImage::BYTES_PER_PIXEL;
+                    const int red = pixels[offset + CHANNEL_RED];               // 빨강
+                    const int green = pixels[offset + CHANNEL_GREEN];           // 초록
+                    const int blue = pixels[offset + CHANNEL_BLUE];             // 파랑
+                    if (std::min({ red, green, blue }) >= TEXT_LEVEL || std::max({ red, green, blue }) < OUTLINE_LEVEL) continue;   // 글자 · 테두리
+                    sum[0] += red; sum[1] += green; sum[2] += blue;             // 막대 색
+                    ++count;
+                }
+            if (count > 0)
+                reading->m_barColor = std::array<std::uint8_t, RGB_COUNT>{ static_cast<std::uint8_t>(sum[0] / count),
+                    static_cast<std::uint8_t>(sum[1] / count), static_cast<std::uint8_t>(sum[2] / count) };   // 평균
+        }
         if (!reading->m_lines && reading->m_textBounds)                         // 줄 수를 못 읽음 → 오른쪽만 3배로 다시
         {
             const PixelRect& textLine = *reading->m_textBounds;                 // 체력 글자 줄
