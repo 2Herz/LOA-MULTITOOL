@@ -1204,14 +1204,23 @@ namespace LostArkMultiTool::Core::SelfTest
             const std::array cases{
                 TimerCase{ *folder / L"combat_dps_man.webp", 19 * 60 + 13 },                       // 가디언 토벌 19:13
                 TimerCase{ *folder / L"boss_hp_half.webp", 17 * 60 + 33 },                         // 17:33
-                TimerCase{ folder->parent_path() / L"buffs" / L"combat_grenade_1.webp", 19 * 60 + 47 } };   // 19:47
+                TimerCase{ folder->parent_path() / L"buffs" / L"combat_grenade_1.webp", 19 * 60 + 47 },
+                TimerCase{ *folder / L"raid_enrage_kazeros.webp", 17 * 60 + 54 } };                   // 레이드 광폭화까지 00:17:54   // 19:47
             std::vector<std::optional<Vision::BossTimerReading>> readings(cases.size());   // 읽은 값
+            std::vector<std::string> ocrLines(cases.size());                           // 못 읽었을 때 볼 OCR 글자 (광폭화 영역)
             std::thread worker{ [&]                                                    // OCR 일꾼 스레드
                 {
                     const Vision::VisionApartment apartment;                           // WinRT 준비
                     const Vision::TextRecognizer recognizer;                           // OCR
                     for (std::size_t index = 0; index < cases.size(); ++index)
-                        if (const auto frame = Vision::ImageFile::Load(cases[index].m_file)) readings[index] = BossTimerDetector::Detect(*frame, recognizer);
+                        if (const auto frame = Vision::ImageFile::Load(cases[index].m_file))
+                        {
+                            readings[index] = BossTimerDetector::Detect(*frame, recognizer);   // 읽기
+                            if (!readings[index])                                              // 못 읽음 → 광폭화 영역 OCR 글자를 남김
+                                if (const auto text = recognizer.Recognize(frame->Crop(BossTimerDetector::GetEnrageArea(frame->GetWidth(), frame->GetHeight())), 2))
+                                    for (const Vision::TextLine& line : text->m_lines) ocrLines[index] += " | " + Core::TextEncoding::WideToUTF8(line.m_text);
+                        }
+                        else ocrLines[index] = " 파일을 못 읽음";
                 } };
             worker.join();                                                             // 기다림
             int passed = 0;                                                            // 맞은 수
@@ -1219,10 +1228,11 @@ namespace LostArkMultiTool::Core::SelfTest
             for (std::size_t index = 0; index < cases.size(); ++index)
             {
                 const auto& reading = readings[index];                                 // 읽은 값
-                if (reading && reading->m_seconds == cases[index].m_seconds && !reading->m_isEnrage) ++passed;
-                details += std::format(" [{}: {}]", Core::TextEncoding::WideToUTF8(cases[index].m_file.filename().wstring()), reading ? std::to_string(reading->m_seconds) : std::string{ "없음" });
+                const bool isRaid = cases[index].m_file.filename() == L"raid_enrage_kazeros.webp";   // 레이드 샘플
+                if (reading && reading->m_seconds == cases[index].m_seconds && reading->m_isEnrage == isRaid) ++passed;
+                details += std::format(" [{}: {}{}]", Core::TextEncoding::WideToUTF8(cases[index].m_file.filename().wstring()), reading ? std::to_string(reading->m_seconds) : std::string{ "없음" }, ocrLines[index]);
             }
-            reporter.Check(passed == static_cast<int>(cases.size()), "가디언 토벌 남은 시간 샘플", std::format("{}/{}{}", passed, cases.size(), details));
+            reporter.Check(passed == static_cast<int>(cases.size()), "가디언 토벌 · 레이드 광폭화 남은 시간 샘플", std::format("{}/{}{}", passed, cases.size(), details));
         }
 
         // 버프 타이머 (v1.11.0): 암흑 수류탄 · 아드로핀 아이콘 알아보기 + 남은 시간 글자 + 오탐 + 처리 시간
@@ -1240,7 +1250,7 @@ namespace LostArkMultiTool::Core::SelfTest
             const std::filesystem::path buffFolder = folder->parent_path() / L"buffs";  // Verify/buffs
             const auto kindName = [](Vision::BuffKind kind) -> std::string_view      // 종류 이름
                 {
-                    constexpr std::array<std::string_view, Vision::BUFF_KIND_COUNT> NAMES{ "암수", "아드로핀", "초각성기", "초각 스킬", "공증", "아덴" };
+                    constexpr std::array<std::string_view, Vision::BUFF_KIND_COUNT + 1> NAMES{ "암수", "아드로핀", "초각성기", "초각 스킬", "공증", "아덴", "직업 스킬" };
                     return NAMES[static_cast<std::size_t>(kind)];
                 };
             const auto fileName = [](const std::filesystem::path& path) { return Core::TextEncoding::WideToUTF8(path.filename().wstring()); };   // 파일 이름 (UTF-8)
@@ -1256,7 +1266,15 @@ namespace LostArkMultiTool::Core::SelfTest
                 BuffSampleCase{ *folder / L"boss_hp_half.webp", "없음" },                    // 다른 디버프 · 버프만 (오탐 없어야 함)
                 BuffSampleCase{ *folder / L"boss_hp_low.webp", "없음" },
                 BuffSampleCase{ *folder / L"boss_hp.webp", "없음" },
-                BuffSampleCase{ *folder / L"storage.png", "없음" } };                        // 창고 화면
+                BuffSampleCase{ *folder / L"storage.png", "없음" },                          // 창고 화면
+                BuffSampleCase{ buffFolder / L"training_65.webp", "해그리기=6 공증=6" },      // 도화가 해그리기 (직업 스킬)               // 수련장 (밝은 바닥 · 서폿 노란 글자 · 크림 테두리)
+                BuffSampleCase{ buffFolder / L"training_66.webp", "공증=5" },
+                BuffSampleCase{ buffFolder / L"training_67.webp", "초각성기=22 초각 스킬=10" },
+                BuffSampleCase{ buffFolder / L"training_69.webp", "없음" },
+                BuffSampleCase{ buffFolder / L"training_71.webp", "공증=4" },               // 어두운 수련장
+                BuffSampleCase{ buffFolder / L"training_72.webp", "초각성기=21 초각 스킬=9" },
+                BuffSampleCase{ buffFolder / L"training_75.webp", "없음" },
+                BuffSampleCase{ buffFolder / L"training_70.webp", "해그리기=6 공증=6" } };
             int passed = 0;                                                            // 맞은 수
             double totalMs = 0.0;                                                      // 처리 시간 합
             std::string failures;                                                      // 틀린 것
@@ -1269,7 +1287,9 @@ namespace LostArkMultiTool::Core::SelfTest
                 totalMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
                 std::string got;                                                       // 결과 글자
                 for (const Vision::BuffIcon& icon : reading.m_icons)
-                    got += std::format("{}{}={}", got.empty() ? "" : " ", kindName(icon.m_kind), icon.m_seconds ? std::format("{:g}", *icon.m_seconds) : std::string{ "?" });
+                    got += std::format("{}{}={}", got.empty() ? "" : " ",
+                        icon.m_skillIndex ? Vision::GetBuffSkills()[*icon.m_skillIndex].m_skill : kindName(icon.m_kind),
+                        icon.m_seconds ? std::format("{:g}", *icon.m_seconds) : std::string{ "?" });   // 직업 스킬은 스킬 이름
                 if (got.empty()) got = "없음";
                 if (got == sample.m_expected) ++passed;
                 else failures += std::format(" [{}: {} (정답 {})]", fileName(sample.m_file), got, sample.m_expected);
@@ -1286,7 +1306,12 @@ namespace LostArkMultiTool::Core::SelfTest
                 TextCase{ buffFolder / L"combat_grenade_1.webp", true, 936, 180, "5s" }, TextCase{ buffFolder / L"combat_grenade_1.webp", false, 777, 940, "5m" },
                 TextCase{ buffFolder / L"combat_grenade_2.webp", false, 779, 945, "5m" }, TextCase{ buffFolder / L"combat_grenade_3.webp", false, 777, 939, "4m" },
                 TextCase{ buffFolder / L"combat_grenade_4.webp", false, 749, 938, "4m" },
-                TextCase{ buffFolder / L"combat_grenade_adrenaline.webp", true, 931, 179, "4s" }, TextCase{ buffFolder / L"combat_grenade_adrenaline.webp", false, 800, 939, "0.0s" } };
+                TextCase{ buffFolder / L"combat_grenade_adrenaline.webp", true, 931, 179, "4s" }, TextCase{ buffFolder / L"combat_grenade_adrenaline.webp", false, 800, 939, "0.0s" },
+                TextCase{ buffFolder / L"training_65.webp", false, 687, 940, "14s" }, TextCase{ buffFolder / L"training_65.webp", false, 744, 940, "19s" },
+                TextCase{ buffFolder / L"training_69.webp", false, 711, 943, "27s" }, TextCase{ buffFolder / L"training_69.webp", false, 740, 943, "9s" },
+                TextCase{ buffFolder / L"training_68.webp", false, 805, 940, "10s" }, TextCase{ buffFolder / L"training_65.webp", false, 714, 939, "6s" },
+                TextCase{ buffFolder / L"training_75.webp", false, 711, 940, "12s" }, TextCase{ buffFolder / L"training_70.webp", false, 746, 943, "14s" },
+                TextCase{ buffFolder / L"training_74.webp", false, 769, 940, "10s" }, TextCase{ buffFolder / L"training_72.webp", false, 800, 940, "21s" } };
             int textPassed = 0;                                                        // 맞은 수
             std::string textFailures;                                                  // 틀린 것
             for (const TextCase& sample : texts)
@@ -1297,7 +1322,7 @@ namespace LostArkMultiTool::Core::SelfTest
                     : Vision::BuffDetector::GetBuffArea(frame->GetWidth(), frame->GetHeight());
                 const auto icons = Vision::BuffDetector::FindIcons(*frame, area, sample.m_isDebuff);   // 아이콘들
                 const auto nearest = std::ranges::min_element(icons, {}, [&sample](const Vision::PixelRect& icon) { return std::abs(icon.m_x - sample.m_x) + std::abs(icon.m_y - sample.m_y); });
-                const auto text = nearest != icons.end() ? Vision::BuffDetector::ReadText(*frame, *nearest) : std::nullopt;   // 글자
+                const auto text = nearest != icons.end() ? Vision::BuffDetector::ReadText(*frame, *nearest, sample.m_isDebuff) : std::nullopt;   // 글자
                 if (text && *text == sample.m_expected) ++textPassed;
                 else textFailures += std::format(" [{} ({}, {}): {} (정답 {})]", fileName(sample.m_file), sample.m_x, sample.m_y, text.value_or("없음"), sample.m_expected);
             }

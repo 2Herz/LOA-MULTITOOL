@@ -77,11 +77,12 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
 
         // 영역을 OCR해서 시계 글자 찾기 (keyword가 있으면 그 글자가 보인 결과만)
-        [[nodiscard]] std::optional<int> ReadClock(const FrameImage& frame, const TextRecognizer& text, const PixelRect& area, bool includeYellow, std::wstring_view keyword)
+        [[nodiscard]] std::optional<int> ReadClock(const FrameImage& frame, const TextRecognizer& text, const PixelRect& area, bool includeYellow, std::wstring_view keyword, bool isMasked = true)
         {
             const PixelRect clamped = ClampRect(area, frame.GetWidth(), frame.GetHeight());   // 프레임 안
             if (clamped.IsEmpty()) return std::nullopt;                               // 빈 영역
-            const auto result = text.Recognize(MakeMask(frame.Crop(clamped), includeYellow), OCR_SCALE);   // 2배 OCR
+            const FrameImage crop = frame.Crop(clamped);                              // 영역
+            const auto result = text.Recognize(isMasked ? MakeMask(crop, includeYellow) : crop, OCR_SCALE);   // 2배 OCR (흑백 · 원본)
             if (!result) return std::nullopt;                                         // OCR 실패
             if (!keyword.empty())                                                     // 머리말이 보여야 함
             {
@@ -154,7 +155,10 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
     std::optional<BossTimerReading> BossTimerDetector::Detect(const FrameImage& frame, const TextRecognizer& text)
     {
-        if (const auto enrage = ReadClock(frame, text, GetEnrageArea(frame.GetWidth(), frame.GetHeight()), true, ENRAGE_KEYWORD))   // 레이드 광폭화
+        const PixelRect enrageArea = GetEnrageArea(frame.GetWidth(), frame.GetHeight());   // 레이드 광폭화 영역
+        if (const auto enrage = ReadClock(frame, text, enrageArea, true, ENRAGE_KEYWORD))   // 흰 · 노란 글자만 남겨 읽기
+            return BossTimerReading{ *enrage, true };
+        if (const auto enrage = ReadClock(frame, text, enrageArea, true, ENRAGE_KEYWORD, false))   // 못 읽으면 원본 그대로 (흑백으로 만들면 글자가 뭉개지는 화면)
             return BossTimerReading{ *enrage, true };
         if (const auto guardian = ReadClock(frame, text, GetGuardianArea(frame.GetWidth(), frame.GetHeight()), false, {}))        // 가디언 토벌
             return BossTimerReading{ *guardian, false };

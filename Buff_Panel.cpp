@@ -2,6 +2,7 @@
 
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.Renderer;  // 렌더러 가져오기
+import LostArkMultiTool.Core.TextEncoding;  // 스킬 이름 UTF-8 → 화면 글자
 import LostArkMultiTool.Views.OverlayPanel;  // 패널 기반 가져오기
 import LostArkMultiTool.Views.Theme;  // 색 가져오기
 import LostArkMultiTool.Vision.BuffTemplates;  // 버프 종류 · 아이콘 템플릿 가져오기
@@ -16,7 +17,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr float ICON_TOP{ 2.0f };                 // 아이콘 위 여백
         constexpr float TIME_HEIGHT{ 18.0f };             // 남은 시간 줄 높이
         constexpr float LABEL_HEIGHT{ 14.0f };            // 이름 줄 높이
-        constexpr float CONTENT_HEIGHT{ ICON_TOP + ICON_SIZE + TIME_HEIGHT + LABEL_HEIGHT };   // 내용 높이
+        constexpr float SKILL_ROW_HEIGHT{ 16.0f };        // 직업 스킬 줄 높이
+        constexpr float CONTENT_HEIGHT{ ICON_TOP + ICON_SIZE + TIME_HEIGHT + LABEL_HEIGHT + SKILL_ROW_HEIGHT };   // 내용 높이
         constexpr float SIDE_PADDING{ 20.0f };            // 패널 좌우 안쪽 여백 합 (OverlayPanel 여백 10 × 2)
         constexpr float DEFAULT_WIDTH{ CELL_WIDTH * static_cast<float>(Vision::BUFF_KIND_COUNT) + SIDE_PADDING };   // 기본 가로 (칸 6개 + 여백)
         constexpr float HALF{ 0.5f };                     // 절반
@@ -42,11 +44,16 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::size_t TARGET_ALPHA{ 3 };          // 그림 A 위치
         constexpr std::uint64_t ICON_VERSION{ 1 };        // 아이콘 그림 버전 (바뀌지 않음)
         constexpr std::wstring_view TITLE_TEXT{ L"버프 타이머" };   // 제목
+        constexpr std::wstring_view TITLE_JOB_FORMAT{ L"버프 타이머 · {}" };   // 제목 + 서폿 직업
+        constexpr std::wstring_view JOB_SEPARATOR{ L" · " };       // 직업 · 스킬 구분
+        constexpr std::wstring_view SKILL_ITEM_FORMAT{ L"{} {}" };  // "해그리기 6.0"
+        constexpr std::wstring_view NO_SKILL_TEXT{ L"서폿 직업 스킬 버프 없음" };   // 직업 스킬 줄이 비었을 때
         constexpr std::wstring_view INACTIVE_TEXT{ L"-" };          // 꺼짐
         constexpr std::wstring_view ACTIVE_UNKNOWN_TEXT{ L"●" };    // 걸려 있는데 남은 시간을 못 읽음
         constexpr std::array<std::wstring_view, Vision::BUFF_KIND_COUNT> LABELS{ L"암수", L"아드로핀", L"초각성기", L"초각 스킬", L"공증", L"아덴" };   // 칸 이름 (BuffKind 순서)
         constexpr Core::TextStyle TIME_STYLE{ TIME_FONT_SIZE, Core::FontWeight::BOLD, Core::TextAlign::CENTER };   // 남은 시간
         constexpr Core::TextStyle LABEL_STYLE{ LABEL_FONT_SIZE, Core::FontWeight::NORMAL, Core::TextAlign::CENTER };   // 이름
+        constexpr Core::TextStyle SKILL_STYLE{ LABEL_FONT_SIZE, Core::FontWeight::BOLD, Core::TextAlign::CENTER };     // 직업 스킬 줄
 
         // 남은 시간 글자 ("4:32" · "17" · "2.4")
         [[nodiscard]] std::wstring FormatRemaining(double seconds)
@@ -110,6 +117,15 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             m_lastSampleAt = sample->m_capturedAt;                                    // 반영 기록
             std::array<std::optional<double>, Vision::BUFF_KIND_COUNT> seconds{};     // 이번 읽기의 종류별 남은 시간 (같은 종류가 둘이면 긴 쪽)
             std::array<bool, Vision::BUFF_KIND_COUNT> isSeen{};                       // 이번에 본 종류
+            for (const Vision::BuffIcon& icon : sample->m_reading.m_icons)           // 직업 스킬 버프
+            {
+                if (!icon.m_skillIndex) continue;
+                BuffTrack& track = m_skillTracks[*icon.m_skillIndex];                 // 그 스킬 상태
+                if (!track.m_isActive) track.m_seconds.reset();                       // 새로 걸림
+                track.m_isActive = true;
+                track.m_seenAt = sample->m_capturedAt;
+                if (icon.m_seconds) { track.m_seconds = icon.m_seconds; track.m_readAt = sample->m_capturedAt; }
+            }
             for (const Vision::BuffIcon& icon : sample->m_reading.m_icons)
             {
                 const std::size_t index = ToIndex(icon.m_kind);                       // 칸
@@ -128,14 +144,19 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             }
         }
         if (!sample)                                                                  // 감시가 멈춤 · 오래됨 → 모두 끝
+        {
             for (BuffTrack& track : m_tracks) track.m_isActive = false;
+            m_skillTracks.clear();
+        }
         for (BuffTrack& track : m_tracks)                                             // 잠깐 안 보이면 끝
             if (track.m_isActive && std::chrono::duration<double>(now - track.m_seenAt).count() > MISSING_GRACE_SECONDS) track.m_isActive = false;
+        std::erase_if(m_skillTracks, [now](const auto& entry)                         // 직업 스킬도 잠깐 안 보이면 지움
+            { return std::chrono::duration<double>(now - entry.second.m_seenAt).count() > MISSING_GRACE_SECONDS; });
     }
 
     bool BuffPanel::IsContentAvailable() const noexcept
     {
-        return std::ranges::any_of(m_tracks, [](const BuffTrack& track) { return track.m_isActive; });   // 하나라도 걸려 있음
+        return !m_skillTracks.empty() || std::ranges::any_of(m_tracks, [](const BuffTrack& track) { return track.m_isActive; });   // 하나라도 걸려 있음
     }
 
     std::optional<double> BuffPanel::GetRemaining(const BuffTrack& track) const
@@ -170,5 +191,36 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
             const Core::RectF labelRect{ left, timeRect.m_bottom, left + CELL_WIDTH, timeRect.m_bottom + LABEL_HEIGHT };   // 이름 줄
             renderer.DrawString(LABELS[index], labelRect, track.m_isActive ? Theme::TEXT_COLOR : Theme::MUTED_TEXT_COLOR, LABEL_STYLE);   // 이름
         }
+
+        // 서폿 직업 스킬 버프 줄 ("해그리기 6.0 · 몽중백화원 9.0")
+        const float skillTop = content.m_top + ICON_TOP + ICON_SIZE + TIME_HEIGHT + LABEL_HEIGHT;   // 줄 위치
+        const Core::RectF skillRect{ content.m_left, skillTop, content.m_right, skillTop + SKILL_ROW_HEIGHT };
+        const auto skills = Vision::GetBuffSkills();                                  // 스킬 목록
+        std::wstring line;                                                            // 줄 글자
+        for (const auto& [skillIndex, track] : m_skillTracks)
+        {
+            if (skillIndex >= skills.size()) continue;
+            const auto remaining = GetRemaining(track);                               // 남은 시간
+            if (!line.empty()) line += JOB_SEPARATOR;
+            line += std::format(SKILL_ITEM_FORMAT, Core::TextEncoding::UTF8ToWide(skills[skillIndex].m_skill),
+                remaining ? FormatRemaining(*remaining) : std::wstring{ ACTIVE_UNKNOWN_TEXT });
+        }
+        renderer.DrawString(line.empty() ? std::wstring{ NO_SKILL_TEXT } : line, skillRect, line.empty() ? Theme::MUTED_TEXT_COLOR : Theme::HIGHLIGHT_TEXT_COLOR, SKILL_STYLE);
+    }
+
+    std::wstring BuffPanel::GetTitleText() const
+    {
+        const auto skills = Vision::GetBuffSkills();                                  // 스킬 목록
+        std::vector<std::string_view> jobs;                                           // 보인 서폿 직업 (겹치지 않게)
+        for (const auto& [skillIndex, track] : m_skillTracks)
+            if (skillIndex < skills.size() && std::ranges::find(jobs, skills[skillIndex].m_job) == jobs.end()) jobs.push_back(skills[skillIndex].m_job);
+        if (jobs.empty()) return std::wstring{ TITLE_TEXT };                          // 직업 모름
+        std::wstring names;                                                           // "도화가 · 바드"
+        for (const std::string_view job : jobs)
+        {
+            if (!names.empty()) names += JOB_SEPARATOR;
+            names += Core::TextEncoding::UTF8ToWide(job);
+        }
+        return std::format(TITLE_JOB_FORMAT, names);
     }
 }

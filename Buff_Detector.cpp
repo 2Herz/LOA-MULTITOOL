@@ -35,6 +35,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int GOLD_BLUE_MAX{ 80 };               // B 상한
         constexpr int GOLD_RED_OVER_BLUE{ 90 };          // R - B 하한
         constexpr int GOLD_GREEN_SLACK{ 10 };            // G가 R보다 이만큼까지는 커도 됨 (노란 윗변)
+        constexpr int CREAM_MIN_LUMA{ 135 };             // 서폿 크림 테두리: 밝기 하한 (아래로 갈수록 어두운 금색이 됨)
+        constexpr int CREAM_MIN_CHANNEL{ 90 };           // 가장 어두운 채널 하한
+        constexpr int CREAM_MAX_RED_OVER_BLUE{ 110 };    // R - B 상한
+        constexpr int CREAM_GREEN_SLACK{ 10 };           // G가 R보다 이만큼까지는 커도 됨
+        constexpr int CREAM_DARK_LUMA{ 100 };            // 테두리 옆 짙은 선: 밝기 상한 (밝은 바닥과 구별)
+        constexpr int CREAM_DARK_DISTANCE{ 2 };          // 짙은 선을 찾는 거리 (상하좌우 1 ~ 2칸)
+        constexpr int RUN_MAX_GAP{ 6 };                  // 테두리 줄이 글자 · 빛에 가려 이만큼 끊겨도 이어 봄
         constexpr int NORM_SIZE{ 16 };                   // 종류 비교 크기
         constexpr int MIN_INSET{ 2 };                    // 테두리 빼는 폭 하한
         constexpr int INSET_DIVISOR{ 8 };                // 테두리 빼는 폭 = 아이콘 크기 / 8
@@ -51,6 +58,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int TEXT_ROWS{ 8 };                    // 글자 높이 (가장 글자가 많은 8줄만 남김)
         constexpr float TEXT_MIN_LUMA{ 125.0f };         // 글자 밝기 하한
         constexpr int TEXT_MIN_CHANNEL{ 90 };            // 글자 가장 어두운 채널 하한 (회색 · 흰 글자)
+        constexpr int GREEN_TEXT_SLACK{ 8 };             // 버프 글자: G가 R보다 이만큼까지 작아도 됨 (초록빛 흰 글자)
+        constexpr int YELLOW_TEXT_RED_MIN{ 170 };        // 서폿 노란 글자: R 하한
+        constexpr int YELLOW_TEXT_GREEN_MIN{ 140 };      // G 하한
+        constexpr int YELLOW_BLUE_NUMERATOR{ 7 };        // B ≤ G × 7 / 10
+        constexpr int YELLOW_BLUE_DENOMINATOR{ 10 };
+        constexpr float DARK_BACKGROUND_LUMA{ 100.0f };  // 글자 줄 밝기 중간값이 이보다 낮으면 어두운 바탕 (색 기준 없이 밝기 · 그림자만)
+        constexpr int DARK_BACKGROUND_MIN_CHANNEL{ 60 }; // 어두운 바탕 글자: 가장 어두운 채널 하한 (연한 노란 글자까지)
         constexpr float SHADOW_CONTRAST{ 60.0f };        // 둘레(5x5)에 이만큼 더 어두운 픽셀이 있어야 글자 (그림자 테두리, 밝은 배경 거르기)
         constexpr int SHADOW_RADIUS{ 2 };                // 둘레 반경
         constexpr int UNIT_MIN_WIDTH{ 7 };               // 단위 글자(초 · 분) 너비 하한
@@ -73,7 +87,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr double SECONDS_PER_MINUTE{ 60.0 };     // 분 → 초
 
         // 테두리 색 종류
-        enum class FrameColor { FRAME_RED, FRAME_GREEN, FRAME_GOLD };
+        enum class FrameColor { FRAME_RED, FRAME_GREEN, FRAME_GOLD, FRAME_CREAM };
 
         // 픽셀 R · G · B
         struct Rgb { int m_red{}; int m_green{}; int m_blue{}; };
@@ -125,6 +139,10 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             case FrameColor::FRAME_GOLD:                                                           // 서폿 버프
                 return pixel.m_red >= GOLD_RED_MIN && pixel.m_green >= GOLD_GREEN_MIN && pixel.m_blue <= GOLD_BLUE_MAX
                     && pixel.m_red - pixel.m_blue >= GOLD_RED_OVER_BLUE && pixel.m_red + GOLD_GREEN_SLACK >= pixel.m_green;
+            case FrameColor::FRAME_CREAM:                                                          // 서폿 크림 테두리 (밝은 쪽만, 짙은 선 확인은 지도에서)
+                return (pixel.m_red + pixel.m_green + pixel.m_blue) / static_cast<double>(RGB_CHANNELS) >= CREAM_MIN_LUMA
+                    && std::min({ pixel.m_red, pixel.m_green, pixel.m_blue }) >= CREAM_MIN_CHANNEL
+                    && pixel.m_red - pixel.m_blue <= CREAM_MAX_RED_OVER_BLUE && pixel.m_red >= pixel.m_green - CREAM_GREEN_SLACK;
             }
             return false;                                                                          // 모름
         }
@@ -140,6 +158,25 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 for (int y = 0; y < m_region.m_height; ++y)
                     for (int x = 0; x < m_region.m_width; ++x)
                         m_bits[static_cast<std::size_t>(y) * m_region.m_width + x] = IsFrameColor(PixelAt(frame, m_region.m_x + x, m_region.m_y + y), color) ? 1 : 0;
+                if (color != FrameColor::FRAME_CREAM) return;                                      // 크림 테두리만 짙은 선 확인
+                std::vector<std::uint8_t> dark(m_bits.size(), 0);                                  // 짙은 픽셀
+                for (int y = 0; y < m_region.m_height; ++y)
+                    for (int x = 0; x < m_region.m_width; ++x)
+                    {
+                        const Rgb pixel = PixelAt(frame, m_region.m_x + x, m_region.m_y + y);      // 픽셀
+                        dark[static_cast<std::size_t>(y) * m_region.m_width + x] = (pixel.m_red + pixel.m_green + pixel.m_blue) / static_cast<double>(RGB_CHANNELS) < CREAM_DARK_LUMA ? 1 : 0;
+                    }
+                const auto isDark = [&](int x, int y) { return x >= 0 && y >= 0 && x < m_region.m_width && y < m_region.m_height && dark[static_cast<std::size_t>(y) * m_region.m_width + x] != 0; };
+                for (int y = 0; y < m_region.m_height; ++y)
+                    for (int x = 0; x < m_region.m_width; ++x)
+                    {
+                        std::uint8_t& bit = m_bits[static_cast<std::size_t>(y) * m_region.m_width + x];   // 밝은 선
+                        if (bit == 0) continue;
+                        bool isNearDark = false;                                                   // 1 ~ 2칸 옆 짙은 선
+                        for (int distance = 1; distance <= CREAM_DARK_DISTANCE && !isNearDark; ++distance)
+                            isNearDark = isDark(x - distance, y) || isDark(x + distance, y) || isDark(x, y - distance) || isDark(x, y + distance);
+                        if (!isNearDark) bit = 0;                                                  // 밝은 바닥 → 테두리 아님
+                    }
             }
 
             [[nodiscard]] bool At(int x, int y) const noexcept                                     // 프레임 좌표
@@ -222,7 +259,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
 
         // 아이콘 아래 글자 줄 → 글자 지도 (기준 크기로 맞춤) + 아이콘 가운데 열
-        [[nodiscard]] std::pair<BitImage, int> MakeTextMask(const FrameImage& frame, const PixelRect& icon)
+        [[nodiscard]] std::pair<BitImage, int> MakeTextMask(const FrameImage& frame, const PixelRect& icon, bool isDebuff)
         {
             const double scale = icon.m_height / BASE_ICON_SIZE;                                   // 기준 대비 크기
             const int top = icon.GetBottom() + 1;                                                  // 글자 줄 위
@@ -245,6 +282,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             // 밝기 · 가장 어두운 채널 (가장 가까운 픽셀로 기준 크기 맞춤)
             std::vector<float> luma(static_cast<std::size_t>(outWidth) * outHeight);
             std::vector<int> lowest(luma.size());
+            std::vector<std::uint8_t> isTextColor(luma.size(), 0);                                // 글자 색 (버프 줄: 초록빛 흰색 · 서폿 노란색)
             for (int y = 0; y < outHeight; ++y)
             {
                 const int sourceY = isScaled ? std::min(height - 1, static_cast<int>((y + HALF) * height / outHeight)) : y;   // 원래 줄
@@ -255,17 +293,35 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                     const std::size_t index = static_cast<std::size_t>(y) * outWidth + x;
                     luma[index] = static_cast<float>(pixel.m_red + pixel.m_green + pixel.m_blue) / static_cast<float>(RGB_CHANNELS);   // 평균 밝기
                     lowest[index] = std::min({ pixel.m_red, pixel.m_green, pixel.m_blue });       // 가장 어두운 채널
+                    if (isDebuff) isTextColor[index] = lowest[index] >= TEXT_MIN_CHANNEL ? 1 : 0;   // 디버프: 흰 · 분홍 글자
+                    else
+                    {
+                        const bool isGreenish = pixel.m_green >= pixel.m_red - GREEN_TEXT_SLACK && lowest[index] >= TEXT_MIN_CHANNEL;   // 초록빛 흰 글자
+                        const bool isYellow = pixel.m_red >= YELLOW_TEXT_RED_MIN && pixel.m_green >= YELLOW_TEXT_GREEN_MIN
+                            && pixel.m_blue * YELLOW_BLUE_DENOMINATOR <= pixel.m_green * YELLOW_BLUE_NUMERATOR;   // 서폿 노란 글자 (B ≤ G × 0.7)
+                        isTextColor[index] = isGreenish || isYellow ? 1 : 0;                      // 밝은 베이지 바닥(R > G)은 빠짐
+                    }
                 }
             }
 
-            // 글자 픽셀: 밝음 + 회색 · 흰색 + 둘레에 그림자
+            // 버프 줄 바탕이 어두우면 색 기준 없이 밝기 · 그림자만 (서폿 연한 노란 글자), 밝으면 글자 색 기준 (밝은 베이지 바닥 거르기)
+            if (!isDebuff)
+            {
+                std::vector<float> sorted = luma;                                                  // 중간값 구하기
+                const auto middle = sorted.begin() + static_cast<std::ptrdiff_t>(sorted.size() / 2);
+                std::ranges::nth_element(sorted, middle);
+                if (*middle < DARK_BACKGROUND_LUMA)                                                // 어두운 바탕
+                    for (std::size_t index = 0; index < luma.size(); ++index) isTextColor[index] = lowest[index] >= DARK_BACKGROUND_MIN_CHANNEL ? 1 : 0;
+            }
+
+            // 글자 픽셀: 밝음 + 글자 색 + 둘레에 그림자
             BitImage mask{ outWidth, outHeight, std::vector<std::uint8_t>(luma.size(), 0) };
             for (int y = 0; y < outHeight; ++y)
                 for (int x = 0; x < outWidth; ++x)
                 {
                     const std::size_t index = static_cast<std::size_t>(y) * outWidth + x;
                     const float value = luma[index];                                               // 밝기
-                    if (value < TEXT_MIN_LUMA || lowest[index] < TEXT_MIN_CHANNEL) continue;       // 어두움 · 색 있음
+                    if (value < TEXT_MIN_LUMA || isTextColor[index] == 0) continue;               // 어두움 · 글자 색 아님
                     float local = value;                                                           // 둘레 최솟값
                     for (int dy = -SHADOW_RADIUS; dy <= SHADOW_RADIUS; ++dy)
                         for (int dx = -SHADOW_RADIUS; dx <= SHADOW_RADIUS; ++dx)
@@ -384,7 +440,10 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 }
                 if (right <= left || bits.Ink(left, right) == 0) continue;                         // 빈 범위
                 auto [shape, top] = TrimColumns(bits, left, right);                                // 모양
-                if (right - left <= DOT_MAX_WIDTH && top >= TEXT_ROWS - DOT_ROWS) parts.push_back({ GlyphKind::GLYPH_DOT, std::move(shape) });   // 소수점
+                if (right - left <= DOT_MAX_WIDTH && top >= TEXT_ROWS - DOT_ROWS)                  // 소수점 크기
+                {
+                    if (!parts.empty()) parts.push_back({ GlyphKind::GLYPH_DOT, std::move(shape) });   // 숫자 뒤에만 (맨 앞 점은 잡음)
+                }
                 else if (bits.Ink(left, right) >= DIGIT_MIN_INK) parts.push_back({ GlyphKind::GLYPH_DIGIT, std::move(shape) });                  // 숫자 (적으면 잡음)
             }
             auto [unitShape, unitTop] = TrimColumns(bits, unit[0], unit[1]);                       // 단위 모양
@@ -477,19 +536,31 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         const PixelRect region{ scan.m_x - AREA_PADDING, scan.m_y - AREA_PADDING,
             scan.m_width + AREA_PADDING * 2, scan.m_height + AREA_PADDING + AREA_BOTTOM_PADDING }; // 색 지도 범위
         const std::vector<FrameColor> colors = isDebuff ? std::vector<FrameColor>{ FrameColor::FRAME_RED }
-            : std::vector<FrameColor>{ FrameColor::FRAME_GREEN, FrameColor::FRAME_GOLD };         // 볼 테두리 색
+            : std::vector<FrameColor>{ FrameColor::FRAME_GREEN, FrameColor::FRAME_GOLD, FrameColor::FRAME_CREAM };   // 볼 테두리 색
         for (const FrameColor color : colors)
         {
             const FrameMask mask{ frame, region, color };                                          // 색 지도
             for (int y = scan.m_y; y < scan.GetBottom(); ++y)
             {
+                std::vector<std::array<int, 2>> segments;                                          // 테두리 색 조각 [시작, 끝)
                 for (int x = scan.m_x; x < scan.GetRight();)
                 {
                     if (!mask.At(x, y)) { ++x; continue; }                                         // 테두리 색 아님
-                    const int start = x;                                                           // 가로 줄 시작
+                    const int segmentStart = x;
                     while (x < scan.GetRight() && mask.At(x, y)) ++x;
-                    const int length = x - start;                                                  // 줄 길이
-                    if (length < minRun || length > maxRun) continue;                              // 아이콘 크기 아님
+                    segments.push_back({ segmentStart, x });
+                }
+                std::vector<std::array<int, 2>> spans;                                             // 조각을 이은 후보 줄 (시작, 길이)
+                for (std::size_t first = 0; first < segments.size(); ++first)
+                    for (std::size_t last = first; last < segments.size(); ++last)
+                    {
+                        if (last > first && segments[last][0] - segments[last - 1][1] > RUN_MAX_GAP) break;   // 많이 끊김 → 다른 줄
+                        const int spanLength = segments[last][1] - segments[first][0];             // 이은 길이
+                        if (spanLength > maxRun) break;                                            // 아이콘보다 김
+                        if (spanLength >= minRun) spans.push_back({ segments[first][0], spanLength });   // 아이콘 크기
+                    }
+                for (const auto& [start, length] : spans)                                          // 후보마다
+                {
                     std::optional<PixelRect> icon;                                                 // 찾은 아이콘
                     for (const int top : { y, y - length + 1 })                                    // 이 줄이 윗변 · 아랫변이라고 보고 확인
                     {
@@ -535,9 +606,23 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         return best;
     }
 
-    std::optional<std::string> BuffDetector::ReadText(const FrameImage& frame, const PixelRect& icon)
+    std::optional<std::pair<std::size_t, double>> BuffDetector::IdentifySkill(const FrameImage& frame, const PixelRect& icon)
     {
-        const auto [mask, center] = MakeTextMask(frame, icon);                                     // 글자 지도
+        const auto values = Normalize(frame, icon);                                                // 16x16 RGB
+        std::optional<std::pair<std::size_t, double>> best;                                        // 가장 닮은 스킬
+        const auto skills = GetBuffSkills();                                                       // 스킬 목록
+        for (std::size_t index = 0; index < skills.size(); ++index)
+        {
+            const double score = Correlate(values, skills[index].m_rgb);                           // 점수
+            if (!best || score > best->second) best = std::pair{ index, score };
+        }
+        if (!best || best->second < MIN_SKILL_SCORE) return std::nullopt;                          // 모르는 아이콘
+        return best;
+    }
+
+    std::optional<std::string> BuffDetector::ReadText(const FrameImage& frame, const PixelRect& icon, bool isDebuff)
+    {
+        const auto [mask, center] = MakeTextMask(frame, icon, isDebuff);                                     // 글자 지도
         if (mask.m_width == 0) return std::nullopt;                                                // 빈 줄
         const auto parts = SplitText(mask, center);                                                // 글자 나누기
         if (!parts) return std::nullopt;                                                           // 못 나눔
@@ -572,10 +657,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
             const PixelRect area = isDebuff ? GetDebuffArea(frame.GetWidth(), frame.GetHeight()) : GetBuffArea(frame.GetWidth(), frame.GetHeight());
             for (const PixelRect& icon : FindIcons(frame, area, isDebuff))                         // 아이콘마다
             {
-                const auto kind = Identify(frame, icon);                                           // 종류
-                if (!kind) continue;                                                               // 모르는 아이콘
-                const auto text = ReadText(frame, icon);                                           // 남은 시간 글자
-                reading.m_icons.push_back(BuffIcon{ kind->first, icon, isDebuff, kind->second, text ? ParseSeconds(*text) : std::nullopt });
+                const auto kind = Identify(frame, icon);                                           // 종류 (통합 아이콘)
+                const auto skill = kind || isDebuff ? std::nullopt : IdentifySkill(frame, icon);   // 아니면 서폿 직업 스킬 버프
+                if (!kind && !skill) continue;                                                     // 모르는 아이콘
+                const auto text = ReadText(frame, icon, isDebuff);                                 // 남은 시간 글자
+                BuffIcon found{ kind ? kind->first : BuffKind::BUFF_SUPPORT_SKILL, icon, isDebuff, kind ? kind->second : skill->second, text ? ParseSeconds(*text) : std::nullopt };
+                if (skill) found.m_skillIndex = skill->first;                                      // 어떤 스킬인지
+                reading.m_icons.push_back(found);
             }
         }
         return reading;

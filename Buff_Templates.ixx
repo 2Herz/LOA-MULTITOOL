@@ -15,15 +15,26 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         BUFF_SUPPORT_AWAKENING,   // 서폿 초각성기 (보라)
         BUFF_SUPPORT_HYPER,       // 서폿 초각성 스킬 (파랑)
         BUFF_SUPPORT_ATTACK,      // 서폿 공격력 증가 (빨강)
-        BUFF_SUPPORT_IDENTITY     // 서폿 아이덴티티 (노랑)
+        BUFF_SUPPORT_IDENTITY,    // 서폿 아이덴티티 (노랑)
+        BUFF_SUPPORT_SKILL        // 서폿 직업 스킬 버프 (해그리기 등, 어떤 스킬인지는 BuffIcon::m_skillIndex)
     };
 
-    inline constexpr std::size_t BUFF_KIND_COUNT{ 6 };   // 종류 수 (패널 칸 수)
+    inline constexpr std::size_t BUFF_KIND_COUNT{ 6 };   // 패널 칸 수 (통합 아이콘 6종, 직업 스킬은 칸 아래 줄)
 
     // 아이콘 템플릿 하나
     struct BuffIconTemplate
     {
         BuffKind m_kind{};                     // 종류
+        int m_width{};                         // 가로 (16)
+        int m_height{};                        // 세로 (16)
+        std::span<const std::uint8_t> m_rgb;   // 픽셀 (R · G · B 순서, 줄 단위)
+    };
+
+    // 서폿 직업 스킬 버프 템플릿 하나 (스킬 그림 · 게임 화면에서 뽑은 아이콘)
+    struct BuffSkillTemplate
+    {
+        std::string_view m_job;                // 직업 ("도화가", UTF-8)
+        std::string_view m_skill;              // 스킬 ("해그리기", UTF-8)
         int m_width{};                         // 가로 (16)
         int m_height{};                        // 세로 (16)
         std::span<const std::uint8_t> m_rgb;   // 픽셀 (R · G · B 순서, 줄 단위)
@@ -39,5 +50,6 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
     };
 
     [[nodiscard]] std::span<const BuffIconTemplate> GetBuffIcons() noexcept;     // 아이콘 목록
+    [[nodiscard]] std::span<const BuffSkillTemplate> GetBuffSkills() noexcept;   // 서폿 직업 스킬 버프 목록
     [[nodiscard]] std::span<const BuffGlyphTemplate> GetBuffGlyphs() noexcept;   // 글자 목록
 }

@@ -25,7 +25,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         [[nodiscard]] bool IsContentAvailable() const noexcept override;    // 켜진 버프가 있을 때만
 
     protected:
-        void RenderContent(Core::Renderer& renderer, const Core::RectF& content) override;   // 칸 6개
+        void RenderContent(Core::Renderer& renderer, const Core::RectF& content) override;   // 칸 6개 + 직업 스킬 줄
+        [[nodiscard]] std::wstring GetTitleText() const override;                            // "버프 타이머 · 도화가"
 
     private:
         // 종류 하나의 상태
@@ -41,6 +42,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
 
         std::function<std::optional<Vision::BuffSample>()> m_provider;   // 값 함수
         std::array<BuffTrack, Vision::BUFF_KIND_COUNT> m_tracks{};       // 종류별 상태
+        std::map<std::size_t, BuffTrack> m_skillTracks;                  // 서폿 직업 스킬 버프별 상태 (GetBuffSkills() 번호)
         std::array<Core::ImageData, Vision::BUFF_KIND_COUNT> m_icons{};  // 종류별 아이콘 그림 (템플릿에서 만듦)
         std::chrono::steady_clock::time_point m_lastSampleAt;            // 마지막으로 반영한 읽기 시각 (같은 값을 두 번 반영하지 않게)
         double m_refreshElapsed{};                                       // 마지막으로 받은 뒤 지난 시간
