@@ -1,7 +1,7 @@
 # Graph Report - 로스트아크 멀티툴  (2026-11-28)
 
 ## Corpus Check
-- 371 files · ~346,770 words
+- 371 files · ~347,169 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: (none) 3, .bat 2, .ico 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4cdc066e`
+- Built from commit: `df10f421`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1147,16 +1147,16 @@ Nodes (7): IsRequested(), VisionSample, m_cursorX, m_cursorY, m_expected, m_file
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `LostArkMultiTool.Core.Renderer` connect `LostArkMultiTool.Core.Renderer` to `Renderer.ixx`, `Label`, `Engraving_Finder_Manager.cpp`, `Control Host`, `LostArkMultiTool.Models.Character`, `Text Box`, `LostArkMultiTool.Views.Application`, `Toast_Host.cpp`, `Combo Box`, `LostArkMultiTool.Views.CombatSimulatorManager`, `LostArkMultiTool.Core.MarketAPI`, `Dialog`, `Control`, `Gem_Finder_Manager.cpp`, `DX11 Renderer (2)`?**
-  _High betweenness centrality (0.089) - this node is a cross-community bridge._
+  _High betweenness centrality (0.086) - this node is a cross-community bridge._
 - **What connects `m_name`, `m_size`, `m_name` to the rest of the system?**
   _293 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Overlay_Manager.cpp` be split into smaller, more focused modules?**
   _Cohesion score 0.09090909090909091 - nodes in this community are weakly interconnected._
 - **Why does `LostArkMultiTool.Core.APPConstants` connect `LostArkMultiTool.Core.MarketAPI` to `LostArkMultiTool.Views.Application`, `JSON_File_Store.cpp`, `LostArkMultiTool.Core.Renderer`, `JSON_Growth_Data_Repository.cpp`, `JSON Data Repository`, `APP_Constants.cpp`, `Engraving_Finder_Manager.cpp`, `Refresh_Scheduler.cpp`, `LostArkMultiTool.Services.JSONFileStore`, `Local_Time.cpp`, `DPAPI_Key_Store.cpp`, `Auction_Gem_Price_Service.cpp`, `JSON_Gem_Data_Repository.cpp`, `LostArkMultiTool.Models.Character`, `Server_Config_Checker.cpp`, `Gem Catalog`, `Character`, `Rate Limit State`, `Refresh Settings`, `LostArkMultiTool.Views.CombatSimulatorManager`, `Gem_Finder_Manager.cpp`?**
-  _High betweenness centrality (0.067) - this node is a cross-community bridge._
+  _High betweenness centrality (0.066) - this node is a cross-community bridge._
 - **Should `Combat_Supporter_Data.cpp` be split into smaller, more focused modules?**
   _Cohesion score 0.09057971014492754 - nodes in this community are weakly interconnected._
 - **Why does `ClampRect()` connect `Frame_Image.cpp` to `Boss_Timer_Detector.cpp`, `Nameplate_Memory.cpp`, `OCR_Text_Parser.cpp`, `ScreenCaptureService::Impl`, `MakePreview`, `Character_Detector.cpp`, `Buff_Detector.cpp`, `CombatAnalyzerDetector::Detect`, `BossHealthDetector::Detect`, `FindCandidates`, `JSONValue`, `Material_Slot_Detector.cpp`, `Shard_Bar_Detector.cpp`?**
-  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+  _High betweenness centrality (0.063) - this node is a cross-community bridge._
 - **Should `Combat_Simulator_Manager.cpp` be split into smaller, more focused modules?**
   _Cohesion score 0.07792207792207792 - nodes in this community are weakly interconnected._

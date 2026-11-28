@@ -23,6 +23,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int WHITE_MIN{ 150 };                   // 흰 글자: 세 채널 모두 이 이상
         constexpr int YELLOW_RED_MIN{ 170 };              // 노란 · 주황 글자: R 하한
         constexpr int YELLOW_GREEN_MIN{ 120 };            // G 하한
+        constexpr int NAME_RED_MIN{ 150 };                // 보스 이름 빨간 글자: R 하한
+        constexpr int NAME_RED_OVER_GREEN{ 50 };          // R - G 하한
+        constexpr int NAME_RED_OVER_BLUE{ 40 };           // R - B 하한
         constexpr std::uint8_t INK{ 0 };                  // 글자 = 검정
         constexpr std::uint8_t PAPER{ 255 };              // 바탕 = 흰색
         constexpr int CHANNEL_BLUE{ 0 };                  // BGRA 파랑
@@ -93,6 +96,30 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                     const bool isWhite = std::min({ red, green, blue }) >= WHITE_MIN; // 흰 글자
                     const bool isYellow = includeYellow && red >= YELLOW_RED_MIN && green >= YELLOW_GREEN_MIN;   // 노란 글자
                     if (!isWhite && !isYellow) continue;                              // 바탕
+                    const std::size_t to = (static_cast<std::size_t>(y + MASK_PADDING) * width + x + MASK_PADDING) * FrameImage::BYTES_PER_PIXEL;
+                    pixels[to + CHANNEL_BLUE] = INK;                                  // 검정
+                    pixels[to + CHANNEL_GREEN] = INK;
+                    pixels[to + CHANNEL_RED] = INK;
+                }
+            for (std::size_t index = CHANNEL_ALPHA; index < pixels.size(); index += FrameImage::BYTES_PER_PIXEL) pixels[index] = PAPER;   // 불투명
+            return FrameImage::FromRows(width, height, pixels, width * FrameImage::BYTES_PER_PIXEL);
+        }
+
+        // 빨간 글자(보스 이름)만 검게 남긴 흑백 그림 (여백 포함)
+        [[nodiscard]] FrameImage MakeRedMask(const FrameImage& image)
+        {
+            const int width = image.GetWidth() + MASK_PADDING * 2;                   // 여백 포함
+            const int height = image.GetHeight() + MASK_PADDING * 2;
+            std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width) * height * FrameImage::BYTES_PER_PIXEL, PAPER);   // 흰 바탕
+            const auto source = image.GetPixels();                                    // 원래 픽셀
+            for (int y = 0; y < image.GetHeight(); ++y)
+                for (int x = 0; x < image.GetWidth(); ++x)
+                {
+                    const std::size_t from = (static_cast<std::size_t>(y) * image.GetWidth() + x) * FrameImage::BYTES_PER_PIXEL;
+                    const int red = source[from + CHANNEL_RED];                       // 빨강
+                    const int green = source[from + CHANNEL_GREEN];                   // 초록
+                    const int blue = source[from + CHANNEL_BLUE];                     // 파랑
+                    if (red < NAME_RED_MIN || red - green < NAME_RED_OVER_GREEN || red - blue < NAME_RED_OVER_BLUE) continue;   // 빨간 글자 아님
                     const std::size_t to = (static_cast<std::size_t>(y + MASK_PADDING) * width + x + MASK_PADDING) * FrameImage::BYTES_PER_PIXEL;
                     pixels[to + CHANNEL_BLUE] = INK;                                  // 검정
                     pixels[to + CHANNEL_GREEN] = INK;
@@ -272,10 +299,15 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
 
     std::optional<int> BossTimerDetector::ReadRaidSizeFromName(const FrameImage& nameArea, const TextRecognizer& text)
     {
-        for (const int scale : { 1, OCR_SCALE })                                      // 1배 → 2배 (흐린 화면은 배율마다 읽히는 글자가 달라서 둘 다)
-            if (const auto result = text.Recognize(nameArea, scale))                  // 빨간 이름 그대로 (흑백으로 바꾸면 못 읽음)
-                for (const TextLine& line : result->m_lines)                          // 줄마다
-                    if (const auto size = FindRaidSize(line.m_text)) return size;     // 목록의 보스 이름
-        return std::nullopt;                                                          // 이름 없음
+        const auto readLines = [&text](const FrameImage& image) -> std::optional<int> // 1배 → 2배 (배율마다 읽히는 글자가 달라서 둘 다)
+            {
+                for (const int scale : { 1, OCR_SCALE })
+                    if (const auto result = text.Recognize(image, scale))
+                        for (const TextLine& line : result->m_lines)                  // 줄마다
+                            if (const auto size = FindRaidSize(line.m_text)) return size;   // 목록의 보스 이름
+                return std::nullopt;
+            };
+        if (const auto size = readLines(nameArea)) return size;                       // 원본 그대로 (어두운 바탕)
+        return readLines(MakeRedMask(nameArea));                                      // 빨간 글자만 (밝은 빛 바탕 · 상단바 숫자가 섞인 화면)
     }
 }

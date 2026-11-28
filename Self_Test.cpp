@@ -1227,7 +1227,9 @@ namespace LostArkMultiTool::Core::SelfTest
                 SizeCase{ *folder / L"combat_dps_man.webp", 4 },
                 SizeCase{ *folder / L"raid_kazeros_name.webp", 8 },                    // 카제로스 레이드 (보스 이름)
                 SizeCase{ *folder / L"raid_serka_full.webp", 4 },                      // 고통의 마녀, 세르카
-                SizeCase{ *folder / L"raid_belgardin_full.webp", 8 } };                // 죽음의 계율자, 벨가르딘
+                SizeCase{ *folder / L"raid_belgardin_full.webp", 8 },                  // 죽음의 계율자, 벨가르딘
+                SizeCase{ *folder / L"raid_cathedral1_full.webp", 4 },                 // 대주교, 아르세노스 (지평의 성당 1관문)
+                SizeCase{ *folder / L"raid_cathedral2_game.webp", 4 } };               // 광신의 인도자, 아르세노스 (2관문)
                 // raid_cathedral2_full.webp (광신의 인도자, 아르세노스)는 해상도 낮은 영상 캡처라 이름이 10px로 뭉개져 정답 검사에서 뺌
             std::vector<std::optional<int>> sizes(sizeCases.size());                   // 읽은 인원
             std::vector<std::string> sizeOcr(sizeCases.size());                        // 틀렸을 때 볼 글자
