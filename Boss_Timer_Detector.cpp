@@ -249,10 +249,15 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         const int side = static_cast<int>(textBounds->m_width * NAME_SIDE_FACTOR);                               // 좌우 여유
         const PixelRect nameArea = ClampRect(PixelRect{ textBounds->m_x - side, nameTop, textBounds->m_width + side * 2, nameBottom - nameTop }, frame.GetWidth(), frame.GetHeight());
         if (nameArea.IsEmpty()) return std::nullopt;                                  // 화면 밖
-        const auto result = text.Recognize(frame.Crop(nameArea), OCR_SCALE);          // 2배 OCR (빨간 이름 그대로)
-        if (!result) return std::nullopt;                                             // OCR 실패
-        for (const TextLine& line : result->m_lines)                                  // 줄마다
-            if (const auto size = FindRaidSize(line.m_text)) return size;             // 보스 이름
+        return ReadRaidSizeFromName(frame.Crop(nameArea), text);                     // 보스 이름 줄
+    }
+
+    std::optional<int> BossTimerDetector::ReadRaidSizeFromName(const FrameImage& nameArea, const TextRecognizer& text)
+    {
+        for (const int scale : { 1, OCR_SCALE })                                      // 1배 → 2배 (흐린 화면은 배율마다 읽히는 글자가 달라서 둘 다)
+            if (const auto result = text.Recognize(nameArea, scale))                  // 빨간 이름 그대로 (흑백으로 바꾸면 못 읽음)
+                for (const TextLine& line : result->m_lines)                          // 줄마다
+                    if (const auto size = FindRaidSize(line.m_text)) return size;     // 목록의 보스 이름
         return std::nullopt;                                                          // 이름 없음
     }
 }

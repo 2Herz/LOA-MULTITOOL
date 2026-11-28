@@ -1225,6 +1225,7 @@ namespace LostArkMultiTool::Core::SelfTest
                 SizeCase{ *folder / L"combat_dps_man.webp", 4 },
                 SizeCase{ *folder / L"raid_kazeros_name.webp", 8 } };                  // 카제로스 레이드 (보스 이름)
             std::vector<std::optional<int>> sizes(sizeCases.size());                   // 읽은 인원
+            std::array<std::optional<int>, 2> nameSizes{};                             // 보스 이름 줄로 읽은 인원 (성당 · 벨가르딘)
             std::vector<std::string> ocrLines(cases.size());                           // 못 읽었을 때 볼 OCR 글자 (광폭화 영역)
             std::thread worker{ [&]                                                    // OCR 일꾼 스레드
                 {
@@ -1239,6 +1240,13 @@ namespace LostArkMultiTool::Core::SelfTest
                                     for (const Vision::TextLine& line : text->m_lines) ocrLines[index] += " | " + Core::TextEncoding::WideToUTF8(line.m_text);
                         }
                         else ocrLines[index] = " 파일을 못 읽음";
+                    struct NameCase { std::wstring_view m_file; Vision::PixelRect m_area; };   // 보스 이름 줄만 (위쪽만 잘린 영상 캡처)
+                    const std::array nameCases{
+                        NameCase{ L"raid_cathedral_top.webp", Vision::PixelRect{ 420, 0, 400, 45 } },    // 대주교, 아르세노스 (4인)
+                        NameCase{ L"raid_belgardin_top.webp", Vision::PixelRect{ 480, 0, 400, 42 } } };  // 죽음의 계율자, 벨가르딘 (8인)
+                    for (std::size_t index = 0; index < nameCases.size(); ++index)
+                        if (const auto frame = Vision::ImageFile::Load(*folder / nameCases[index].m_file))
+                            nameSizes[index] = BossTimerDetector::ReadRaidSizeFromName(frame->Crop(nameCases[index].m_area), recognizer);
                     for (std::size_t index = 0; index < sizeCases.size(); ++index)    // 인원
                         if (const auto frame = Vision::ImageFile::Load(sizeCases[index].m_file))
                         {
@@ -1265,6 +1273,8 @@ namespace LostArkMultiTool::Core::SelfTest
                 sizeDetails += std::format(" [{}: {}]", Core::TextEncoding::WideToUTF8(sizeCases[index].m_file.filename().wstring()), sizes[index] ? std::to_string(*sizes[index]) + "인" : std::string{ "모름" });
             }
             reporter.Check(sizePassed == static_cast<int>(sizeCases.size()), "콘텐츠 인원 자동 인식 샘플 (가디언 토벌 잔영 4 · 카제로스 8)", std::format("{}/{}{}", sizePassed, sizeCases.size(), sizeDetails));
+            reporter.Check(nameSizes[0] == 4 && nameSizes[1] == 8, "레이드 보스 이름 줄 인원 (지평의 성당 4 · 벨가르딘 8, 흐린 영상 캡처)",
+                std::format("성당 {} · 벨가르딘 {}", nameSizes[0] ? std::to_string(*nameSizes[0]) : std::string{ "모름" }, nameSizes[1] ? std::to_string(*nameSizes[1]) : std::string{ "모름" }));
         }
 
         // 버프 타이머 (v1.11.0): 암흑 수류탄 · 아드로핀 아이콘 알아보기 + 남은 시간 글자 + 오탐 + 처리 시간
