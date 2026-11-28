@@ -37,7 +37,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         [[nodiscard]] static std::optional<int> FindRaidSize(std::wstring_view bossName);
         // 가디언 토벌 줄인지 (왼쪽 위 목표 가디언 아래 "…의 잔영 n단계" → true, 잔영을 진영 · 한영으로 읽어도, 고정 가디언 4종 이름도)
         [[nodiscard]] static bool IsGuardianStage(std::wstring_view line);
-        // 지금 콘텐츠의 인원 (가디언 토벌 4 → 보스 이름 4 · 8, 모르면 nullopt, textBounds: 체력 숫자 줄 위치)
+        // 지금 콘텐츠의 인원 (가디언 토벌 4 → 보스 이름 고정 자리 → 체력 숫자 줄 위 → 체력바 영역 전체 순서, 모르면 nullopt, textBounds: 체력 숫자 줄 위치)
         [[nodiscard]] static std::optional<int> DetectRaidSize(const FrameImage& frame, const TextRecognizer& text, const std::optional<PixelRect>& textBounds);
         // 보스 이름 줄 그림 → 인원 (1배 · 2배로 읽어 목록과 맞춤, 자체 검사용으로도 공개)
         [[nodiscard]] static std::optional<int> ReadRaidSizeFromName(const FrameImage& nameArea, const TextRecognizer& text);

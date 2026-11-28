@@ -1200,6 +1200,8 @@ namespace LostArkMultiTool::Core::SelfTest
             const bool isRaidSize = BossTimerDetector::FindRaidSize(L"심연의 군수, 가제로스") == 8 && BossTimerDetector::FindRaidSize(L"고통의 마녀, 세르카") == 4
                 && BossTimerDetector::FindRaidSize(L"대주교, 아르세노스") == 4 && BossTimerDetector::FindRaidSize(L"죽음의 계율자, 벨가르딘") == 8
                 && !BossTimerDetector::FindRaidSize(L"418억 1603만 2557") && !BossTimerDetector::FindRaidSize(L"루멘칼리고")
+                && BossTimerDetector::FindRaidSize(L"고통의 마니, 세로가") == 4 && BossTimerDetector::FindRaidSize(L"숙음의 게율자. 벨가르던") == 8   // 실제 OCR 결과
+                && !BossTimerDetector::FindRaidSize(L"모든 면역") && !BossTimerDetector::FindRaidSize(L"광폭화까지")
                 && BossTimerDetector::FindRaidSize(L"욕망의 주인, 에키드나") == 8 && BossTimerDetector::FindRaidSize(L"관신의 인도자, 아르세노스") == 4
                 && BossTimerDetector::IsGuardianStage(L"아게오로스의 잔영 3단계") && BossTimerDetector::IsGuardianStage(L"스콜라키아의 진영 2단계")
                 && BossTimerDetector::IsGuardianStage(L"루엔발리고의 진영 3단계") && !BossTimerDetector::IsGuardianStage(L"재입장")
@@ -1223,8 +1225,12 @@ namespace LostArkMultiTool::Core::SelfTest
             const std::array sizeCases{
                 SizeCase{ *folder / L"guardian_clear.webp", 4 },                       // 가디언 토벌 (루멘칼리고의 잔영 3단계)
                 SizeCase{ *folder / L"combat_dps_man.webp", 4 },
-                SizeCase{ *folder / L"raid_kazeros_name.webp", 8 } };                  // 카제로스 레이드 (보스 이름)
+                SizeCase{ *folder / L"raid_kazeros_name.webp", 8 },                    // 카제로스 레이드 (보스 이름)
+                SizeCase{ *folder / L"raid_serka_full.webp", 4 },                      // 고통의 마녀, 세르카
+                SizeCase{ *folder / L"raid_belgardin_full.webp", 8 } };                // 죽음의 계율자, 벨가르딘
+                // raid_cathedral2_full.webp (광신의 인도자, 아르세노스)는 해상도 낮은 영상 캡처라 이름이 10px로 뭉개져 정답 검사에서 뺌
             std::vector<std::optional<int>> sizes(sizeCases.size());                   // 읽은 인원
+            std::vector<std::string> sizeOcr(sizeCases.size());                        // 틀렸을 때 볼 글자
             std::array<std::optional<int>, 2> nameSizes{};                             // 보스 이름 줄로 읽은 인원 (성당 · 벨가르딘)
             std::vector<std::string> ocrLines(cases.size());                           // 못 읽었을 때 볼 OCR 글자 (광폭화 영역)
             std::thread worker{ [&]                                                    // OCR 일꾼 스레드
@@ -1252,6 +1258,21 @@ namespace LostArkMultiTool::Core::SelfTest
                         {
                             const auto boss = Vision::BossHealthDetector::Detect(*frame, recognizer);   // 체력 숫자 줄 위치
                             sizes[index] = BossTimerDetector::DetectRaidSize(*frame, recognizer, boss ? boss->m_textBounds : std::nullopt);
+                            if (sizes[index].value_or(0) != sizeCases[index].m_size)          // 틀림 → 체력 줄 위치 · 이름 영역 글자를 남김
+                            {
+                                if (!boss || !boss->m_textBounds) sizeOcr[index] = " 체력바 못 찾음";
+                                else
+                                {
+                                    const auto& bounds = *boss->m_textBounds;                  // 체력 숫자 줄
+                                    const int top = bounds.m_y - static_cast<int>(bounds.m_height * 3.5);
+                                    const int side = static_cast<int>(bounds.m_width * 0.4);
+                                    const auto area = Vision::ClampRect(Vision::PixelRect{ bounds.m_x - side, top, bounds.m_width + side * 2, bounds.m_y - static_cast<int>(bounds.m_height * 0.3) - top }, frame->GetWidth(), frame->GetHeight());
+                                    sizeOcr[index] = std::format(" 숫자줄({},{},{},{})", bounds.m_x, bounds.m_y, bounds.m_width, bounds.m_height);
+                                    for (const int scale : { 1, 2 })
+                                        if (const auto text = recognizer.Recognize(frame->Crop(area), scale))
+                                            for (const Vision::TextLine& line : text->m_lines) sizeOcr[index] += std::format(" | x{} {}", scale, Core::TextEncoding::WideToUTF8(line.m_text));
+                                }
+                            }
                         }
                 } };
             worker.join();                                                             // 기다림
@@ -1270,9 +1291,9 @@ namespace LostArkMultiTool::Core::SelfTest
             for (std::size_t index = 0; index < sizeCases.size(); ++index)
             {
                 if (sizes[index].value_or(0) == sizeCases[index].m_size) ++sizePassed;     // 0 = 모름
-                sizeDetails += std::format(" [{}: {}]", Core::TextEncoding::WideToUTF8(sizeCases[index].m_file.filename().wstring()), sizes[index] ? std::to_string(*sizes[index]) + "인" : std::string{ "모름" });
+                sizeDetails += std::format(" [{}: {}{}]", Core::TextEncoding::WideToUTF8(sizeCases[index].m_file.filename().wstring()), sizes[index] ? std::to_string(*sizes[index]) + "인" : std::string{ "모름" }, sizeOcr[index]);
             }
-            reporter.Check(sizePassed == static_cast<int>(sizeCases.size()), "콘텐츠 인원 자동 인식 샘플 (가디언 토벌 잔영 4 · 카제로스 8)", std::format("{}/{}{}", sizePassed, sizeCases.size(), sizeDetails));
+            reporter.Check(sizePassed == static_cast<int>(sizeCases.size()), "콘텐츠 인원 자동 인식 샘플 (가디언 토벌 잔영 4 · 카제로스 · 벨가르딘 8 · 세르카 · 성당 4)", std::format("{}/{}{}", sizePassed, sizeCases.size(), sizeDetails));
             reporter.Check(nameSizes[0] == 4 && nameSizes[1] == 8, "레이드 보스 이름 줄 인원 (지평의 성당 4 · 벨가르딘 8, 흐린 영상 캡처)",
                 std::format("성당 {} · 벨가르딘 {}", nameSizes[0] ? std::to_string(*nameSizes[0]) : std::string{ "모름" }, nameSizes[1] ? std::to_string(*nameSizes[1]) : std::string{ "모름" }));
         }

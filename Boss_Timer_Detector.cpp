@@ -1,6 +1,7 @@
 ﻿module LostArkMultiTool.Vision.BossTimerDetector;  // 보스 남은 시간 인식기 모듈 구현
 
 import std;  // 표준 라이브러리 모듈 가져오기
+import LostArkMultiTool.Vision.BossHealthDetector;  // 보스 체력바 영역 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
 import LostArkMultiTool.Vision.OCRTextParser;  // 글자 비교 도우미 가져오기
 import LostArkMultiTool.Vision.TextRecognizer;  // 글자 인식 가져오기
@@ -44,6 +45,11 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int RAID_SIZE_FOUR{ 4 };                // 4인
         constexpr int RAID_SIZE_EIGHT{ 8 };               // 8인
         constexpr std::size_t MIN_NAME_LENGTH{ 4 };       // 보스 이름으로 볼 글자 수 하한
+        constexpr std::size_t NAME_DISTANCE_DIVISOR{ 3 }; // 인원용 보스 이름 허용 거리 = (이름 길이 + 1) / 3 (최소 2, 8 ~ 10글자는 3)
+        constexpr double NAME_LEFT_RATIO{ 0.38 };         // 보스 이름(체력바 위 빨간 글씨) 영역 왼쪽 (프레임 가로 비율, 레이드마다 같은 자리 · 가운데 정렬)
+        constexpr double NAME_RIGHT_RATIO{ 0.58 };        // 오른쪽 (긴 이름까지)
+        constexpr double NAME_AREA_TOP_RATIO{ 0.015 };    // 위쪽 (창 제목줄이 있어도 · 없어도)
+        constexpr double NAME_AREA_BOTTOM_RATIO{ 0.085 }; // 아래쪽
         constexpr std::wstring_view STAGE_KEYWORD{ L"단계" };   // 가디언 토벌 "n단계"
         constexpr std::wstring_view SHADOW_KEYWORD{ L"잔영" };  // 가디언 토벌 로테이션 "…의 잔영 n단계"
         // 2부 엔드 콘텐츠 보스 이름 (띄어쓰기 · 쉼표 없이) → 인원 (정재가 준 범위, 목록에 없는 콘텐츠는 인원을 모름)
@@ -209,11 +215,12 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
         if (compact.size() < MIN_NAME_LENGTH) return std::nullopt;                    // 너무 짧음
         std::optional<int> best;                                                      // 가장 잘 맞는 보스의 인원
-        std::size_t bestDistance = MAX_NAME_DISTANCE + 1;                             // 그 거리
+        std::size_t bestDistance = std::numeric_limits<std::size_t>::max();           // 그 거리
         for (const RaidBoss& boss : RAID_BOSSES)                                      // 목록마다
         {
             const std::size_t distance = OCRTextParser::FindDistance(boss.m_name, compact);   // 편집 거리
-            if (distance < bestDistance) { bestDistance = distance; best = boss.m_size; }
+            const std::size_t allowed = std::max(MAX_NAME_DISTANCE, (boss.m_name.size() + 1) / NAME_DISTANCE_DIVISOR);   // 허용 (이름 길이의 1/3 반올림, 빨간 글씨는 OCR이 자주 틀림)
+            if (distance <= allowed && distance < bestDistance) { bestDistance = distance; best = boss.m_size; }
         }
         return best;                                                                  // 목록에 없으면 nullopt (2부에서 쓰지 않는 콘텐츠)
     }
@@ -243,13 +250,24 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 if (const auto result = text.Recognize(stageCrop, scale))
                     if (std::ranges::any_of(result->m_lines, [](const TextLine& line) { return IsGuardianStage(line.m_text); })) return RAID_SIZE_FOUR;   // 가디언 토벌
         }
-        if (!textBounds) return std::nullopt;                                         // 체력바 위치 모름
-        const int nameTop = textBounds->m_y - static_cast<int>(textBounds->m_height * NAME_TOP_FACTOR);         // 이름 줄 위
-        const int nameBottom = textBounds->m_y - static_cast<int>(textBounds->m_height * NAME_BOTTOM_FACTOR);   // 이름 줄 아래
-        const int side = static_cast<int>(textBounds->m_width * NAME_SIDE_FACTOR);                               // 좌우 여유
-        const PixelRect nameArea = ClampRect(PixelRect{ textBounds->m_x - side, nameTop, textBounds->m_width + side * 2, nameBottom - nameTop }, frame.GetWidth(), frame.GetHeight());
-        if (nameArea.IsEmpty()) return std::nullopt;                                  // 화면 밖
-        return ReadRaidSizeFromName(frame.Crop(nameArea), text);                     // 보스 이름 줄
+        const int nameLeft = static_cast<int>(frame.GetWidth() * NAME_LEFT_RATIO);    // 보스 이름 고정 영역 (체력바를 못 찾아도)
+        const int nameTopFixed = static_cast<int>(frame.GetHeight() * NAME_AREA_TOP_RATIO);
+        const PixelRect fixedName = ClampRect(PixelRect{ nameLeft, nameTopFixed, static_cast<int>(frame.GetWidth() * NAME_RIGHT_RATIO) - nameLeft,
+            static_cast<int>(frame.GetHeight() * NAME_AREA_BOTTOM_RATIO) - nameTopFixed }, frame.GetWidth(), frame.GetHeight());
+        if (!fixedName.IsEmpty())
+            if (const auto size = ReadRaidSizeFromName(frame.Crop(fixedName), text)) return size;   // 고정 자리에서 찾음
+        if (textBounds)                                                               // 체력 숫자 줄을 찾았으면 그 위 띠
+        {
+            const int nameTop = textBounds->m_y - static_cast<int>(textBounds->m_height * NAME_TOP_FACTOR);         // 이름 줄 위
+            const int nameBottom = textBounds->m_y - static_cast<int>(textBounds->m_height * NAME_BOTTOM_FACTOR);   // 이름 줄 아래
+            const int side = static_cast<int>(textBounds->m_width * NAME_SIDE_FACTOR);                               // 좌우 여유
+            const PixelRect nameArea = ClampRect(PixelRect{ textBounds->m_x - side, nameTop, textBounds->m_width + side * 2, nameBottom - nameTop }, frame.GetWidth(), frame.GetHeight());
+            if (!nameArea.IsEmpty())
+                if (const auto size = ReadRaidSizeFromName(frame.Crop(nameArea), text)) return size;
+        }
+        const PixelRect barArea = BossHealthDetector::GetBarArea(frame.GetWidth(), frame.GetHeight());   // 마지막: 보스 체력바 영역 전체로 넓혀 다시 (숫자 줄은 이름으로 안 잡힘)
+        if (barArea.IsEmpty()) return std::nullopt;
+        return ReadRaidSizeFromName(frame.Crop(barArea), text);
     }
 
     std::optional<int> BossTimerDetector::ReadRaidSizeFromName(const FrameImage& nameArea, const TextRecognizer& text)
