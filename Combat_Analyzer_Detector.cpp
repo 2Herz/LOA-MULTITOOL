@@ -38,6 +38,21 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
 
         [[nodiscard]] double CenterX(const PixelRect& rect) noexcept { return rect.m_x + rect.m_width * HALF; }   // 가로 가운데
+
+        constexpr double DECIMAL_SCALE{ 100.0 };        // 소수 둘째 자리 (단위를 놓친 "129.53" → 12953 을 129.53 으로)
+        constexpr std::array LOST_UNITS{ TEN_THOUSAND, HUNDRED_MILLION };   // 놓친 단위 후보 (작은 것부터)
+
+        // 단위 글자를 놓친 피해량 되살리기 (피해량 = DPS × 초라서 DPS보다 작을 수 없음)
+        [[nodiscard]] std::int64_t FixLostUnit(std::int64_t damage, std::int64_t dps) noexcept
+        {
+            if (damage >= dps) return damage;                                    // 정상
+            for (const double unit : LOST_UNITS)                                 // 만 → 억
+            {
+                const double value = damage / DECIMAL_SCALE * unit;              // 소수 둘째 자리 + 단위
+                if (value >= static_cast<double>(dps)) return static_cast<std::int64_t>(std::llround(value));   // DPS 이상이 되는 가장 작은 단위
+            }
+            return damage;                                                       // 못 고침 (그대로)
+        }
     }
 
     PixelRect CombatAnalyzerDetector::GetArea(int frameWidth, int frameHeight) noexcept
@@ -103,6 +118,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                 && OCRTextParser::FindDistance(DAMAGE_HEADER, compact) <= HEADER_MAX_DISTANCE) reading.m_damage = findValue(line);   // 피해량
         }
         if (!reading.m_damage && !reading.m_dps) return std::nullopt;           // 전투 분석기가 없거나 값이 "-"
+        if (reading.m_damage && reading.m_dps) reading.m_damage = FixLostUnit(*reading.m_damage, *reading.m_dps);   // "억"을 놓쳐 12953으로 읽힌 129.53억
         return reading;                                                         // 읽은 값
     }
 
