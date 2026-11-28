@@ -3,6 +3,7 @@
 import std;  // 표준 라이브러리 모듈 가져오기
 import LostArkMultiTool.Core.TextEncoding;  // 이름 UTF-8 바꾸기 가져오기
 import LostArkMultiTool.Vision.BossHealthDetector;  // 보스 체력바 인식기 가져오기
+import LostArkMultiTool.Vision.BossTimerDetector;  // 보스 남은 시간 인식기 가져오기
 import LostArkMultiTool.Vision.BuffDetector;  // 버프 타이머 인식기 가져오기
 import LostArkMultiTool.Vision.CharacterDetector;  // 현재 캐릭터 인식기 가져오기
 import LostArkMultiTool.Vision.FrameImage;  // 캡처 프레임 가져오기
@@ -31,6 +32,9 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::chrono::milliseconds FULL_SCAN_INTERVAL{ 6000 };       // 화면 전체 OCR(정보 창 찾기) 간격 (1초 안팎으로 무거워서 가끔만)
         constexpr std::chrono::milliseconds BOSS_SCAN_INTERVAL{ 500 };        // 보스 체력 읽기 간격 (작은 영역 · 흑백이라 가벼움)
         constexpr std::chrono::milliseconds BOSS_KEEP_DURATION{ 3000 };       // 보스를 못 읽어도 이 시간까지는 마지막 값 유지 (잠깐 가려짐 · 오인식)
+        constexpr std::chrono::milliseconds BOSS_TIMER_INTERVAL{ 1000 };      // 광폭화 · 토벌 타이머 읽기 간격 (1초마다 바뀜)
+        constexpr std::chrono::milliseconds BOSS_TIMER_KEEP{ 5000 };          // 타이머를 못 읽어도 이 시간까지는 마지막 값에서 줄여 씀
+        constexpr std::chrono::milliseconds BOSS_NAME_INTERVAL{ 3000 };       // 타이머가 안 보일 때 보스 이름(광폭화 표) 다시 읽는 간격
         constexpr std::chrono::milliseconds COMBAT_SCAN_INTERVAL{ 1000 };     // 전투 분석기 읽기 간격 (게임도 1초마다 갱신)
         constexpr std::chrono::milliseconds COMBAT_KEEP_DURATION{ 5000 };     // 전투 분석기를 못 읽어도 이 시간까지는 마지막 값 유지
         constexpr std::chrono::milliseconds BUFF_SCAN_INTERVAL{ 250 };        // 버프 · 디버프 읽기 간격 (픽셀 계산만이라 가벼움, 남은 시간이 1초씩 줄어서 자주)
@@ -402,6 +406,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         RegionChangeDetector hoverChange;                                              // 커서 주변 영역 변경 감지
         std::optional<TextResult> lastHoverText;                                   // 커서 주변 마지막 OCR (같은 화면이면 다시 씀)
         auto lastBossSeen = std::chrono::steady_clock::now();                      // 마지막으로 체력바를 읽은 시각
+        auto nextTimerScan = std::chrono::steady_clock::now();                     // 다음 타이머 읽기 시각
+        auto nextNameScan = std::chrono::steady_clock::now();                      // 다음 보스 이름 읽기 시각
+        std::optional<BossTimerReading> lastTimer;                                 // 마지막으로 읽은 화면 타이머
+        auto lastTimerAt = std::chrono::steady_clock::now();                       // 그 시각
+        std::optional<std::int64_t> fightMaximum;                                  // 지금 싸우는 보스의 최대 체력 (바뀌면 새 전투)
+        auto fightStart = std::chrono::steady_clock::now();                        // 그 보스를 처음 본 시각 (표로 광폭화 남은 시간 계산)
+        std::optional<int> enrageFromName;                                         // 보스 이름으로 찾은 광폭화 시간 (초)
         std::uint64_t previewVersion = 0;                                          // 미리 보기 그림 버전
         void* gameWindow = nullptr;                                                // 지난번에 찾은 게임 창
         std::optional<PixelPoint> lastCursor;                                      // 지난 주기 커서 (프레임 기준)
@@ -489,8 +500,37 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                         lastBossSeen = steadyNow;                                  // 봤음
                         if (const auto confirmed = bossTracker.Feed(*boss))        // 투표로 믿을 만한 값만
                         {
+                            if (fightMaximum != confirmed->m_maximum)              // 새 보스 · 관문
+                            {
+                                fightMaximum = confirmed->m_maximum;               // 기록
+                                fightStart = steadyNow;                            // 전투 시작
+                                enrageFromName.reset();                            // 이름 표 다시
+                                nextNameScan = steadyNow;
+                            }
+                            if (steadyNow >= nextTimerScan)                        // 화면 타이머 (1초마다)
+                            {
+                                nextTimerScan = steadyNow + BOSS_TIMER_INTERVAL;
+                                if (const auto timer = BossTimerDetector::Detect(*frame, text)) { lastTimer = timer; lastTimerAt = steadyNow; }   // 읽음
+                            }
+                            const bool isTimerFresh = lastTimer && steadyNow - lastTimerAt <= BOSS_TIMER_KEEP;   // 최근에 읽은 타이머
+                            if (!isTimerFresh && !enrageFromName && confirmed->m_textBounds && steadyNow >= nextNameScan)   // 타이머가 안 보임 → 보스 이름으로 표 찾기
+                            {
+                                nextNameScan = steadyNow + BOSS_NAME_INTERVAL;
+                                enrageFromName = BossTimerDetector::ReadEnrageFromName(*frame, text, *confirmed->m_textBounds);
+                            }
+                            BossHealthSample sample{ *confirmed, steadyNow };      // 기록할 값
+                            if (isTimerFresh)                                      // 화면 타이머에서 지난 시간만큼 줄임
+                            {
+                                sample.m_timeLeft = std::max(0.0, lastTimer->m_seconds - std::chrono::duration<double>(steadyNow - lastTimerAt).count());
+                                sample.m_isEnrage = lastTimer->m_isEnrage;
+                            }
+                            else if (enrageFromName)                               // 표의 광폭화 시간 - 싸운 시간
+                            {
+                                sample.m_timeLeft = std::max(0.0, *enrageFromName - std::chrono::duration<double>(steadyNow - fightStart).count());
+                                sample.m_isEnrage = true;
+                            }
                             const std::scoped_lock lock{ m_mutex };                // 보호
-                            m_bossHealth = BossHealthSample{ *confirmed, steadyNow };   // 기록
+                            m_bossHealth = std::move(sample);                      // 기록
                         }
                     }
                     else if (steadyNow - lastBossSeen > BOSS_KEEP_DURATION) bossTracker.Reset();   // 보스가 사라짐 → 투표 새로

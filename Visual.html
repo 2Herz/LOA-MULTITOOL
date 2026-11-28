@@ -128,7 +128,7 @@
   <header>
     <div>
       <h1>로스트아크 멀티툴 구조도</h1>
-      <div class="sub">C++23 모듈 · v1.11.0 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-28</div>
+      <div class="sub">C++23 모듈 · v1.11.1 · Win32 + Direct3D 11 / Direct2D 자체 UI · Lost Ark Open API · 기준 2026-11-28</div>
     </div>
     <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </header>
@@ -777,14 +777,34 @@ const MODULES = [
    "LostArkMultiTool.Core.NumberFormat",
    "LostArkMultiTool.Views.Theme"
   ],
-  "lines": 52,
-  "cppLines": 224,
+  "lines": 54,
+  "cppLines": 239,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
-  "desc": "오버레이 보스 체력 패널: 체력바 숫자를 조 · 억 · 만 단위로, 남은 비율(소수 둘째 자리) · 줄 수 · 공대 DPS · 예상 남은 시간",
+  "desc": "오버레이 보스 체력 패널: 체력바 숫자를 조 · 억 · 만 단위로, 남은 비율(소수 둘째 자리) · 줄 수 · 공대 DPS · 처치 예상 · 광폭화(토벌) 남은 시간",
   "types": [
    "BossPanel",
    "HistoryPoint"
+  ]
+ },
+ {
+  "file": "Boss_Timer_Detector.ixx",
+  "module": "LostArkMultiTool.Vision.BossTimerDetector",
+  "imports": [
+   "LostArkMultiTool.Vision.FrameImage",
+   "LostArkMultiTool.Vision.TextRecognizer"
+  ],
+  "cppImports": [
+   "LostArkMultiTool.Vision.OCRTextParser"
+  ],
+  "lines": 37,
+  "cppLines": 177,
+  "hasCpp": true,
+  "filter": "3. 서비스\\17. 화면인식",
+  "desc": "보스전 남은 시간 읽기",
+  "types": [
+   "BossTimerReading",
+   "BossTimerDetector"
   ]
  },
  {
@@ -870,7 +890,7 @@ const MODULES = [
    "LostArkMultiTool.Views.Theme"
   ],
   "lines": 49,
-  "cppLines": 171,
+  "cppLines": 175,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "오버레이 버프 타이머 패널: 암흑 수류탄(보스) · 아드로핀 · 서폿 초각성기 · 초각성 스킬 · 공증 · 아덴의 남은 시간을 크게 보여 줌",
@@ -885,7 +905,7 @@ const MODULES = [
   "imports": [],
   "cppImports": [],
   "lines": 44,
-  "cppLines": 190,
+  "cppLines": 212,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "버프 타이머가 쓰는 템플릿 (tools/Make-BuffTemplates.py가 샘플에서 만든 데이터, Buff_Templates.cpp)",
@@ -1130,7 +1150,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.OCRTextParser"
   ],
   "lines": 31,
-  "cppLines": 155,
+  "cppLines": 158,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "게임 전투 분석기(오른쪽 아래)의 \"피해량 · DPS\" 읽기 → 보스 체력과 합쳐 딜 지분 계산",
@@ -1520,7 +1540,7 @@ const MODULES = [
    "LostArkMultiTool.Views.Theme"
   ],
   "lines": 66,
-  "cppLines": 175,
+  "cppLines": 176,
   "hasCpp": true,
   "filter": "4. 뷰\\15. 오버레이",
   "desc": "오버레이 딜 지분 패널: 전투 분석기의 내 피해량 · DPS + 보스 체력 → 지분 · 몇 인분 · 단계",
@@ -3492,11 +3512,12 @@ const MODULES = [
   ],
   "cppImports": [
    "LostArkMultiTool.Core.TextEncoding",
+   "LostArkMultiTool.Vision.BossTimerDetector",
    "LostArkMultiTool.Vision.GameWindowFinder",
    "LostArkMultiTool.Vision.ScreenCaptureService"
   ],
-  "lines": 258,
-  "cppLines": 712,
+  "lines": 260,
+  "cppLines": 752,
   "hasCpp": true,
   "filter": "3. 서비스\\17. 화면인식",
   "desc": "게임 화면 상시 감시 (\"마우스를 올려 두면 읽기\")",
@@ -3557,6 +3578,7 @@ const MODULES = [
    "LostArkMultiTool.Views.OverlayWindow",
    "LostArkMultiTool.Views.UI.Slider",
    "LostArkMultiTool.Vision.BossHealthDetector",
+   "LostArkMultiTool.Vision.BossTimerDetector",
    "LostArkMultiTool.Vision.BuffDetector",
    "LostArkMultiTool.Vision.BuffTemplates",
    "LostArkMultiTool.Vision.CharacterDetector",
@@ -3578,7 +3600,7 @@ const MODULES = [
    "LostArkMultiTool.Vision.TooltipDetector"
   ],
   "lines": 15,
-  "cppLines": 1505,
+  "cppLines": 1551,
   "hasCpp": true,
   "filter": "1. 코어\\1. 기반\\4. 시간",
   "desc": "데이터 자체 검사 (실행 파일에 --self-test 인자를 주면 화면 없이 실행 → build_all.bat이 빌드 직후 호출)",

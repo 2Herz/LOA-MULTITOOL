@@ -5,7 +5,8 @@ import LostArkMultiTool.Core.Renderer;  // 렌더러 가져오기
 import LostArkMultiTool.Views.OverlayPanel;  // 패널 기반 가져오기
 import LostArkMultiTool.Vision.ScreenWatcher;  // 보스 체력 형식 가져오기
 
-// 오버레이 보스 체력 패널: 체력바 숫자를 조 · 억 · 만 단위로, 남은 비율(소수 둘째 자리) · 줄 수 · 공대 DPS · 예상 남은 시간
+// 오버레이 보스 체력 패널: 체력바 숫자를 조 · 억 · 만 단위로, 남은 비율(소수 둘째 자리) · 줄 수 · 공대 DPS · 처치 예상 · 광폭화(토벌) 남은 시간
+// - 남은 시간 = 화면 타이머(레이드 "광폭화까지" · 가디언 토벌 왼쪽 위)를 읽은 값, 못 읽으면 보스 이름으로 찾은 관문별 광폭화 시간 - 싸운 시간
 // - 공대 DPS = 최근 몇 초 동안 체력이 깎인 속도 (파티원이 프로그램을 켜지 않아도 됨)
 // - 게임 체력바 위에 고정: 게임이 그린 체력 숫자 자리를 덮어 조 · 억 · 만 · 남은 %를 그리고, 막대 아래에 공대 DPS · 남은 시간 (옮길 수 없음)
 // - 보스 체력바가 안 보이면 그리지 않음
@@ -40,6 +41,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         };
 
         [[nodiscard]] std::optional<double> GetDamagePerSecond() const;   // 공대 DPS (기록이 모자라면 nullopt)
+        [[nodiscard]] std::wstring FormatDamageLine(double damagePerSecond) const;   // "공대 DPS · 처치 예상 · 광폭(남은) 시간" 줄
 
         std::function<std::optional<Vision::BossHealthSample>()> m_provider;   // 보스 체력 함수
         std::optional<Vision::BossHealthSample> m_sample;                      // 마지막 체력

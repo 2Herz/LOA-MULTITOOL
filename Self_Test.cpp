@@ -23,6 +23,7 @@ import LostArkMultiTool.Services.TransferCalculator;
 import LostArkMultiTool.Core.TextEncoding;
 import LostArkMultiTool.Vision.BossHealthDetector;
 import LostArkMultiTool.Vision.BuffDetector;  // 버프 타이머 인식기
+import LostArkMultiTool.Vision.BossTimerDetector;  // 광폭화 · 토벌 남은 시간
 import LostArkMultiTool.Vision.BuffTemplates;  // 버프 종류
 import LostArkMultiTool.Views.BossPanel;
 import LostArkMultiTool.Vision.CombatAnalyzerDetector;  // 전투 분석기 인식기
@@ -887,9 +888,10 @@ namespace LostArkMultiTool::Core::SelfTest
             const bool isAmount = CombatAnalyzerDetector::ParseAmount(L"460,99익") == 46'099'000'000
                 && CombatAnalyzerDetector::ParseAmount(L"3.51역") == 351'000'000
                 && CombatAnalyzerDetector::ParseAmount(L"4,827.14만") == 48'271'400
+                && CombatAnalyzerDetector::ParseAmount(L"5,943.9만") == 59'439'000                    // 소수 한 자리만 읽힘 (v1.11.0에서 5억 9439만으로 10배)
                 && CombatAnalyzerDetector::ParseAmount(L"12,345") == 12'345
                 && !CombatAnalyzerDetector::ParseAmount(L"-").has_value();
-            reporter.Check(isAmount, "전투 분석기 · 억 · 만 단위 글자 (460,99익 · 3.51역 · 4,827.14만 · 12,345 · -)");
+            reporter.Check(isAmount, "전투 분석기 · 억 · 만 단위 글자 (460,99익 · 3.51역 · 4,827.14만 · 5,943.9만 · 12,345 · -)");
 
             constexpr std::int64_t SAMPLE_HEALTH{ 83'119'120'458 };                    // 샘플 최대 체력
             constexpr std::int64_t HALF_CURRENT{ 37'019'552'389 };                     // 절반 샘플 현재 체력
@@ -914,7 +916,8 @@ namespace LostArkMultiTool::Core::SelfTest
             const std::array samples{
                 CombatSampleFile{ L"boss_hp.webp", std::nullopt, std::nullopt },                       // 전투 시작 전 ("-")
                 CombatSampleFile{ L"boss_hp_half.webp", 46'099'000'000, 351'000'000 },                 // 460.99억 · 3.51억
-                CombatSampleFile{ L"boss_hp_low.webp", 78'298'000'000, 343'000'000 } };                // 782.98억 · 3.43억
+                CombatSampleFile{ L"boss_hp_low.webp", 78'298'000'000, 343'000'000 },                  // 782.98억 · 3.43억
+                CombatSampleFile{ L"combat_dps_man.webp", 2'156'000'000, 58'287'200 } };               // 21.56억 · 5,828.72만 (v1.11.0에서 DPS가 10배로 읽힘)
             std::vector<std::optional<Vision::CombatReading>> readings(samples.size());   // 읽은 값
             std::thread worker{ [&]                                                    // OCR 일꾼 스레드
                 {
@@ -1182,6 +1185,46 @@ namespace LostArkMultiTool::Core::SelfTest
         }
 
         // 창고 · 소지품 슬롯 (v1.10.3): 마우스 없이 융화 재료 · 숨결 수량 + 캐릭터 확인 전 값 붙잡기
+        // 보스 남은 시간 (v1.11.1): 시계 글자 해석 · 관문별 광폭화 표 · 가디언 토벌 타이머 샘플
+        void CheckBossTimer(Reporter& reporter, const std::filesystem::path& reportPath)
+        {
+            using Vision::BossTimerDetector;
+            const bool isClock = BossTimerDetector::ParseClock(L"00:17:54") == 1074 && BossTimerDetector::ParseClock(L"19: 13,") == 1153
+                && BossTimerDetector::ParseClock(L"19 : 4-7") == 1187 && BossTimerDetector::ParseClock(L"00;06:09") == 369
+                && !BossTimerDetector::ParseClock(L"Lv.60") && !BossTimerDetector::ParseClock(L"12:3") && !BossTimerDetector::ParseClock(L"41,462,611");
+            reporter.Check(isClock, "보스 남은 시간 시계 글자 (00:17:54 · 19: 13 · 19 : 4-7 · 00;06:09 · 시계 아님)");
+            const bool isTable = BossTimerDetector::FindEnrageSeconds(L"대주교, 아르세노스") == 600 && BossTimerDetector::FindEnrageSeconds(L"페투스 안 크라그마") == 780
+                && BossTimerDetector::FindEnrageSeconds(L"고통의 마녀, 세르카") == 600 && BossTimerDetector::FindEnrageSeconds(L"죽음의 계율자, 벨가르던") == 600
+                && !BossTimerDetector::FindEnrageSeconds(L"루멘칼리고");
+            reporter.Check(isTable, "관문별 광폭화 시간 표 (지평의 성당 · 세르카 · 벨가르딘, 이름 한 글자 오인식 · 표에 없는 보스)");
+
+            const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
+            if (!folder) { reporter.Note("보스 남은 시간 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
+            struct TimerCase { std::filesystem::path m_file; int m_seconds{}; };
+            const std::array cases{
+                TimerCase{ *folder / L"combat_dps_man.webp", 19 * 60 + 13 },                       // 가디언 토벌 19:13
+                TimerCase{ *folder / L"boss_hp_half.webp", 17 * 60 + 33 },                         // 17:33
+                TimerCase{ folder->parent_path() / L"buffs" / L"combat_grenade_1.webp", 19 * 60 + 47 } };   // 19:47
+            std::vector<std::optional<Vision::BossTimerReading>> readings(cases.size());   // 읽은 값
+            std::thread worker{ [&]                                                    // OCR 일꾼 스레드
+                {
+                    const Vision::VisionApartment apartment;                           // WinRT 준비
+                    const Vision::TextRecognizer recognizer;                           // OCR
+                    for (std::size_t index = 0; index < cases.size(); ++index)
+                        if (const auto frame = Vision::ImageFile::Load(cases[index].m_file)) readings[index] = BossTimerDetector::Detect(*frame, recognizer);
+                } };
+            worker.join();                                                             // 기다림
+            int passed = 0;                                                            // 맞은 수
+            std::string details;                                                       // 결과
+            for (std::size_t index = 0; index < cases.size(); ++index)
+            {
+                const auto& reading = readings[index];                                 // 읽은 값
+                if (reading && reading->m_seconds == cases[index].m_seconds && !reading->m_isEnrage) ++passed;
+                details += std::format(" [{}: {}]", Core::TextEncoding::WideToUTF8(cases[index].m_file.filename().wstring()), reading ? std::to_string(reading->m_seconds) : std::string{ "없음" });
+            }
+            reporter.Check(passed == static_cast<int>(cases.size()), "가디언 토벌 남은 시간 샘플", std::format("{}/{}{}", passed, cases.size(), details));
+        }
+
         // 버프 타이머 (v1.11.0): 암흑 수류탄 · 아드로핀 아이콘 알아보기 + 남은 시간 글자 + 오탐 + 처리 시간
         void CheckBuffTimer(Reporter& reporter, const std::filesystem::path& reportPath)
         {
@@ -1209,6 +1252,7 @@ namespace LostArkMultiTool::Core::SelfTest
                 BuffSampleCase{ buffFolder / L"combat_grenade_2.webp", "암수=8" },
                 BuffSampleCase{ buffFolder / L"combat_grenade_3.webp", "암수=0.7" },         // 소수점
                 BuffSampleCase{ buffFolder / L"combat_grenade_4.webp", "아드로핀=8" },       // 내 버프 4개 중 아드로핀
+                BuffSampleCase{ buffFolder / L"combat_grenade_adrenaline.webp", "암수=18" },  // 다른 전투 (v1.11.0에서 점수 0.79로 놓침)
                 BuffSampleCase{ *folder / L"boss_hp_half.webp", "없음" },                    // 다른 디버프 · 버프만 (오탐 없어야 함)
                 BuffSampleCase{ *folder / L"boss_hp_low.webp", "없음" },
                 BuffSampleCase{ *folder / L"boss_hp.webp", "없음" },
@@ -1241,7 +1285,8 @@ namespace LostArkMultiTool::Core::SelfTest
                 TextCase{ *folder / L"boss_hp_low.webp", false, 743, 942, "3s" }, TextCase{ *folder / L"boss_hp_low.webp", false, 772, 942, "27s" },
                 TextCase{ buffFolder / L"combat_grenade_1.webp", true, 936, 180, "5s" }, TextCase{ buffFolder / L"combat_grenade_1.webp", false, 777, 940, "5m" },
                 TextCase{ buffFolder / L"combat_grenade_2.webp", false, 779, 945, "5m" }, TextCase{ buffFolder / L"combat_grenade_3.webp", false, 777, 939, "4m" },
-                TextCase{ buffFolder / L"combat_grenade_4.webp", false, 749, 938, "4m" } };
+                TextCase{ buffFolder / L"combat_grenade_4.webp", false, 749, 938, "4m" },
+                TextCase{ buffFolder / L"combat_grenade_adrenaline.webp", true, 931, 179, "4s" }, TextCase{ buffFolder / L"combat_grenade_adrenaline.webp", false, 800, 939, "0.0s" } };
             int textPassed = 0;                                                        // 맞은 수
             std::string textFailures;                                                  // 틀린 것
             for (const TextCase& sample : texts)
@@ -1487,6 +1532,7 @@ namespace LostArkMultiTool::Core::SelfTest
             CheckCombatAnalyzer(reporter, reportPath);           // 전투 분석기 · 딜 지분
             CheckMaterialSlots(reporter, reportPath);            // 창고 · 소지품 슬롯 · 값 붙잡기
             CheckBuffTimer(reporter, reportPath);                // 버프 타이머
+            CheckBossTimer(reporter, reportPath);                // 광폭화 · 토벌 남은 시간
             CheckParadiseWeek(reporter);                         // 낙원력 이번 주차
             CheckVisionBenchmark(reporter, reportPath);          // 화면 인식 정답률 · 속도 측정
             CheckWatchCycleSpeed(reporter, reportPath);          // 감시 한 주기 예전 → 지금

@@ -17,7 +17,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr float TIME_HEIGHT{ 18.0f };             // 남은 시간 줄 높이
         constexpr float LABEL_HEIGHT{ 14.0f };            // 이름 줄 높이
         constexpr float CONTENT_HEIGHT{ ICON_TOP + ICON_SIZE + TIME_HEIGHT + LABEL_HEIGHT };   // 내용 높이
-        constexpr float DEFAULT_WIDTH{ CELL_WIDTH * static_cast<float>(Vision::BUFF_KIND_COUNT) };   // 기본 가로
+        constexpr float SIDE_PADDING{ 20.0f };            // 패널 좌우 안쪽 여백 합 (OverlayPanel 여백 10 × 2)
+        constexpr float DEFAULT_WIDTH{ CELL_WIDTH * static_cast<float>(Vision::BUFF_KIND_COUNT) + SIDE_PADDING };   // 기본 가로 (칸 6개 + 여백)
         constexpr float HALF{ 0.5f };                     // 절반
         constexpr float ACTIVE_OPACITY{ 1.0f };           // 걸려 있을 때 아이콘
         constexpr float INACTIVE_OPACITY{ 0.25f };        // 꺼졌을 때 아이콘 (흐리게)
@@ -96,6 +97,9 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
     void BuffPanel::Update(double deltaSeconds)
     {
+        SetHeight(CONTENT_HEIGHT);                                                    // 내용 높이 (저장된 · 기본 위치 크기에 머리말이 빠져 잘리지 않게 매번 맞춤)
+        if (const Core::RectF bounds = GetBounds(); bounds.GetWidth() != DEFAULT_WIDTH)   // 가로도 칸 6개에 맞춤 (예전에 저장한 좁은 크기)
+            SetBounds(Core::RectF{ bounds.m_left, bounds.m_top, bounds.m_left + DEFAULT_WIDTH, bounds.m_bottom });
         m_refreshElapsed += deltaSeconds;                                             // 시간 누적
         if (m_refreshElapsed < REFRESH_SECONDS) return;                               // 아직
         m_refreshElapsed = 0.0;                                                       // 초기화

@@ -33,7 +33,10 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::wstring_view LINES_TITLE_FORMAT{ L"보스 체력 · ×{}줄" };           // 줄 수가 있을 때 제목
         constexpr std::wstring_view HEALTH_FORMAT{ L"{} / {}" };                        // 현재 / 최대
         constexpr std::wstring_view PERCENT_FORMAT{ L"{:.2f}%" };                       // 남은 비율
-        constexpr std::wstring_view DPS_FORMAT{ L"공대 DPS {}/초 · 남은 {}:{:02}" };     // 깎이는 속도 · 예상 남은 시간
+        constexpr std::wstring_view DPS_FORMAT{ L"공대 DPS {}/초 · 처치 예상 {}:{:02}" };   // 깎이는 속도 · 이 속도로 처치까지 걸릴 시간
+        constexpr std::wstring_view TIME_LEFT_FORMAT{ L" · {} {}:{:02}" };               // 화면에서 읽은 남은 시간
+        constexpr std::wstring_view ENRAGE_LABEL{ L"광폭" };                             // 레이드 광폭화까지
+        constexpr std::wstring_view LIMIT_LABEL{ L"남은" };                              // 가디언 토벌 제한 시간
         constexpr std::wstring_view DPS_WAITING_TEXT{ L"공대 DPS 계산 중..." };          // 기록이 모자람
         constexpr std::wstring_view EMPTY_TEXT{ L"보스 체력바가 보이면 여기에 표시돼요" };   // 조작 모드에서 보스가 없을 때
         constexpr std::wstring_view UNIT_FORMAT{ L"{}{}" };                              // "831억" (쉼표 없이 네 자리씩)
@@ -160,14 +163,27 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
         if (const auto dps = GetDamagePerSecond())                                           // 공대 DPS
         {
-            const int remaining = static_cast<int>(static_cast<double>(reading.m_current) / *dps);   // 남은 초
-            const std::wstring dpsText = std::format(DPS_FORMAT, FormatKoreanNumber(static_cast<std::int64_t>(*dps)), remaining / SECONDS_PER_MINUTE, remaining % SECONDS_PER_MINUTE);
+            const std::wstring dpsText = FormatDamageLine(*dps);                            // DPS · 처치 예상 · 남은 시간
             const Core::TextStyle dpsStyle{ std::max(MIN_ANCHOR_FONT, height * DPS_FONT_RATIO), Core::FontWeight::BOLD, Core::TextAlign::CENTER };   // 작은 글자
             const float dpsWidth = renderer.MeasureString(dpsText, dpsStyle, MEASURE_WIDTH).m_width + ANCHOR_PADDING_X * ANCHOR_SIDES;   // 폭
             const float dpsTop = native.m_top + height * DPS_OFFSET_RATIO;                   // 막대 아래
             const Core::RectF dpsRect{ centerX - dpsWidth * ANCHOR_HALF, dpsTop, centerX + dpsWidth * ANCHOR_HALF, dpsTop + height + ANCHOR_PADDING_Y * ANCHOR_SIDES };   // 자리
             DrawGameText(renderer, dpsText, dpsRect, dpsStyle);                              // DPS · 남은 시간 (바탕 없이 게임 글자 모양)
         }
+    }
+
+    std::wstring BossPanel::FormatDamageLine(double damagePerSecond) const
+    {
+        const Vision::BossHealthSample& sample = *m_sample;                                  // 마지막 값
+        const int killSeconds = static_cast<int>(static_cast<double>(sample.m_reading.m_current) / damagePerSecond);   // 이 속도로 처치까지
+        std::wstring line = std::format(DPS_FORMAT, FormatKoreanNumber(static_cast<std::int64_t>(damagePerSecond)), killSeconds / SECONDS_PER_MINUTE, killSeconds % SECONDS_PER_MINUTE);
+        if (sample.m_timeLeft)                                                               // 화면 타이머 · 광폭화 표
+        {
+            const double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - sample.m_capturedAt).count();   // 읽은 뒤 지난 시간
+            const int left = static_cast<int>(std::max(0.0, *sample.m_timeLeft - elapsed));  // 지금 남은 초
+            line += std::format(TIME_LEFT_FORMAT, sample.m_isEnrage ? ENRAGE_LABEL : LIMIT_LABEL, left / SECONDS_PER_MINUTE, left % SECONDS_PER_MINUTE);
+        }
+        return line;                                                                         // "공대 DPS 4170만/초 · 처치 예상 12:30 · 광폭 17:54"
     }
 
     bool BossPanel::IsContentAvailable() const noexcept
@@ -209,8 +225,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         std::wstring dpsText{ DPS_WAITING_TEXT };                                            // DPS 글자
         if (const auto dps = GetDamagePerSecond())                                           // 깎이는 속도
         {
-            const int remaining = static_cast<int>(static_cast<double>(reading.m_current) / *dps);   // 예상 남은 초
-            dpsText = std::format(DPS_FORMAT, FormatKoreanNumber(static_cast<std::int64_t>(*dps)), remaining / SECONDS_PER_MINUTE, remaining % SECONDS_PER_MINUTE);
+            dpsText = FormatDamageLine(*dps);                                                // DPS · 처치 예상 · 남은 시간
         }
         renderer.DrawString(dpsText, second, Theme::TEXT_COLOR, DETAIL_RIGHT_STYLE);         // DPS · 남은 시간
 

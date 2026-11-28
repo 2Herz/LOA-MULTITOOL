@@ -92,6 +92,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
     void DamagePanel::Update(double deltaSeconds)
     {
+        SetHeight(ROW_HEIGHT * static_cast<float>(ROW_COUNT));                 // 세 줄 (저장된 · 기본 위치 크기에 머리말이 빠져 잘리지 않게 매번 맞춤)
         m_refreshElapsed += deltaSeconds;                                      // 시간 누적
         if (m_hasSource && m_refreshElapsed < REFRESH_SECONDS) return;         // 아직
         m_refreshElapsed = 0.0;                                                // 초기화

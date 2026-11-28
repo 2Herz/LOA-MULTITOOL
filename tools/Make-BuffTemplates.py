@@ -17,6 +17,7 @@ BASE_ICON = 26               # 기준 아이콘 크기 (1080p)
 ICONS = [
     ('GRENADE', BUFFS + 'combat_grenade_2.webp', 938, 185),          # 암흑 수류탄 (보스 디버프)
     ('GRENADE', BUFFS + 'combat_grenade_1.webp', 964, 180),
+    ('GRENADE', BUFFS + 'combat_grenade_adrenaline.webp', 959, 179),  # 다른 전투 (점수 0.79였던 화면)
     ('ADRENALINE', BUFFS + 'combat_grenade_4.webp', 836, 938),       # 아드로핀 (내 버프)
     ('SUPPORT_AWAKENING', BUFFS + 'support_icons.png', 1, 1),        # 서폿 초각성기 (보라)
     ('SUPPORT_HYPER', BUFFS + 'support_icons.png', 37, 1),           # 서폿 초각성 스킬 (파랑)
@@ -36,6 +37,8 @@ SAMPLES = [
     (BUFFS + 'combat_grenade_3.webp', True, [(936, 179, 'GRENADE', '0.7초')]),
     (BUFFS + 'combat_grenade_3.webp', False, [(777, 939, None, '4분'), (806, 939, None, None), (835, 939, None, None)]),
     (BUFFS + 'combat_grenade_4.webp', True, []),
+    (BUFFS + 'combat_grenade_adrenaline.webp', True, [(931, 179, None, '4초'), (959, 179, 'GRENADE', '18초')]),
+    (BUFFS + 'combat_grenade_adrenaline.webp', False, [(800, 939, None, '0.0초'), (829, 939, None, None)]),
     (BUFFS + 'combat_grenade_4.webp', False, [(749, 938, None, '4분'), (778, 938, None, None), (807, 938, None, None), (836, 938, 'ADRENALINE', '8초')]),
 ]
 
@@ -337,6 +340,7 @@ def main():
 
     # 다시 읽어 확인
     total, correct = 0, 0
+    worst = [0.0]
     for path, is_debuff, items in SAMPLES:
         img = load(path)
         rects = find_icons(img, zone_of(img, is_debuff), is_debuff)
@@ -347,12 +351,15 @@ def main():
             rect = min(rects, key=lambda r: abs(r[0] - ix) + abs(r[1] - iy)) if rects else None
             vec = normalize(img, rect)
             scores = sorted(((ncc(vec, t[3]), t[0]) for t in icon_templates), reverse=True)
-            got_kind = scores[0][1] if scores[0][0] >= 0.80 else None
+            got_kind = scores[0][1] if scores[0][0] >= 0.70 else None
+            if kind is None:
+                worst[0] = max(worst[0], scores[0][0])          # 모르는 아이콘 중 가장 높은 점수 (오탐 여유)
             got_text = read_text(img, rect, glyphs)
             want_text = to_answer_symbols(answer) if answer else None
             ok = got_kind == kind and (want_text is None or got_text == want_text)
             correct += ok
             print(f'  {"OK " if ok else "BAD"} {path.split("/")[-1]} {rect} 종류 {got_kind}({scores[0][0]:.2f}/{scores[0][1]}) 글자 {got_text} 정답 {kind} {want_text}')
+    print(f'모르는 아이콘 최고 점수 {worst[0]:.2f}')
     print(f'정답 {correct}/{total}, 글자 템플릿 {len(glyphs)}개: {sorted(set(s for s, _ in glyphs))}')
 
     write_cpp(icon_templates, glyphs)

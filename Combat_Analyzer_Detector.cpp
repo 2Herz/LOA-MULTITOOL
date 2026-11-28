@@ -21,8 +21,7 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr std::wstring_view TEN_THOUSAND_MARKS{ L"만민맨" };        // 만
         constexpr double HUNDRED_MILLION{ 100'000'000.0 };   // 억
         constexpr double TEN_THOUSAND{ 10'000.0 };           // 만
-        constexpr std::size_t DECIMAL_DIGITS{ 2 };      // 전투 분석기 소수 자리
-        constexpr double DECIMAL_SCALE{ 100.0 };        // 소수 두 자리
+        constexpr std::size_t DECIMAL_DIGITS{ 2 };      // 전투 분석기 소수 자리 (구분자 뒤 1 ~ 2자리면 소수, 3자리는 천 단위 구분자)
         constexpr int DECIMAL_BASE{ 10 };               // 십진수
         constexpr int MAX_DIGITS{ 15 };                 // 숫자 자릿수 상한
         constexpr double HALF{ 0.5 };                   // 절반
@@ -67,10 +66,14 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         }
         if (digits.empty() || digits.size() > static_cast<std::size_t>(MAX_DIGITS)) return std::nullopt;   // 숫자 없음 · 너무 긺
         std::size_t decimals = 0;                                               // 소수 자릿수
-        if (lastSeparator && digits.size() - *lastSeparator == DECIMAL_DIGITS && unit > 1.0) decimals = DECIMAL_DIGITS;   // "460,99억" → 소수
+        if (lastSeparator && unit > 1.0)                                        // 억 · 만이 붙은 값
+        {
+            const std::size_t tail = digits.size() - *lastSeparator;            // 마지막 구분자 뒤 자릿수
+            if (tail >= 1 && tail <= DECIMAL_DIGITS) decimals = tail;           // "460,99억" · OCR이 한 자리를 빠뜨린 "5,943.9만" → 소수 (10배로 읽히지 않게)
+        }
         double value = 0.0;                                                     // 값
         for (wchar_t character : digits) value = value * DECIMAL_BASE + (character - L'0');   // 숫자
-        if (decimals > 0) value /= DECIMAL_SCALE;                               // 소수 두 자리
+        for (std::size_t digit = 0; digit < decimals; ++digit) value /= DECIMAL_BASE;   // 소수 자릿수만큼 나눔
         return static_cast<std::int64_t>(std::llround(value * unit));           // 단위 곱하기
     }
 
