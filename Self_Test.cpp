@@ -919,7 +919,8 @@ namespace LostArkMultiTool::Core::SelfTest
                 CombatSampleFile{ L"boss_hp.webp", std::nullopt, std::nullopt },                       // 전투 시작 전 ("-")
                 CombatSampleFile{ L"boss_hp_half.webp", 46'099'000'000, 351'000'000 },                 // 460.99억 · 3.51억
                 CombatSampleFile{ L"boss_hp_low.webp", 78'298'000'000, 343'000'000 },                  // 782.98억 · 3.43억
-                CombatSampleFile{ L"combat_dps_man.webp", 2'156'000'000, 58'287'200 } };               // 21.56억 · 5,828.72만 (v1.11.0에서 DPS가 10배로 읽힘)
+                CombatSampleFile{ L"combat_dps_man.webp", 2'156'000'000, 58'287'200 },                 // 21.56억 · 5,828.72만 (v1.11.0에서 DPS가 10배로 읽힘)
+                CombatSampleFile{ L"combat_guardian_damage.webp", 12'953'000'000, 404'000'000 } };     // 129.53억 · 4.04억 (가디언 토벌, v1.11.3에서 소수점을 놓치면 100배)
             std::vector<std::optional<Vision::CombatReading>> readings(samples.size());   // 읽은 값
             std::thread worker{ [&]                                                    // OCR 일꾼 스레드
                 {
