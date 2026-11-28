@@ -413,6 +413,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         std::optional<std::int64_t> fightMaximum;                                  // 지금 싸우는 보스의 최대 체력 (바뀌면 새 전투)
         auto fightStart = std::chrono::steady_clock::now();                        // 그 보스를 처음 본 시각 (표로 광폭화 남은 시간 계산)
         std::optional<int> enrageFromName;                                         // 보스 이름으로 찾은 광폭화 시간 (초)
+        std::optional<int> raidSize;                                               // 지금 콘텐츠 인원 (4 · 8)
+        auto nextRaidScan = std::chrono::steady_clock::now();                      // 다음 인원 확인 시각
         std::uint64_t previewVersion = 0;                                          // 미리 보기 그림 버전
         void* gameWindow = nullptr;                                                // 지난번에 찾은 게임 창
         std::optional<PixelPoint> lastCursor;                                      // 지난 주기 커서 (프레임 기준)
@@ -506,6 +508,8 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                                 fightStart = steadyNow;                            // 전투 시작
                                 enrageFromName.reset();                            // 이름 표 다시
                                 nextNameScan = steadyNow;
+                                raidSize.reset();                                  // 인원 다시
+                                nextRaidScan = steadyNow;
                             }
                             if (steadyNow >= nextTimerScan)                        // 화면 타이머 (1초마다)
                             {
@@ -518,7 +522,13 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
                                 nextNameScan = steadyNow + BOSS_NAME_INTERVAL;
                                 enrageFromName = BossTimerDetector::ReadEnrageFromName(*frame, text, *confirmed->m_textBounds);
                             }
+                            if (!raidSize && steadyNow >= nextRaidScan)            // 인원 (가디언 토벌 · 보스 이름, 알 때까지 가끔)
+                            {
+                                nextRaidScan = steadyNow + BOSS_NAME_INTERVAL;
+                                raidSize = BossTimerDetector::DetectRaidSize(*frame, text, confirmed->m_textBounds);
+                            }
                             BossHealthSample sample{ *confirmed, steadyNow };      // 기록할 값
+                            sample.m_raidSize = raidSize;                          // 인원
                             if (isTimerFresh)                                      // 화면 타이머에서 지난 시간만큼 줄임
                             {
                                 sample.m_timeLeft = std::max(0.0, lastTimer->m_seconds - std::chrono::duration<double>(steadyNow - lastTimerAt).count());

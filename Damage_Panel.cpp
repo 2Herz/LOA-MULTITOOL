@@ -38,6 +38,11 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         constexpr std::array<std::wstring_view, 3> STAGE_NAMES{ L"투사", L"강투", L"잔혈" };   // 단계 이름
         constexpr std::wstring_view TITLE_TEXT{ L"딜 지분" };                                    // 제목
         constexpr std::wstring_view TITLE_FORMAT{ L"딜 지분 · {}인" };                           // 제목 + 인원
+        constexpr std::wstring_view TITLE_AUTO_FORMAT{ L"딜 지분 · {}인 (자동)" };               // 화면에서 알아본 인원
+        constexpr std::int64_t TRILLION{ 1'000'000'000'000 };                                    // 조
+        constexpr std::int64_t HUNDRED_MILLION{ 100'000'000 };                                   // 억
+        constexpr std::int64_t TEN_THOUSAND{ 10'000 };                                           // 만
+        constexpr std::wstring_view SHORT_FORMAT{ L"{:.2f}{}" };                                 // "854.51억"
         constexpr std::wstring_view DAMAGE_FORMAT{ L"내 피해량  {}" };                           // 첫 줄 왼쪽
         constexpr std::wstring_view DPS_FORMAT{ L"DPS  {}" };                                    // 첫 줄 오른쪽
         constexpr std::wstring_view SHARE_FORMAT{ L"깎인 체력의 {:.2f}%  ·  {:.2f}인분" };          // 둘째 줄
@@ -55,7 +60,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         // 값 → 한국어 단위 글자 (없으면 "-")
         [[nodiscard]] std::wstring FormatAmount(const std::optional<std::int64_t>& value)
         {
-            return value ? BossPanel::FormatKoreanNumber(*value) : std::wstring{ EMPTY_VALUE_TEXT };
+            return value ? DamagePanel::FormatShort(*value) : std::wstring{ EMPTY_VALUE_TEXT };   // 전투 분석기처럼 축약
         }
 
         // 단계 색 (투사 흐리게 · 강투 강조 · 잔혈 금색)
@@ -90,6 +95,29 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
         return share;
     }
 
+    std::wstring DamagePanel::FormatShort(std::int64_t value)
+    {
+        const auto format = [value](std::int64_t unit, std::wstring_view mark)       // 단위로 나눈 소수 두 자리
+            {
+                return std::format(SHORT_FORMAT, static_cast<double>(value) / static_cast<double>(unit), mark);
+            };
+        if (value >= TRILLION) return format(TRILLION, L"조");                       // 1.23조
+        if (value >= HUNDRED_MILLION) return format(HUNDRED_MILLION, L"억");         // 854.51억
+        if (value >= TEN_THOUSAND) return format(TEN_THOUSAND, L"만");               // 4827.14만
+        return std::to_wstring(value);                                                // 그대로
+    }
+
+    bool DamagePanel::IsAutoRaidSize() const noexcept
+    {
+        return m_source.m_boss && m_source.m_boss->m_raidSize.has_value();           // 화면에서 알아봄
+    }
+
+    int DamagePanel::GetEffectiveRaidSize() const
+    {
+        if (IsAutoRaidSize()) return *m_source.m_boss->m_raidSize;                    // 가디언 토벌 · 보스 이름으로 알아본 인원
+        return m_getRaidSize ? m_getRaidSize() : RAID_SIZE_EIGHT;                     // 설정
+    }
+
     void DamagePanel::Update(double deltaSeconds)
     {
         SetHeight(ROW_HEIGHT * static_cast<float>(ROW_COUNT));                 // 세 줄 (저장된 · 기본 위치 크기에 머리말이 빠져 잘리지 않게 매번 맞춤)
@@ -107,7 +135,8 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
 
     std::wstring DamagePanel::GetTitleText() const
     {
-        return std::format(TITLE_FORMAT, m_getRaidSize ? m_getRaidSize() : RAID_SIZE_EIGHT);   // "딜 지분 · 8인"
+        if (IsAutoRaidSize()) return std::format(TITLE_AUTO_FORMAT, GetEffectiveRaidSize());   // "딜 지분 · 4인 (자동)"
+        return std::format(TITLE_FORMAT, GetEffectiveRaidSize());                               // "딜 지분 · 8인"
     }
 
     Core::RectF DamagePanel::GetSizeButtonRect(const Core::RectF& content) const noexcept
@@ -124,7 +153,7 @@ namespace LostArkMultiTool::Views  // 화면 네임스페이스 시작
                 const float top = content.m_top + ROW_HEIGHT * static_cast<float>(row);
                 return Core::RectF{ content.m_left, top, content.m_right, top + ROW_HEIGHT };
             };
-        const int raidSize = m_getRaidSize ? m_getRaidSize() : RAID_SIZE_EIGHT;   // 인원
+        const int raidSize = GetEffectiveRaidSize();                          // 인원 (화면에서 알아본 값 먼저)
         const std::optional<std::int64_t> damage = m_source.m_combat ? m_source.m_combat->m_reading.m_damage : std::nullopt;   // 내 피해량
         const std::optional<std::int64_t> dps = m_source.m_combat ? m_source.m_combat->m_reading.m_dps : std::nullopt;         // DPS
 

@@ -1197,6 +1197,18 @@ namespace LostArkMultiTool::Core::SelfTest
                 && BossTimerDetector::FindEnrageSeconds(L"고통의 마녀, 세르카") == 600 && BossTimerDetector::FindEnrageSeconds(L"죽음의 계율자, 벨가르던") == 600
                 && !BossTimerDetector::FindEnrageSeconds(L"루멘칼리고");
             reporter.Check(isTable, "관문별 광폭화 시간 표 (지평의 성당 · 세르카 · 벨가르딘, 이름 한 글자 오인식 · 표에 없는 보스)");
+            const bool isRaidSize = BossTimerDetector::FindRaidSize(L"심연의 군수, 가제로스") == 8 && BossTimerDetector::FindRaidSize(L"고통의 마녀, 세르카") == 4
+                && BossTimerDetector::FindRaidSize(L"대주교, 아르세노스") == 4 && BossTimerDetector::FindRaidSize(L"죽음의 계율자, 벨가르딘") == 8
+                && !BossTimerDetector::FindRaidSize(L"418억 1603만 2557") && !BossTimerDetector::FindRaidSize(L"루멘칼리고")
+                && BossTimerDetector::FindRaidSize(L"욕망의 주인, 에키드나") == 8 && BossTimerDetector::FindRaidSize(L"관신의 인도자, 아르세노스") == 4
+                && BossTimerDetector::IsGuardianStage(L"아게오로스의 잔영 3단계") && BossTimerDetector::IsGuardianStage(L"스콜라키아의 진영 2단계")
+                && BossTimerDetector::IsGuardianStage(L"루엔발리고의 진영 3단계") && !BossTimerDetector::IsGuardianStage(L"재입장")
+                && !BossTimerDetector::IsGuardianStage(L"종막 : 최후의 날");
+            reporter.Check(isRaidSize, "콘텐츠 인원 (카제로스 · 에키드나 · 벨가르딘 8 · 세르카 · 성당 4 · 가디언 토벌 잔영 4 · 목록 밖 모름)");
+            const bool isShort = Views::DamagePanel::FormatShort(85'451'000'000) == L"854.51억"
+                && Views::DamagePanel::FormatShort(982'000'000) == L"9.82억" && Views::DamagePanel::FormatShort(1'230'000'000'000) == L"1.23조"
+                && Views::DamagePanel::FormatShort(48'271'400) == L"4827.14만";
+            reporter.Check(isShort, "딜 지분 축약 표기 (854.51억 · 9.82억 · 1.23조 · 4827.14만)");
 
             const auto folder = FindSampleFolder(reportPath.parent_path());           // 샘플 폴더
             if (!folder) { reporter.Note("보스 남은 시간 샘플 검사 건너뜀 (Verify/screens 없음)"); return; }
@@ -1207,6 +1219,12 @@ namespace LostArkMultiTool::Core::SelfTest
                 TimerCase{ folder->parent_path() / L"buffs" / L"combat_grenade_1.webp", 19 * 60 + 47 },
                 TimerCase{ *folder / L"raid_enrage_kazeros.webp", 17 * 60 + 54 } };                   // 레이드 광폭화까지 00:17:54   // 19:47
             std::vector<std::optional<Vision::BossTimerReading>> readings(cases.size());   // 읽은 값
+            struct SizeCase { std::filesystem::path m_file; int m_size{}; };
+            const std::array sizeCases{
+                SizeCase{ *folder / L"guardian_clear.webp", 4 },                       // 가디언 토벌 (루멘칼리고의 잔영 3단계)
+                SizeCase{ *folder / L"combat_dps_man.webp", 4 },
+                SizeCase{ *folder / L"raid_kazeros_name.webp", 8 } };                  // 카제로스 레이드 (보스 이름)
+            std::vector<std::optional<int>> sizes(sizeCases.size());                   // 읽은 인원
             std::vector<std::string> ocrLines(cases.size());                           // 못 읽었을 때 볼 OCR 글자 (광폭화 영역)
             std::thread worker{ [&]                                                    // OCR 일꾼 스레드
                 {
@@ -1221,6 +1239,12 @@ namespace LostArkMultiTool::Core::SelfTest
                                     for (const Vision::TextLine& line : text->m_lines) ocrLines[index] += " | " + Core::TextEncoding::WideToUTF8(line.m_text);
                         }
                         else ocrLines[index] = " 파일을 못 읽음";
+                    for (std::size_t index = 0; index < sizeCases.size(); ++index)    // 인원
+                        if (const auto frame = Vision::ImageFile::Load(sizeCases[index].m_file))
+                        {
+                            const auto boss = Vision::BossHealthDetector::Detect(*frame, recognizer);   // 체력 숫자 줄 위치
+                            sizes[index] = BossTimerDetector::DetectRaidSize(*frame, recognizer, boss ? boss->m_textBounds : std::nullopt);
+                        }
                 } };
             worker.join();                                                             // 기다림
             int passed = 0;                                                            // 맞은 수
@@ -1233,6 +1257,14 @@ namespace LostArkMultiTool::Core::SelfTest
                 details += std::format(" [{}: {}{}]", Core::TextEncoding::WideToUTF8(cases[index].m_file.filename().wstring()), reading ? std::to_string(reading->m_seconds) : std::string{ "없음" }, ocrLines[index]);
             }
             reporter.Check(passed == static_cast<int>(cases.size()), "가디언 토벌 · 레이드 광폭화 남은 시간 샘플", std::format("{}/{}{}", passed, cases.size(), details));
+            int sizePassed = 0;                                                        // 인원 맞은 수
+            std::string sizeDetails;                                                   // 결과
+            for (std::size_t index = 0; index < sizeCases.size(); ++index)
+            {
+                if (sizes[index].value_or(0) == sizeCases[index].m_size) ++sizePassed;     // 0 = 모름
+                sizeDetails += std::format(" [{}: {}]", Core::TextEncoding::WideToUTF8(sizeCases[index].m_file.filename().wstring()), sizes[index] ? std::to_string(*sizes[index]) + "인" : std::string{ "모름" });
+            }
+            reporter.Check(sizePassed == static_cast<int>(sizeCases.size()), "콘텐츠 인원 자동 인식 샘플 (가디언 토벌 잔영 4 · 카제로스 8)", std::format("{}/{}{}", sizePassed, sizeCases.size(), sizeDetails));
         }
 
         // 버프 타이머 (v1.11.0): 암흑 수류탄 · 아드로핀 아이콘 알아보기 + 남은 시간 글자 + 오탐 + 처리 시간

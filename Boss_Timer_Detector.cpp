@@ -34,8 +34,28 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         constexpr int MAX_HOURS{ 9 };                     // 시 상한 (광폭화는 1시간 안쪽)
         constexpr std::size_t FIELD_DIGITS{ 2 };          // 한 칸 숫자 수
         constexpr std::size_t MAX_NAME_DISTANCE{ 2 };     // 보스 이름 오인식 허용 (편집 거리)
-        constexpr double NAME_TOP_FACTOR{ 1.8 };          // 이름 줄 위쪽 = 체력 숫자 줄 위 - 높이 × 1.8
-        constexpr double NAME_BOTTOM_FACTOR{ 0.2 };       // 이름 줄 아래쪽 = 체력 숫자 줄 위 - 높이 × 0.2
+        constexpr double NAME_TOP_FACTOR{ 3.5 };          // 이름 줄 위쪽 = 체력 숫자 줄 위 - 높이 × 3.5 (빨간 보스 이름은 막대 위)
+        constexpr double NAME_BOTTOM_FACTOR{ 0.3 };       // 이름 줄 아래쪽 = 체력 숫자 줄 위 - 높이 × 0.3
+        constexpr double NAME_SIDE_FACTOR{ 0.4 };         // 이름 줄 좌우 여유 (체력 숫자 줄 너비 배수, 긴 이름)
+        constexpr double STAGE_LEFT_RATIO{ 0.0 };         // 가디언 토벌 퀘스트 칸 왼쪽 (프레임 가로 비율)
+        constexpr double STAGE_RIGHT_RATIO{ 0.20 };       // 오른쪽
+        constexpr double STAGE_TOP_RATIO{ 0.13 };         // 위쪽 (창 제목줄이 있어도 · 없어도)
+        constexpr double STAGE_BOTTOM_RATIO{ 0.26 };      // 아래쪽
+        constexpr int RAID_SIZE_FOUR{ 4 };                // 4인
+        constexpr int RAID_SIZE_EIGHT{ 8 };               // 8인
+        constexpr std::size_t MIN_NAME_LENGTH{ 4 };       // 보스 이름으로 볼 글자 수 하한
+        constexpr std::wstring_view STAGE_KEYWORD{ L"단계" };   // 가디언 토벌 "n단계"
+        constexpr std::wstring_view SHADOW_KEYWORD{ L"잔영" };  // 가디언 토벌 로테이션 "…의 잔영 n단계"
+        // 2부 엔드 콘텐츠 보스 이름 (띄어쓰기 · 쉼표 없이) → 인원 (정재가 준 범위, 목록에 없는 콘텐츠는 인원을 모름)
+        struct RaidBoss { std::wstring_view m_name; int m_size{}; };
+        constexpr std::array<RaidBoss, 12> RAID_BOSSES{ {
+            { L"욕망의주인에키드나", 8 }, { L"잿더미의불씨아브렐슈드", 8 }, { L"심연의파수꾼아르모체", 8 },   // 카제로스 레이드 4막 : 파멸의 성채
+            { L"심연의군주카제로스", 8 }, { L"대악마카제로스", 8 }, { L"죽음의현신카제로스", 8 },                 // 종막 : 최후의 날
+            { L"고통의마녀세르카", 4 }, { L"코르부스툴라크", 4 },                                                   // 그림자 레이드 세르카
+            { L"죽음의계율자벨가르딘", 8 }, { L"페투스안크라그마", 8 },                                             // 그림자 레이드 벨가르딘
+            { L"대주교아르세노스", 4 }, { L"광신의인도자아르세노스", 4 },                                           // 지평의 성당
+        } };
+        constexpr std::array<std::wstring_view, 4> GUARDIANS{ L"아게오로스", L"스콜라키아", L"드렉탈라스", L"크라티오스" };   // 가디언 토벌 (4인, "…의 잔영 n단계")
         constexpr std::wstring_view ENRAGE_KEYWORD{ L"광폭" };   // 레이드 타이머 머리말
         constexpr std::wstring_view CLOCK_SEPARATORS{ L":;" };   // 시계 구분자 (OCR이 ;로 읽기도 함)
 
@@ -169,12 +189,70 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
     {
         const int top = textBounds.m_y - static_cast<int>(textBounds.m_height * NAME_TOP_FACTOR);         // 이름 줄 위
         const int bottom = textBounds.m_y - static_cast<int>(textBounds.m_height * NAME_BOTTOM_FACTOR);   // 이름 줄 아래
-        const PixelRect area = ClampRect(PixelRect{ textBounds.m_x, top, textBounds.m_width, bottom - top }, frame.GetWidth(), frame.GetHeight());   // 체력 숫자 위 띠
+        const int side = static_cast<int>(textBounds.m_width * NAME_SIDE_FACTOR);                         // 좌우 여유
+        const PixelRect area = ClampRect(PixelRect{ textBounds.m_x - side, top, textBounds.m_width + side * 2, bottom - top }, frame.GetWidth(), frame.GetHeight());   // 체력 숫자 위 띠
         if (area.IsEmpty()) return std::nullopt;                                      // 화면 밖
         const auto result = text.Recognize(frame.Crop(area), OCR_SCALE);              // 2배 OCR (빨간 · 흰 이름 그대로)
         if (!result) return std::nullopt;                                             // OCR 실패
         for (const TextLine& line : result->m_lines)                                  // 줄마다
             if (const auto seconds = FindEnrageSeconds(line.m_text)) return seconds;  // 표에 있는 보스
         return std::nullopt;                                                          // 모르는 보스
+    }
+
+    std::optional<int> BossTimerDetector::FindRaidSize(std::wstring_view bossName)
+    {
+        std::wstring compact;                                                         // 띄어쓰기 · 쉼표 · 마침표 뺀 이름
+        for (const wchar_t character : bossName)
+        {
+            if (character >= L'0' && character <= L'9') return std::nullopt;          // 숫자가 있으면 이름이 아님 (체력 숫자 줄)
+            if (!std::iswspace(character) && character != L',' && character != L'.') compact += character;
+        }
+        if (compact.size() < MIN_NAME_LENGTH) return std::nullopt;                    // 너무 짧음
+        std::optional<int> best;                                                      // 가장 잘 맞는 보스의 인원
+        std::size_t bestDistance = MAX_NAME_DISTANCE + 1;                             // 그 거리
+        for (const RaidBoss& boss : RAID_BOSSES)                                      // 목록마다
+        {
+            const std::size_t distance = OCRTextParser::FindDistance(boss.m_name, compact);   // 편집 거리
+            if (distance < bestDistance) { bestDistance = distance; best = boss.m_size; }
+        }
+        return best;                                                                  // 목록에 없으면 nullopt (2부에서 쓰지 않는 콘텐츠)
+    }
+
+    bool BossTimerDetector::IsGuardianStage(std::wstring_view line)
+    {
+        const std::wstring compact = OCRTextParser::Compact(line);                    // 띄어쓰기 없이
+        const std::size_t stage = compact.find(STAGE_KEYWORD);                        // "단계"
+        if (stage == std::wstring::npos || stage == 0) return false;                  // 단계 없음
+        const wchar_t before = compact[stage - 1];                                    // 단계 앞 글자
+        if (before < L'0' || before > L'9') return false;                             // "3단계" 아님
+        if (OCRTextParser::FindDistance(SHADOW_KEYWORD, compact) <= 1) return true;   // "…의 잔영 n단계" (로테이션 가디언, OCR이 진영 · 한영으로 읽어도)
+        return std::ranges::any_of(GUARDIANS, [&compact](std::wstring_view name)     // 고정 가디언 (한 글자 오인식 허용)
+            { return OCRTextParser::FindDistance(name, compact) <= 1; });
+    }
+
+    std::optional<int> BossTimerDetector::DetectRaidSize(const FrameImage& frame, const TextRecognizer& text, const std::optional<PixelRect>& textBounds)
+    {
+        const int left = static_cast<int>(frame.GetWidth() * STAGE_LEFT_RATIO);       // 가디언 토벌 퀘스트 칸
+        const int top = static_cast<int>(frame.GetHeight() * STAGE_TOP_RATIO);
+        const PixelRect stageArea = ClampRect(PixelRect{ left, top, static_cast<int>(frame.GetWidth() * STAGE_RIGHT_RATIO) - left,
+            static_cast<int>(frame.GetHeight() * STAGE_BOTTOM_RATIO) - top }, frame.GetWidth(), frame.GetHeight());
+        if (!stageArea.IsEmpty())
+        {
+            const FrameImage stageCrop = frame.Crop(stageArea);                       // 목표 가디언 칸
+            for (const int scale : { 1, OCR_SCALE })                                  // 1배 → 못 찾으면 2배 (붉은 바탕 위 작은 글씨)
+                if (const auto result = text.Recognize(stageCrop, scale))
+                    if (std::ranges::any_of(result->m_lines, [](const TextLine& line) { return IsGuardianStage(line.m_text); })) return RAID_SIZE_FOUR;   // 가디언 토벌
+        }
+        if (!textBounds) return std::nullopt;                                         // 체력바 위치 모름
+        const int nameTop = textBounds->m_y - static_cast<int>(textBounds->m_height * NAME_TOP_FACTOR);         // 이름 줄 위
+        const int nameBottom = textBounds->m_y - static_cast<int>(textBounds->m_height * NAME_BOTTOM_FACTOR);   // 이름 줄 아래
+        const int side = static_cast<int>(textBounds->m_width * NAME_SIDE_FACTOR);                               // 좌우 여유
+        const PixelRect nameArea = ClampRect(PixelRect{ textBounds->m_x - side, nameTop, textBounds->m_width + side * 2, nameBottom - nameTop }, frame.GetWidth(), frame.GetHeight());
+        if (nameArea.IsEmpty()) return std::nullopt;                                  // 화면 밖
+        const auto result = text.Recognize(frame.Crop(nameArea), OCR_SCALE);          // 2배 OCR (빨간 이름 그대로)
+        if (!result) return std::nullopt;                                             // OCR 실패
+        for (const TextLine& line : result->m_lines)                                  // 줄마다
+            if (const auto size = FindRaidSize(line.m_text)) return size;             // 보스 이름
+        return std::nullopt;                                                          // 이름 없음
     }
 }

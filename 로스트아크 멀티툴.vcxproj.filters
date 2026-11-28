@@ -299,6 +299,39 @@
     <Filter Include="1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 매니저">
       <UniqueIdentifier>{8e315f4d-a276-40b1-cd94-5f6a7b8c9da4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\1. 보스체력">
+      <UniqueIdentifier>{239a5b6f-b82a-47ad-ad20-64fd593de7ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\2. 현재 접속 캐릭터">
+      <UniqueIdentifier>{5b8d6fbb-c8b4-4148-ad09-e07b15dfd34f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\3. 딜지분">
+      <UniqueIdentifier>{228b8d96-71d9-4a34-a437-f204304d28aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\4. 재료">
+      <UniqueIdentifier>{0a4e7676-9c4f-4a47-9c38-94b38b0bc675}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\5. 미니모드">
+      <UniqueIdentifier>{df3d5f3f-7e25-40d9-b33a-7687f1e98dc2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\0. 매니저">
+      <UniqueIdentifier>{fbb78e02-4661-430b-8504-4993e30a4908}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\6. 패널">
+      <UniqueIdentifier>{7c28b847-144e-4416-9a36-457812a34654}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\7. 세팅">
+      <UniqueIdentifier>{df174b44-a6c4-4395-8307-5f8393c76bc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\8. 낙원">
+      <UniqueIdentifier>{a733b9a1-8254-4b52-8029-a23c425a788b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\9. 윈도우">
+      <UniqueIdentifier>{ae1a56d7-eb98-4f87-b5ff-64d55ad192c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="4. 뷰\15. 오버레이\10. 인식">
+      <UniqueIdentifier>{218e34ed-7bfb-44e2-a565-abe218c5162f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="APP_Constants.ixx">
@@ -1156,12 +1189,6 @@
     <ClCompile Include="Material_Slot_Detector.cpp">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
-    <ClCompile Include="Damage_Panel.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Damage_Panel.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
     <ClCompile Include="Combat_Analyzer_Detector.ixx">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
@@ -1174,29 +1201,11 @@
     <ClCompile Include="Gem_Tooltip_Detector.cpp">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
-    <ClCompile Include="Boss_Panel.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Boss_Panel.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
     <ClCompile Include="Boss_Health_Detector.ixx">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
     <ClCompile Include="Boss_Health_Detector.cpp">
       <Filter>3. 서비스\17. 화면인식</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Setup_View.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Setup_View.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Setup_Manager.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Setup_Manager.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
     </ClCompile>
     <ClCompile Include="Slider.ixx">
       <Filter>4. 뷰\4. UI\13. 슬라이더</Filter>
@@ -1210,64 +1219,16 @@
     <ClCompile Include="Nameplate_Memory.cpp">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
-    <ClCompile Include="Character_Panel.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Character_Panel.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
     <ClCompile Include="Character_Detector.ixx">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
     <ClCompile Include="Character_Detector.cpp">
       <Filter>3. 서비스\17. 화면인식</Filter>
     </ClCompile>
-    <ClCompile Include="Mini_Tool_Panel.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Mini_Tool_Panel.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
     <ClCompile Include="Overlay_Placeholder_Tool.ixx">
       <Filter>4. 뷰\15. 오버레이</Filter>
     </ClCompile>
     <ClCompile Include="Overlay_Placeholder_Tool.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Settings.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Settings.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Panel.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Panel.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Material_Panel.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Material_Panel.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Paradise_Panel.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Paradise_Panel.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Manager.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Manager.cpp">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Window.ixx">
-      <Filter>4. 뷰\15. 오버레이</Filter>
-    </ClCompile>
-    <ClCompile Include="Overlay_Window.cpp">
       <Filter>4. 뷰\15. 오버레이</Filter>
     </ClCompile>
     <ClCompile Include="Vision_Settings.ixx">
@@ -1359,6 +1320,78 @@
     </ClCompile>
     <ClCompile Include="Transfer_Manager.cpp">
       <Filter>1. 코어\1. 기반\7. 매니저\2. 객체\10. 2부 이관 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Boss_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이\1. 보스체력</Filter>
+    </ClCompile>
+    <ClCompile Include="Boss_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이\1. 보스체력</Filter>
+    </ClCompile>
+    <ClCompile Include="Character_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이\2. 현재 접속 캐릭터</Filter>
+    </ClCompile>
+    <ClCompile Include="Character_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이\2. 현재 접속 캐릭터</Filter>
+    </ClCompile>
+    <ClCompile Include="Damage_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이\3. 딜지분</Filter>
+    </ClCompile>
+    <ClCompile Include="Damage_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이\3. 딜지분</Filter>
+    </ClCompile>
+    <ClCompile Include="Material_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이\4. 재료</Filter>
+    </ClCompile>
+    <ClCompile Include="Material_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이\4. 재료</Filter>
+    </ClCompile>
+    <ClCompile Include="Mini_Tool_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이\5. 미니모드</Filter>
+    </ClCompile>
+    <ClCompile Include="Mini_Tool_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이\5. 미니모드</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Manager.ixx">
+      <Filter>4. 뷰\15. 오버레이\0. 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Manager.cpp">
+      <Filter>4. 뷰\15. 오버레이\0. 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이\6. 패널</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이\6. 패널</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_Manager.ixx">
+      <Filter>4. 뷰\15. 오버레이\0. 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_Manager.cpp">
+      <Filter>4. 뷰\15. 오버레이\0. 매니저</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Settings.ixx">
+      <Filter>4. 뷰\15. 오버레이\7. 세팅</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Settings.cpp">
+      <Filter>4. 뷰\15. 오버레이\7. 세팅</Filter>
+    </ClCompile>
+    <ClCompile Include="Paradise_Panel.ixx">
+      <Filter>4. 뷰\15. 오버레이\8. 낙원</Filter>
+    </ClCompile>
+    <ClCompile Include="Paradise_Panel.cpp">
+      <Filter>4. 뷰\15. 오버레이\8. 낙원</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_View.ixx">
+      <Filter>4. 뷰\15. 오버레이\10. 인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Setup_View.cpp">
+      <Filter>4. 뷰\15. 오버레이\10. 인식</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Window.ixx">
+      <Filter>4. 뷰\15. 오버레이\9. 윈도우</Filter>
+    </ClCompile>
+    <ClCompile Include="Overlay_Window.cpp">
+      <Filter>4. 뷰\15. 오버레이\9. 윈도우</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

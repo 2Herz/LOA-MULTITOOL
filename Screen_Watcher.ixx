@@ -167,6 +167,7 @@ export namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 �
         std::chrono::steady_clock::time_point m_capturedAt;   // 읽은 시각
         std::optional<double> m_timeLeft;                     // 그 시각의 남은 시간 (초, 레이드 광폭화 · 가디언 토벌 제한 시간, 모르면 nullopt)
         bool m_isEnrage{};                                    // 남은 시간이 레이드 광폭화인지
+        std::optional<int> m_raidSize;                        // 콘텐츠 인원 (가디언 토벌 · 성당 · 세르카 4, 그 외 레이드 8, 모르면 nullopt)
     };
 
     // 마지막으로 읽은 전투 분석기 (내 피해량 · DPS)

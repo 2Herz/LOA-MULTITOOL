@@ -37,7 +37,7 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
         static constexpr int RAID_SIZE_EIGHT{ 8 };                // 8인 레이드
         static constexpr int RAID_SIZE_FOUR{ 4 };                 // 4인 레이드
 
-        // provider: 보스 체력 · 전투 분석기 / getRaidSize · setRaidSize: 8인 · 4인 설정
+        // provider: 보스 체력 · 전투 분석기 / getRaidSize · setRaidSize: 8인 · 4인 설정 (화면에서 콘텐츠 인원을 알면 그 값을 먼저 씀)
         DamagePanel(std::function<DamageShareSource()> provider, std::function<int()> getRaidSize, std::function<void(int)> setRaidSize);
 
         void Update(double deltaSeconds) override;                          // 값 받기
@@ -45,6 +45,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
 
         // 지분 계산 (자체 검사용으로도 공개, 깎인 체력이 없으면 nullopt)
         [[nodiscard]] static std::optional<DamageShare> Calculate(std::int64_t damage, std::int64_t current, std::int64_t maximum, int raidSize) noexcept;
+        // 전투 분석기처럼 축약 ("854.51억" · "1.23조" · "4,827.14만", 자체 검사용으로도 공개)
+        [[nodiscard]] static std::wstring FormatShort(std::int64_t value);
 
     protected:
         void RenderContent(Core::Renderer& renderer, const Core::RectF& content) override;                           // 피해량 · 지분 · 단계
@@ -53,6 +55,8 @@ export namespace LostArkMultiTool::Views  // 화면 네임스페이스 내보내
 
     private:
         [[nodiscard]] Core::RectF GetSizeButtonRect(const Core::RectF& content) const noexcept;   // 8인 · 4인 단추
+        [[nodiscard]] int GetEffectiveRaidSize() const;                                         // 화면에서 알아본 인원 → 없으면 설정
+        [[nodiscard]] bool IsAutoRaidSize() const noexcept;                                     // 화면에서 알아본 인원인지
 
         std::function<DamageShareSource()> m_provider;   // 값 함수
         std::function<int()> m_getRaidSize;              // 인원 읽기
