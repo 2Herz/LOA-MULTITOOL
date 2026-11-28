@@ -889,9 +889,11 @@ namespace LostArkMultiTool::Core::SelfTest
                 && CombatAnalyzerDetector::ParseAmount(L"3.51역") == 351'000'000
                 && CombatAnalyzerDetector::ParseAmount(L"4,827.14만") == 48'271'400
                 && CombatAnalyzerDetector::ParseAmount(L"5,943.9만") == 59'439'000                    // 소수 한 자리만 읽힘 (v1.11.0에서 5억 9439만으로 10배)
+                && CombatAnalyzerDetector::ParseAmount(L"73105억") == 73'105'000'000                  // 소수점을 놓침 (v1.11.3에서 7.31조로 100배)
+                && CombatAnalyzerDetector::ParseAmount(L"731 05억") == 73'105'000'000                 // 소수점이 띄어쓰기로 읽힘
                 && CombatAnalyzerDetector::ParseAmount(L"12,345") == 12'345
                 && !CombatAnalyzerDetector::ParseAmount(L"-").has_value();
-            reporter.Check(isAmount, "전투 분석기 · 억 · 만 단위 글자 (460,99익 · 3.51역 · 4,827.14만 · 5,943.9만 · 12,345 · -)");
+            reporter.Check(isAmount, "전투 분석기 · 억 · 만 단위 글자 (460,99익 · 3.51역 · 4,827.14만 · 5,943.9만 · 73105억 · 731 05억 · 12,345 · -)");
 
             constexpr std::int64_t SAMPLE_HEALTH{ 83'119'120'458 };                    // 샘플 최대 체력
             constexpr std::int64_t HALF_CURRENT{ 37'019'552'389 };                     // 절반 샘플 현재 체력

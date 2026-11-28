@@ -62,14 +62,15 @@ namespace LostArkMultiTool::Vision  // 화면 인식 네임스페이스 시작
         {
             const wchar_t character = text[index];                              // 글자
             if (character >= L'0' && character <= L'9') digits += character;   // 숫자
-            else if ((character == L',' || character == L'.') && !digits.empty()) lastSeparator = digits.size();   // 구분자 자리
+            else if ((character == L',' || character == L'.' || character == L' ') && !digits.empty()) lastSeparator = digits.size();   // 구분자 자리 (작은 점이 띄어쓰기로 읽힌 "731 05억" 포함)
         }
         if (digits.empty() || digits.size() > static_cast<std::size_t>(MAX_DIGITS)) return std::nullopt;   // 숫자 없음 · 너무 긺
         std::size_t decimals = 0;                                               // 소수 자릿수
-        if (lastSeparator && unit > 1.0)                                        // 억 · 만이 붙은 값
+        if (unit > 1.0)                                                         // 억 · 만이 붙은 값 (전투 분석기는 항상 소수 둘째 자리까지 보여 줌)
         {
-            const std::size_t tail = digits.size() - *lastSeparator;            // 마지막 구분자 뒤 자릿수
+            const std::size_t tail = lastSeparator ? digits.size() - *lastSeparator : 0;   // 마지막 구분자 뒤 자릿수
             if (tail >= 1 && tail <= DECIMAL_DIGITS) decimals = tail;           // "460,99억" · OCR이 한 자리를 빠뜨린 "5,943.9만" → 소수 (10배로 읽히지 않게)
+            else if (digits.size() > DECIMAL_DIGITS) decimals = DECIMAL_DIGITS; // 소수점을 놓친 "73105억" → 731.05억 (100배인 7.31조로 읽히지 않게)
         }
         double value = 0.0;                                                     // 값
         for (wchar_t character : digits) value = value * DECIMAL_BASE + (character - L'0');   // 숫자
